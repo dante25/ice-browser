@@ -1,0 +1,90 @@
+{
+ "manifest_version": 3,
+ "name": "Ice tema (tamna)",
+ "version": "1.0.0",
+ "theme": {
+  "colors": {
+   "frame": [
+    44,
+    44,
+    44
+   ],
+   "frame_inactive": [
+    38,
+    38,
+    38
+   ],
+   "toolbar": [
+    56,
+    56,
+    56
+   ],
+   "tab_text": [
+    242,
+    242,
+    242
+   ],
+   "tab_background_text": [
+    169,
+    180,
+    184
+   ],
+   "tab_background_text_inactive": [
+    138,
+    149,
+    153
+   ],
+   "bookmark_text": [
+    242,
+    242,
+    242
+   ],
+   "toolbar_text": [
+    242,
+    242,
+    242
+   ],
+   "toolbar_button_icon": [
+    242,
+    242,
+    242
+   ],
+   "omnibox_background": [
+    44,
+    44,
+    44
+   ],
+   "omnibox_text": [
+    242,
+    242,
+    242
+   ],
+   "ntp_background": [
+    35,
+    35,
+    35
+   ],
+   "ntp_text": [
+    242,
+    242,
+    242
+   ],
+   "ntp_link": [
+    148,
+    247,
+    255
+   ],
+   "frame_incognito": [
+    30,
+    30,
+    30
+   ],
+   "frame_incognito_inactive": [
+    26,
+    26,
+    26
+   ]
+  }
+ },
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmN3KvT/tw5hAh8M+7HC3F+fS2SPdfmanWQWNhL2JPKSCQmHg761aUFlUo8M2i7BjMDsW6qHMNpfviplqLPrcEpfVHHPEbGNF6fLLve8RnurJcdIQEz1eynNN4K3wxPWeqv8j5tENDN/40My+WsmzAAcSetn29W41azpBBsQPZC+UwuzgLiYkyMQO9EAt3ZcKBbvNMcBHB/oY78hhABpTjwTLeO0rMCr1NPSmY5i/+L1s/2xAznQFDb50ssH84eC2fG9pbZr5pcEylXdpmj1R4nhlpLJ/5Ud9ouhORvzMTUcwq3xNZQTpM4SZGvBFK74lGfSLX7huUr6iDKvNni5uIwIDAQAB"
+}

@@ -6,15 +6,38 @@
   "content_scripts": [
     {
       "matches": [
-        "*://www.google.com/*", "*://www.google.ba/*", "*://www.google.hr/*", "*://www.google.rs/*",
-        "*://www.google.me/*", "*://www.google.si/*", "*://www.google.de/*", "*://www.google.at/*",
-        "*://www.google.ch/*", "*://www.google.co.uk/*", "*://www.google.fr/*", "*://www.google.it/*",
-        "*://www.google.nl/*", "*://www.google.se/*", "*://www.google.com.tr/*", "*://images.google.com/*",
+        "*://www.google.com/*",
+        "*://www.google.ba/*",
+        "*://www.google.hr/*",
+        "*://www.google.rs/*",
+        "*://www.google.me/*",
+        "*://www.google.si/*",
+        "*://www.google.de/*",
+        "*://www.google.at/*",
+        "*://www.google.ch/*",
+        "*://www.google.co.uk/*",
+        "*://www.google.fr/*",
+        "*://www.google.it/*",
+        "*://www.google.nl/*",
+        "*://www.google.se/*",
+        "*://www.google.com.tr/*",
+        "*://images.google.com/*",
         "http://127.0.0.1/*"
       ],
-      "js": ["viewer.js"],
-      "css": ["viewer.css"],
+      "js": [
+        "viewer.js"
+      ],
+      "css": [
+        "viewer.css"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyFrTyogqyUMEMWa3aud4YtFfLbZJ8itXtibvI0BN27nINGdzS/18CSLKNEHiSGEv4Xhp0G93PlqQ4mZwhH1HaqqT1fOopnRar8ah2UW7PMSjmyKAc9Y4m8+AOr3QQhqU211WzjmqgtL+mK2bEQpda5W6Tkv0JPwj6kocNmCSFM1NyYzEq4+taheHMEmaiTnZSNJ1kULGlMdB+Nm6oUXjptyLQ7rKxOMsCDwurvbt1ndAy0IQWW+JBvPVEfTy5UiUmwvtqWyxXqEdkefVFPE5K5LiALDV93hvqRCQgaCPBfmm3Zl3yYgZwYu+aemAr9sB8Sm5kf71//o5JKkWOEuZcwIDAQAB",
+  "icons": {
+    "16": "icons/ice-16.png",
+    "32": "icons/ice-32.png",
+    "48": "icons/ice-48.png",
+    "128": "icons/ice-128.png"
+  }
 }

@@ -19,19 +19,21 @@ const PATCHES = {
 };
 
 function hashOf(rules) {
-  return crypto.createHash('sha256').update(JSON.stringify(rules)).digest('hex').slice(0, 10);
+  return crypto.createHash('sha256').update(JSON.stringify(rules.map((r) => ({ ...r, manifest: r.manifest ? r.sig : undefined })))).digest('hex').slice(0, 10);
 }
 
 // Vraća folder koji treba učitati: popravljenu kopiju, ili original ako nema/ne odgovara pravilo.
-function prepare(key, srcDir, userDataDir, log = () => {}) {
-  const rules = PATCHES[key];
-  if (!rules) return srcDir;
+// extra: dodatna pravila (npr. izmjene manifesta { id, sig, manifest: (m) => void })
+function prepare(key, srcDir, userDataDir, log = () => {}, extra = []) {
+  const rules = [...(PATCHES[key] || []), ...extra];
+  if (!rules.length) return srcDir;
   const manifest = JSON.parse(fs.readFileSync(path.join(srcDir, 'manifest.json'), 'utf8'));
   const outDir = path.join(userDataDir, 'patched', `${key}-${manifest.version}-${hashOf(rules)}`);
   if (fs.existsSync(path.join(outDir, '.ice-patched'))) return outDir;
 
   // Prvo provjeri da sva pravila odgovaraju, tek onda kopiraj
   for (const r of rules) {
+    if (r.manifest) continue;
     const text = fs.readFileSync(path.join(srcDir, r.file), 'utf8');
     const n = text.split(r.find).length - 1;
     if (n !== 1) {
@@ -47,6 +49,13 @@ function prepare(key, srcDir, userDataDir, log = () => {}) {
   // Chromeov potpis sadržaja više ne bi odgovarao izmijenjenim fajlovima
   fs.rmSync(path.join(outDir, '_metadata'), { recursive: true, force: true });
   for (const r of rules) {
+    if (r.manifest) {
+      const mf = path.join(outDir, 'manifest.json');
+      const m = JSON.parse(fs.readFileSync(mf, 'utf8'));
+      r.manifest(m);
+      fs.writeFileSync(mf, JSON.stringify(m, null, 1));
+      continue;
+    }
     const f = path.join(outDir, r.file);
     fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(r.find, r.replace));
     log('popravka primijenjena:', key, r.id);

@@ -1,0 +1,39 @@
+body{display:flex;flex-direction:row-reverse;overflow:hidden} /* panel je desno: traka s ikonama uz desni rub */
+/* Traka s ikonama */
+.rail{width:52px;flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0;border-left:1px solid var(--line);overflow-y:auto;overflow-x:hidden}
+.rail button{width:40px;height:40px;border-radius:var(--radius);display:grid;place-items:center;color:var(--text);position:relative}
+.rail button:hover{background:var(--hover)}
+.rail button.on{background:var(--accent);color:var(--on-accent)}
+.rail button img{width:20px;height:20px;border-radius:4px}
+.rail .sep{width:26px;height:1px;background:var(--line);margin:4px 0;flex:none}
+.rail .grow{flex:1}
+/* Sadržaj */
+.view{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.head{padding:14px 14px 8px;display:flex;flex-direction:column;gap:10px}
+.head h1{font-size:15px;font-weight:600;margin:2px 4px 0;display:flex;align-items:center;gap:8px}
+.head h1 button{margin-left:auto;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:500;color:var(--muted)}
+.head h1 button:hover{background:var(--hover);color:var(--text)}
+.body{flex:1;overflow-y:auto;padding:4px 10px 16px}
+.grp{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 8px 4px}
+.item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:var(--radius);text-align:left;min-height:38px}
+.item:hover{background:var(--hover)}
+.item.on{background:var(--accent);color:var(--on-accent)}
+.item .ico{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;flex:none;background:var(--base)}
+.item .ico img{width:16px;height:16px}
+.item .ico svg.i{width:16px;height:16px}
+.item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .s{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.on .s{color:inherit;opacity:.7}
+.item .tt{flex:1;min-width:0;display:flex;flex-direction:column}
+.item .tt .t{flex:none}
+.folder>.kids{padding-left:16px;display:none}
+.folder.open>.kids{display:block}
+.empty{color:var(--muted);padding:20px 10px;text-align:center}
+/* Meni funkcije unutar panela */
+.frame{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 10px 10px}
+.frame .tabs{display:flex;gap:6px;margin:0 4px 8px}
+.frame .tabs button{padding:6px 12px;border-radius:8px;background:var(--base);border:1px solid var(--line)}
+.frame .tabs button.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.frame iframe{flex:1;width:100%;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
+.note{margin:0 6px 8px;color:var(--muted);font-size:12px}
+.kbd{font-family:ui-monospace,monospace;background:var(--base);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11px}

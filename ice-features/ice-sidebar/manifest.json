@@ -1,0 +1,61 @@
+{
+ "manifest_version": 3,
+ "name": "Ice panel",
+ "version": "1.0.0",
+ "description": "Iceov lijevi panel: meni, bookmarks, historija, preuzimanja i ugra\u0111ene funkcije; Ice po\u010detna stranica.",
+ "permissions": [
+  "sidePanel",
+  "bookmarks",
+  "history",
+  "downloads",
+  "downloads.open",
+  "tabs",
+  "management",
+  "topSites",
+  "search",
+  "storage",
+  "favicon"
+ ],
+ "side_panel": {
+  "default_path": "panel.html"
+ },
+ "action": {
+  "default_title": "Ice panel (Alt+I)",
+  "default_icon": {
+   "16": "icons/ice-16.png",
+   "32": "icons/ice-32.png",
+   "48": "icons/ice-48.png"
+  }
+ },
+ "icons": {
+  "16": "icons/ice-16.png",
+  "32": "icons/ice-32.png",
+  "48": "icons/ice-48.png",
+  "128": "icons/ice-128.png"
+ },
+ "background": {
+  "service_worker": "sw.js"
+ },
+ "chrome_url_overrides": {
+  "newtab": "newtab.html"
+ },
+ "commands": {
+  "_execute_action": {
+   "suggested_key": {
+    "default": "Alt+I"
+   },
+   "description": "Otvori/zatvori Ice panel"
+  }
+ },
+ "web_accessible_resources": [
+  {
+   "resources": [
+    "icons/*"
+   ],
+   "matches": [
+    "<all_urls>"
+   ]
+  }
+ ],
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoMqG7Tr4hUbiRBEJACIHGAvCTZUkS9mWGiG/2xtdjYHCnXkJuvsRZ3/F5Q1cztJyVLLHxq2WhYVUj3t+dU2JLktKPXFtdA0gkH7vlZsevfMwGdSC3b62Oxri8jEigQfKZBM3pTp1s9cSPpgMhLmbGkFXg1D3MJUjCgPk9j9mPZ80IT9PNSysvXvBNcmzOeaAX3EV5EJH0ZKfvTDG1XLshCR+rW8U0G4nthO4HxJ5g6qnCLcSSOFXAeHuc6benn8KNerEBdZTc26KxrxIz6jBA+LPDIpSX4SVIbqnXjzGRTy1NrCAKahdMdMzJPcPRgq32EK5gDzhZqZXrrVgqQ4p4wIDAQAB"
+}

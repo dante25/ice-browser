@@ -1,0 +1,22 @@
+/* Ice boje: svijetla (osnovna #E3FDFF, panel #D1F7FF, akcent #94F7FF), tamna kao Ubuntu (Yaru) */
+:root{
+  --base:#E3FDFF;--panel:#D1F7FF;--accent:#94F7FF;--deep:#49E8FF;
+  --text:#0B3A4A;--muted:#4C7A86;--line:rgba(11,58,74,.12);--card:#EEFEFF;--hover:rgba(11,58,74,.06);
+  --on-accent:#0B3A4A;--radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--base:#2C2C2C;--panel:#383838;--text:#F2F2F2;--muted:#A9B4B8;--line:rgba(255,255,255,.09);--card:#333333;--hover:rgba(255,255,255,.06)}
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--panel);color:var(--text);font:13px/1.4 Ubuntu,"Noto Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+input.search{width:100%;height:34px;border-radius:17px;border:1px solid var(--line);background:var(--base);color:var(--text);padding:0 14px 0 36px;font:inherit;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a9aa3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:13px 50%}
+input.search:focus{border-color:var(--deep)}
+.sw{position:relative;width:34px;height:20px;border-radius:10px;background:var(--line);flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw.on{background:var(--deep)}
+.sw.on::after{left:16px}

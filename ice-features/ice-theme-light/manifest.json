@@ -1,0 +1,90 @@
+{
+ "manifest_version": 3,
+ "name": "Ice tema (svijetla)",
+ "version": "1.0.0",
+ "theme": {
+  "colors": {
+   "frame": [
+    227,
+    253,
+    255
+   ],
+   "frame_inactive": [
+    234,
+    253,
+    255
+   ],
+   "toolbar": [
+    209,
+    247,
+    255
+   ],
+   "tab_text": [
+    11,
+    58,
+    74
+   ],
+   "tab_background_text": [
+    76,
+    122,
+    134
+   ],
+   "tab_background_text_inactive": [
+    107,
+    146,
+    156
+   ],
+   "bookmark_text": [
+    11,
+    58,
+    74
+   ],
+   "toolbar_text": [
+    11,
+    58,
+    74
+   ],
+   "toolbar_button_icon": [
+    11,
+    58,
+    74
+   ],
+   "omnibox_background": [
+    227,
+    253,
+    255
+   ],
+   "omnibox_text": [
+    11,
+    58,
+    74
+   ],
+   "ntp_background": [
+    227,
+    253,
+    255
+   ],
+   "ntp_text": [
+    11,
+    58,
+    74
+   ],
+   "ntp_link": [
+    11,
+    110,
+    133
+   ],
+   "frame_incognito": [
+    31,
+    60,
+    69
+   ],
+   "frame_incognito_inactive": [
+    42,
+    74,
+    84
+   ]
+  }
+ },
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk4LxN4CV0UDaXxQ+nbUa6HO/lw0huIJMMhq0Q5d5CMAD+n8o/0SKXd5JxmxaEuQlt0iJdUBBeqRA2L/9GQk6H6WBsDAdnO2QjF0Ef+mZVscyAHVW8i0c+k23pTfBejavUwCKfYP5XyR99VYQSIP8J0GQtANTPMK3SVwWaathle9bTtr1I2gnAJNEXt8DXso/mChAPv2cANgao6DrqxwCfEvdAhRIxmLIq/8yRhMwqMMQKxvABXPnIx/scgYwmR6y48x/iZjQgv74zC+oDDnJirtvIebcyReA/HsGk4tdnvOlurqPNeehHBb5ORPtvtJme3YeMGPio4V5Sn5rzSVKZwIDAQAB"
+}

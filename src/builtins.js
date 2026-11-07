@@ -8,9 +8,13 @@ const { jsonStore } = require('./store');
 const patches = require('./ext-patches');
 
 const ROOT = path.join(__dirname, '..');
+const KEYS = require('./extension-keys.json');
+const SIDEBAR_ID = KEYS['ice-sidebar'].id;
+const idFromKey = (k) => require('crypto').createHash('sha256').update(Buffer.from(k, 'base64')).digest('hex').slice(0, 32).replace(/[0-9a-f]/g, (c) => String.fromCharCode(97 + parseInt(c, 16)));
 
 const BUILTINS = [
   // Iceove vlastite
+  { key: 'ice-sidebar', name: 'Ice panel', dir: 'ice-features/ice-sidebar', group: 'always', ice: true },
   { key: 'ice-shield', name: 'Ice Shield (phishing, malware, GPC)', dir: 'ice-features/ice-shield', group: 'always' },
   { key: 'google-images-viewer', name: 'Pregled slika na Google Images', dir: 'ice-features/google-images-viewer', group: 'always' },
   // S prekidačem
@@ -39,14 +43,53 @@ function createBuiltins(configDir, dataDir) {
   store.data.toggles ||= {};
   const isEnabled = (b) => b.group === 'always' || store.data.toggles[b.key] !== false;
 
-  // Folderi za --load-extension (s primijenjenim popravkama)
-  function dirs(log = () => {}) {
+  // Izmjene manifesta: stalni ID za tvoje ekstenzije i dozvola da se njihov meni/postavke
+  // prikazuju unutar Ice panela (bez novog prozora ili taba)
+  function manifestRules(b, m) {
+    const rules = [];
+    if (!m.key && KEYS[b.key]) rules.push({ id: 'stalni-id', sig: KEYS[b.key].id, manifest: (x) => { x.key = KEYS[b.key].key; } });
+    if (b.ice || m.theme) return rules;
+    const popup = ((m.action || m.browser_action || {}).default_popup || '').split('?')[0].replace(/^\.\//, '');
+    const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
+    const pages = [popup, options].filter(Boolean);
+    if (pages.length) {
+      rules.push({
+        id: 'meni-u-ice-panelu', sig: `${SIDEBAR_ID}:${pages.join(',')}`,
+        manifest: (x) => {
+          x.web_accessible_resources = [...(x.web_accessible_resources || []), { resources: pages, matches: [], extension_ids: [SIDEBAR_ID] }];
+        },
+      });
+    }
+    return rules;
+  }
+
+  // Folderi za --load-extension (s primijenjenim popravkama) i opis funkcija za Ice panel
+  function dirs(log = () => {}, theme = 'dark') {
     const out = [];
+    const info = [];
     for (const b of BUILTINS) {
       if (!isEnabled(b)) continue;
       const dir = path.join(ROOT, b.dir);
       if (!fs.existsSync(path.join(dir, 'manifest.json'))) { log(`nema koda: ${b.name}`); continue; }
-      out.push(patches.prepare(b.key, dir, dataDir, log));
+      const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+      if (b.key !== 'ice-sidebar') out.push(patches.prepare(b.key, dir, dataDir, log, manifestRules(b, m)));
+      const key = m.key || KEYS[b.key]?.key;
+      const popup = ((m.action || m.browser_action || {}).default_popup || '').replace(/^\.\//, '');
+      const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
+      info.push({ key: b.key, name: b.name, group: b.group, ice: !!b.ice, id: key ? idFromKey(key) : null, popup: popup || null, options: options || null });
+    }
+    // Tema: jedna od dvije
+    const t = theme === 'light' ? 'ice-features/ice-theme-light' : 'ice-features/ice-theme-dark';
+    if (fs.existsSync(path.join(ROOT, t, 'manifest.json'))) out.push(path.join(ROOT, t));
+    // Ice panel se kopira u korisnički folder (program može biti instaliran kao .deb, samo za čitanje)
+    // i dobija spisak funkcija (features.json)
+    const sidebarSrc = path.join(ROOT, 'ice-features/ice-sidebar');
+    if (fs.existsSync(path.join(sidebarSrc, 'manifest.json'))) {
+      const live = path.join(dataDir, 'ice-sidebar');
+      fs.rmSync(live, { recursive: true, force: true });
+      fs.cpSync(sidebarSrc, live, { recursive: true });
+      fs.writeFileSync(path.join(live, 'features.json'), JSON.stringify(info, null, 1));
+      out.unshift(live);
     }
     return out;
   }
@@ -64,4 +107,4 @@ function createBuiltins(configDir, dataDir) {
   };
 }
 
-module.exports = { createBuiltins, BUILTINS };
+module.exports = { createBuiltins, BUILTINS, SIDEBAR_ID };

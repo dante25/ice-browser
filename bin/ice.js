@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { createBuiltins } = require('../src/builtins');
+const { createBuiltins, SIDEBAR_ID } = require('../src/builtins');
 
 const HOME = os.homedir();
 const CONFIG = path.join(HOME, '.config/Ice');
@@ -27,6 +27,22 @@ function isRunningProfile() {
   } catch {
     return false;
   }
+}
+
+// Tema: auto (prati sistem), light ili dark; ice --theme <izbor>
+const UI_FILE = path.join(CONFIG, 'ui.json');
+const ui = (() => { try { return JSON.parse(fs.readFileSync(UI_FILE, 'utf8')); } catch { return {}; } })();
+function resolveTheme() {
+  if (ui.theme === 'light' || ui.theme === 'dark') return ui.theme;
+  const r = require('child_process').spawnSync('gsettings', ['get', 'org.gnome.desktop.interface', 'color-scheme'], { encoding: 'utf8' });
+  return /dark/.test(r.stdout || '') ? 'dark' : 'light';
+}
+if (args[0] === '--theme') {
+  if (!['light', 'dark', 'auto'].includes(args[1])) { console.error('Upotreba: ice --theme light|dark|auto'); process.exit(1); }
+  fs.mkdirSync(CONFIG, { recursive: true });
+  fs.writeFileSync(UI_FILE, JSON.stringify({ ...ui, theme: args[1] }));
+  console.log(`Tema: ${args[1]} (vrijedi od sljedećeg pokretanja Icea)`);
+  process.exit(0);
 }
 
 if (args[0] === '--features') {
@@ -67,6 +83,14 @@ function applyDefaults() {
   p.webrtc = { ...(p.webrtc || {}), ip_handling_policy: 'default_public_interface_only' }; // bez lokalne IP
   p.browser = { ...(p.browser || {}), has_seen_welcome_page: true };
   p.enable_do_not_track = true;
+  // Raspored: Ice panel desno (umjesto glavnog menija), dugme Home, novi tab kao početna, Ice ikona zakačena na traku
+  p.side_panel = { ...(p.side_panel || {}), is_right_aligned: true };
+  p.browser = { ...p.browser, show_home_button: true };
+  p.homepage_is_newtabpage = true;
+  p.extensions = { ...(p.extensions || {}) };
+  const pinned = new Set(p.extensions.pinned_extensions || []);
+  pinned.add(SIDEBAR_ID);
+  p.extensions.pinned_extensions = [...pinned];
   fs.writeFileSync(file, JSON.stringify(p));
 }
 
@@ -149,8 +173,9 @@ const flags = [
   '--no-first-run',
   '--no-default-browser-check',
   '--disable-features=DisableLoadExtensionCommandLineSwitch',
-  `--load-extension=${builtins.dirs((m) => console.warn('[ice]', m)).join(',')}`,
+  `--load-extension=${builtins.dirs((m) => console.warn('[ice]', m), resolveTheme()).join(',')}`,
   '--class=Ice',
+  '--show-avatar-button=never', // profil je u Ice panelu, ne na traci
   ...args,
 ];
 

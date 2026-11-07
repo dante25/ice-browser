@@ -75,3 +75,15 @@ Popravljene greške:
 Pogođeno: Adblock for YouTube, Ultimate SN Downloader, Video Sniffer, Search by Image (dio), Bookmarks clean up.
 Opcije: (A) ostati na Electronu i u Iceu napisati DNR, webRequest za ekstenzije, downloads i bookmarks;
 (B) prebaciti osnovu Icea na ungoogled-chromium (pun Chromium bez Googlea, sve ekstenzije rade kao u Chromeu).
+
+## Sučelje (2026-11-07)
+Uzor: dizajn s lijevim panelom (ikone + meni, panel se otvara unutar prozora), tabovi gore, adresna traka ispod
+(nazad, naprijed, osvježi, home lijevo; "+" za novi tab). Uglovi upola manje zaobljeni od uzora.
+Boje (tvoja paleta):
+- osnovna (umjesto bijele): `#E3FDFF`
+- lijevi panel i adresna traka: `#D1F7FF` (bilo #C0F7FF, previše drečavo)
+- akcent (bočna traka, kliknuto/označeno): `#94F7FF`
+- ostale nijanse palete: `#D1F7FF`, `#49E8FF`
+Tamna tema: "svijetlo crna" kao Ubuntu (Yaru) tamna; akcent ostaje `#94F7FF`.
+- osnovna: `#2C2C2C`, lijevi panel i adresna traka: `#383838`, tekst: `#F2F2F2`, akcent: `#94F7FF`
+- svijetla/tamna se biraju prema sistemskoj postavci (ili ručno)
