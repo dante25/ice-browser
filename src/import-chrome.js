@@ -209,4 +209,4 @@ async function importChrome({ chromeBin, userDataDir, passwords: withPasswords =
   return report;
 }
 
-module.exports = { importChrome, encrypt, decrypt, derive };
+module.exports = { importChrome, encrypt, decrypt, derive, keyringSecret };

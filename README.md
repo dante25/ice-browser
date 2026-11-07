@@ -33,5 +33,5 @@ U ungoogled-chromiumu sve rade (testirano).
 
 ## Ograničenja
 - Sučelje je Chromiumovo (teme i boje se mogu mijenjati; vlastiti raspored traži kompajliranje Chromiuma).
-- Google sync ne radi (Google ga je 2021. isključio za Chromium); Chrome podaci se prenose direktno.
+- Google sync ne radi (Google ga je 2021. isključio za Chromium). Umjesto njega: Iceov šifrirani sync preko Google Drivea (rclone, `src/sync.js`).
 - Autofill iz Chromea 157 nije prenesen (baza novija od Chromiuma 156).

@@ -17,6 +17,24 @@ ice --import-chrome --skip-passwords  # sve osim lozinki
 ```
 Prije prenosa se pravi rezervna kopija Ice profila (`~/.config/Ice/chromium/backup-...`).
 
+## Sync preko Google Drivea
+Jednom: odobri Drive (samo Iceovi fajlovi), pa postavi sync lozinku.
+```bash
+rclone config create ice-drive drive scope=drive.file
+ice --sync-setup
+```
+Poslije toga sync radi sam: pri zatvaranju Icea šalje profil, pri pokretanju preuzima noviji s drugog uređaja.
+Ručno (Ice zatvoren za preuzimanje):
+```bash
+ice --sync-push      # pošalji sada
+ice --sync-pull      # preuzmi noviji (--force: preuzmi bez obzira)
+ice --sync-status    # stanje
+```
+Šta se sinkronizuje: bookmarks, lozinke, dozvole po stranicama, zoom, jezici, zadani pretraživač.
+Na Driveu je jedan fajl `Ice Sync/profil.icesync`, šifriran sync lozinkom (AES-256-GCM). Bez lozinke se ne može otvoriti.
+Pravilo: zadnja izmjena pobjeđuje; prije svakog preuzimanja pravi se rezervna kopija (`~/.config/Ice/chromium/backup-sync-...`).
+Log: `~/.config/Ice/sync.log`
+
 ## Testovi i čuvar (iz foldera projekta)
 ```bash
 cd ~/ice-browser
