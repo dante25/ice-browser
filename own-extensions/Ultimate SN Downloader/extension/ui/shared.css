@@ -1,0 +1,11 @@
+:root { --bg:#f5f7fb; --card:#fff; --line:#e3e8f0; --text:#1c2430; --muted:#6b7686; --accent:#2f7cf6; --accent2:#e8f0fe; --ok:#1f9d55; --warn:#d98200; --err:#d64545; --ig:#d6249f; --fb:#1877f2; }
+* { box-sizing: border-box; }
+body { margin:0; font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--text); background:var(--bg); }
+button { font:inherit; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:999px; padding:6px 14px; }
+button:hover { background:var(--accent2); }
+button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+button.primary:hover { filter:brightness(1.07); background:var(--accent); }
+button:disabled { opacity:.5; cursor:default; }
+.badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; color:#fff; font-weight:700; font-size:12px; flex:none; }
+.badge.ig { background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af); } .badge.fb { background:var(--fb); } .badge.x { background:#111; } .badge.da { background:#05cc47; } .badge.ih { background:#7a4cff; } .badge.fl { background:linear-gradient(90deg,#0063dc 50%,#ff0084 50%); }
+.muted { color:var(--muted); }

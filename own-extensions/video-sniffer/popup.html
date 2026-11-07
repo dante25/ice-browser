@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <strong>Video Sniffer</strong>
+    <span>
+      <button id="ytpage" title="Copy a yt-dlp command for this page">yt-dlp</button>
+      <button id="ytformats" title="Copy a yt-dlp command that lists every format of this page">-F</button>
+      <button id="clear">Clear</button>
+    </span>
+  </header>
+  <div id="tabtitle"></div>
+  <div id="helper"></div>
+  <div id="jobs"></div>
+  <label id="probelabel" title="Briefly starts muted playback of videos that have not loaded anything, so their stream URL shows up without you pressing play">
+    <input type="checkbox" id="probe"> Auto-detect without pressing play
+  </label>
+  <div id="list"></div>
+  <p id="empty" hidden>Nothing detected yet. Press play on the video, then reopen this popup.</p>
+  <script src="hls.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

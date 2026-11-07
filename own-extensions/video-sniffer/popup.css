@@ -1,0 +1,22 @@
+:root { color-scheme: light dark; --bg: #fff; --fg: #202124; --mut: #5f6368; --line: #dadce0; --acc: #1a73e8; }
+@media (prefers-color-scheme: dark) { :root { --bg: #202124; --fg: #e8eaed; --mut: #9aa0a6; --line: #3c4043; --acc: #8ab4f8; } }
+body { width: 420px; min-height: 80px; max-height: 560px; overflow-y: auto; margin: 0; font: 13px system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); }
+button { font: inherit; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; }
+button:hover { border-color: var(--acc); color: var(--acc); }
+.item { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.top { display: flex; gap: 8px; align-items: center; }
+.badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--acc); color: var(--bg); text-transform: uppercase; }
+.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.meta { color: var(--mut); font-size: 11px; margin: 4px 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+#tabtitle { padding: 6px 12px 0; font-size: 11px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#helper { padding: 2px 12px 0; font-size: 11px; color: var(--mut); }
+#jobs { padding: 0 12px; }
+.job { font-size: 11px; padding: 2px 0; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.variants { margin-top: 6px; border-left: 2px solid var(--line); padding-left: 8px; }
+.variant { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2px 0; }
+.variant span { color: var(--fg); }
+.note { color: var(--mut); font-size: 11px; }
+#probelabel { display: block; padding: 6px 12px; font-size: 12px; color: var(--mut); border-bottom: 1px solid var(--line); }
+#empty { padding: 16px 12px; color: var(--mut); }

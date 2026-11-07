@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Ultimate SN Downloader</title><link rel="stylesheet" href="shared.css"><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header><img src="../icons/icon32.png" width="22" height="22"><b>Ultimate SN Downloader</b></header>
+<main>
+  <section id="page" class="card"><span id="badge" class="badge">?</span><div><div id="title">Looking at this page…</div><div id="sub" class="muted"></div></div></section>
+  <section id="opts" class="card" hidden>
+    <div class="label">What to download</div>
+    <label class="chk"><input type="checkbox" id="all"> <b>Everything</b></label>
+    <label class="chk"><input type="checkbox" id="photos"> Photos</label>
+    <label class="chk"><input type="checkbox" id="videos"> Videos</label>
+    <label class="chk" id="srRow"><input type="checkbox" id="storyreel"> <span id="srLabel">Stories &amp; reels</span></label>
+    <div id="fbOpts" hidden><div class="label" style="margin-top:10px">Facebook photos</div>
+      <label class="chk"><input type="checkbox" id="optFull" checked> Full size (one extra request per photo — slower, higher block risk)</label></div>
+    <div id="vidOpts"><div class="label" style="margin-top:10px">🎬 Video options</div>
+      <label class="chk"><input type="checkbox" id="optMerge"> HD auto-merge (video + sound)</label>
+      <label class="chk"><input type="checkbox" id="optThumb"> Download thumbnail</label>
+</div>
+    <div class="label" style="margin-top:10px">Speed</div>
+    <select id="speed"><option value="quiet">Quiet — fewest requests, very slow (Facebook: only what the page loads itself)</option><option value="safe">Safe — slowest, lowest ban risk</option><option value="normal">Normal — like the original extensions</option><option value="fast">Fast — highest ban risk</option></select>
+  </section>
+  <div id="msg" class="muted"></div>
+  <div class="row"><button id="start" class="primary" disabled>Start download</button><button id="manager">Progress window</button></div>
+</main>
+<script src="sites.js"></script><script src="popup.js"></script></body></html>

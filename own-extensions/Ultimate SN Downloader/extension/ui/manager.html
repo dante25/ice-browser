@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Ultimate SN Downloader — Progress</title><link rel="stylesheet" href="shared.css"><link rel="stylesheet" href="manager.css"></head>
+<body>
+<header><img src="../icons/icon32.png" width="22" height="22"><b>Ultimate SN Downloader</b><span class="sp"></span><button id="folderBtn" title="Where files are saved">📁 Choose folder</button><button id="clear">Clear finished</button><button id="gear" title="Settings">⚙</button></header>
+<div id="totals" class="muted" style="padding:6px 14px;font-size:12px"></div><div id="banners"></div><div id="folderBan" class="ban" hidden></div>
+<section id="settings" hidden>
+  <label>Default speed <select id="s_speed"><option value="safe">Safe</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>
+  <label>Extra sub-folder (optional) <input id="s_folder" placeholder="leave empty"></label>
+  <label>Cooldown after a block (minutes) <input id="s_cool" type="number" min="5" max="240"></label>
+  <label>Image host file <span><span id="ih_count" class="muted"></span> <button id="ih_import">Import hostf.xml…</button><input id="ih_file" type="file" accept=".xml,text/xml" hidden></span></label>
+  <label>Image Host Grabber: skip files smaller than (KB) <input id="s_ihmin" type="number" min="0" max="2000"></label>
+  <label>File name <input id="s_tpl"></label><div class="muted tiny">Tokens: {owner} {date} {code} {index} {id} {type} {kind}</div>
+  <label>Sub-folders <input id="s_layout"></label><div class="muted tiny">Tokens: {site} {owner} {type} {kind}</div>
+  <div class="row"><button id="s_save" class="primary">Save</button></div>
+</section>
+<main id="jobs"></main>
+<div id="empty" class="muted" hidden>No downloads yet. Open an Instagram or Facebook page and click the extension button.</div>
+<script src="sites.js"></script><script src="manager.js"></script></body></html>
