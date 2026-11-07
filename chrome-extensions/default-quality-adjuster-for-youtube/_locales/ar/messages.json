@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "الجودة الافتراضية"
+   },
+   "description": {
+      "message": "قم بتعيين جودة الفيديو الافتراضية المفضلة لديك بسهولة على YouTube™"
+   },
+   "extensionDisabled": {
+      "message": "تم تعطيل الامتداد"
+   },
+   "extensionEnabled": {
+      "message": "تم تمكين الامتداد"
+   },
+   "name": {
+      "message": "معدل جودة الافتراضي لـ YouTube™"
+   },
+   "popupAbout": {
+      "message": "حول"
+   },
+   "popupDonate": {
+      "message": "تبرع"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "حدد جودة الفيديو الافتراضية لـ YouTube."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "الجودة الافتراضية"
+   },
+   "popupToggleDescription": {
+      "message": "تمكين/تعطيل الامتداد"
+   },
+   "popupToggleTitle": {
+      "message": "تعيين الجودة الافتراضية"
+   }
+}

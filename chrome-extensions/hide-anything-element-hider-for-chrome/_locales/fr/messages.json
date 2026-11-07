@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Supprimer tous les rectangles du domaine"
+   },
+   "delete_on_page": {
+      "message": "Supprimer tous les rectangles de la page"
+   },
+   "description": {
+      "message": "Cache-élément efficace pour Chrome™. Supprimez les distractions."
+   },
+   "highlight_on_page": {
+      "message": "Mettez en surbrillance tous les rectangles de la page"
+   },
+   "menu_contains": {
+      "message": "Contient"
+   },
+   "menu_domain": {
+      "message": "Domaine"
+   },
+   "menu_exact": {
+      "message": "Exact"
+   },
+   "menu_once": {
+      "message": "Une fois"
+   },
+   "menu_page": {
+      "message": "Page"
+   },
+   "menu_path": {
+      "message": "Chemin"
+   },
+   "menu_screen": {
+      "message": "Écran"
+   },
+   "name": {
+      "message": "Hide Anything - Masquer les éléments"
+   }
+}

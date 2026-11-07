@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Качество по умолчанию"
+   },
+   "description": {
+      "message": "Легко установите предпочтительное качество видео по умолчанию для YouTube™."
+   },
+   "extensionDisabled": {
+      "message": "Расширение отключено"
+   },
+   "extensionEnabled": {
+      "message": "Расширение включено"
+   },
+   "name": {
+      "message": "Регулятор качества по умолчанию для YouTube™"
+   },
+   "popupAbout": {
+      "message": "О"
+   },
+   "popupDonate": {
+      "message": "Пожертвовать"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Выберите качество видео по умолчанию на YouTube."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Качество по умолчанию"
+   },
+   "popupToggleDescription": {
+      "message": "Включить/отключить расширение"
+   },
+   "popupToggleTitle": {
+      "message": "Установить качество по умолчанию"
+   }
+}

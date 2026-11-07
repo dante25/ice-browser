@@ -1,0 +1,21 @@
+{
+   "content_scripts": [ {
+      "css": [ "style.css" ],
+      "js": [ "page.js" ],
+      "matches": [ "https://www.youtube.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Take a screenshot of any YouTube video with one click.",
+   "icons": {
+      "128": "icon-128.png",
+      "16": "icon-16.png",
+      "48": "icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnATmywYwzSdaD4jY8N3OZI8ffWfgLPzpNhYMczBwyv39d4Gmyo0lXn/fr9PPRGQ5QlWOj7DwMY3iZSWeIWYBFRUAyUztrLGZLiXaWehHMBMyB2WCaIRvX0Vheb6d+3agEfE1GhSRqQ3aN6lHf2bBlrLt9N2kQdyQLVnZ7VBxMswcwPExutdbeBSvWe3GHrKo62MDaf5mDQk6aosmvd0BXVx4vY/VK7TSU3L25Hg5pb9M+sMdQYslCnJMU2XTCM+eYU7enn7AI8l/LOzcptblEkr9LGbVDYJkCLRtWNyUe4ND1tXXsuESth3Y5jylgO341in/z8F+4C8wj6HYF20A4wIDAQAB",
+   "manifest_version": 3,
+   "name": "Screenshot YouTube",
+   "options_page": "options.html",
+   "permissions": [ "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "3.0.0"
+}

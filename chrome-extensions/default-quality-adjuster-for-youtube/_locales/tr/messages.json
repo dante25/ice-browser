@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Varsayılan kalite"
+   },
+   "description": {
+      "message": "YouTube™ için tercih ettiğiniz varsayılan video kalitesini kolayca ayarlayın."
+   },
+   "extensionDisabled": {
+      "message": "Uzantı devre dışı"
+   },
+   "extensionEnabled": {
+      "message": "Uzantı etkin"
+   },
+   "name": {
+      "message": "YouTube™ için Varsayılan Kalite Ayarlayıcı"
+   },
+   "popupAbout": {
+      "message": "Hakkında"
+   },
+   "popupDonate": {
+      "message": "Bağış"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Varsayılan YouTube video kalitesini seçin."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Varsayılan Kalite"
+   },
+   "popupToggleDescription": {
+      "message": "Uzantıyı aç/kapat"
+   },
+   "popupToggleTitle": {
+      "message": "Varsayılan kaliteyi ayarla"
+   }
+}

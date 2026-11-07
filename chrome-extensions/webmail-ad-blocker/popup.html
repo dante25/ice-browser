@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+    <title>Webmail Ad Blocker - Popup</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+    <link rel="stylesheet" href="css/jdom.css">
+
+    <style>
+        body {
+            width: 650px;
+            height: 350px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #mainContent {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        #pageStatus {
+            width: 86%;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        #siteStatus {
+            font-weight: 600;
+        }
+
+        #siteHost {
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        #yahooOptions {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e2e5ea;
+            font-size: 13px;
+        }
+
+        #yahooRemoveRightSide {
+            transform: scale(1.1);
+        }
+
+        #blockingToggleInline {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        #blockingToggle {
+            transform: scale(1.2);
+        }
+
+        #seeUpdates {
+            background-color: green;
+        }
+    </style>
+
+    <script src="js/common.js"></script>
+    <script src="js/jdom.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/popup.js"></script>
+
+</head>
+
+<body>
+
+    <header class="site-header">
+        <div class="header-and-secondary-nav">
+            <div class="header-content">
+                <div class="header-start">
+                    <j-button class="side-rail-button" icon="menu" aria-label="Open menu" hidden></j-button>
+                    <div class="logo-and-title">
+                        <img class="logo" src="/images/icon48.png"/>
+                        <a main-title href="https://jasonsavard.com?ref=WABPopupTitle" target="_blank">Webmail Ad Blocker</a>
+                    </div>
+                </div>
+
+                <nav class="primary-nav" aria-label="Main Navigation"></nav>
+                
+                <div class="utility-items">
+                    <a id="version" href="#"><j-ripple></j-ripple>Version</a>
+                    <a href="https://jasonsavard.com/wiki/Webmail_Ad_Blocker_changelog?ref=WABPopup" target="_blank"><j-ripple></j-ripple><span msg="changelog"></span></a>
+                    <a href="options.html?ref=WABPopup" target="_blank"><j-ripple></j-ripple><span msg="options"></span></a>
+                    <a href="https://jasonsavard.com/wiki/Webmail_Ad_Blocker?ref=WABPopup" target="_blank"><j-ripple></j-ripple><span msg="help"></span></a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+	<div id="mainContent">
+
+        <j-button id="seeUpdates" class="colored" icon="update" hidden msg="seeUpdates">View updates</j-button>
+
+        <div id="pageStatus" class="card" aria-live="polite">
+            <div class="status-row">
+                <span id="siteStatus" msg="popupCheckingPage">Checking this page...</span>
+                <label id="blockingToggleInline" for="blockingToggle" msgTitle="popupToggleBlockingTitle">
+                    <input type="checkbox" id="blockingToggle" />
+                </label>
+            </div>
+            <div id="siteHost"></div>
+            <label id="yahooOptions" for="yahooRemoveRightSide" msgTitle="popupYahooLayoutTweakTitle">
+                <span msg="popupYahooRemoveRightSide">Remove right side</span>
+                <input type="checkbox" id="yahooRemoveRightSide" />
+            </label>
+        </div>
+
+        <br>
+
+        <div>
+            <j-button id="tryMyOtherExtensions" class="colored" icon="extension" msg="tryMyOtherExtensions">Try my other extensions!</j-button>
+            <j-button id="contribute" class="colored" icon="accessibility" msg="contribute">Contribute</j-button>
+        </div>
+    </div>
+
+</body>
+</html>

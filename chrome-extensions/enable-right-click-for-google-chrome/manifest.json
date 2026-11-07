@@ -1,0 +1,35 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icon-128.png",
+         "16": "icon-16.png",
+         "32": "icon-32.png",
+         "48": "icon-48.png"
+      }
+   },
+   "background": {
+      "service_worker": "/js/background.js",
+      "type": "module"
+   },
+   "container": [ "GOOGLE_DRIVE" ],
+   "default_locale": "en",
+   "description": "__MSG_application_description__",
+   "homepage_url": "https://enable-rightclick.freebusinessapps.net/",
+   "icons": {
+      "128": "icon-128.png",
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0H/+LguJcW1f1TGMaalO+LNmt16/RY21uT065cXfwTWs4sm3I/fkuPTdgyes2zoImkSawuyifso8vTBd5kxdPb7jxzJa+hkJ6Quhzq3ANmdnfatMrLkx0tVDcUP/wWGgeFzp0GHwUK0yGNk0xLkLk5ELqa9HYEnbGtZiZp+v1I/3yllFAFb0Gp7S+daUDk7ZTdFUUOIJdMw/CV3UY5XPAzKRa/+XfrhpPyUuXkPLxy3pR0KsKeM4T6aIlkAgzmw1ar/2owuUweqlOueaHrgryUCPinhXXW/fG4gzTozypTfaiy30SuVF8Sykddxvh836kgFOeG37RUy/C8Yc0hqm+wIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_application_title__",
+   "offline_enabled": true,
+   "permissions": [ "activeTab", "scripting" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "3.0.0",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "js/*", "data/*" ]
+   } ]
+}

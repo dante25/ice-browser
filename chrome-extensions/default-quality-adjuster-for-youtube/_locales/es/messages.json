@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Calidad predeterminada"
+   },
+   "description": {
+      "message": "Establece fácilmente tu calidad de video preferida para YouTube™."
+   },
+   "extensionDisabled": {
+      "message": "La extensión está deshabilitada"
+   },
+   "extensionEnabled": {
+      "message": "La extensión está habilitada"
+   },
+   "name": {
+      "message": "Ajustador de Calidad Predeterminado para YouTube™"
+   },
+   "popupAbout": {
+      "message": "Acerca de"
+   },
+   "popupDonate": {
+      "message": "Donar"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Seleccione la calidad de video predeterminada de YouTube."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Calidad predeterminada"
+   },
+   "popupToggleDescription": {
+      "message": "Activar/desactivar la extensión"
+   },
+   "popupToggleTitle": {
+      "message": "Establecer calidad predeterminada"
+   }
+}

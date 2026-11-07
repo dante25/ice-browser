@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "ドメイン上のすべての長方形を削除します"
+   },
+   "delete_on_page": {
+      "message": "ページ上のすべての長方形を削除する"
+   },
+   "description": {
+      "message": "Chrome™ の効果的な要素ハイダー。 数回クリックするだけで気を散らすものを取り除きます。"
+   },
+   "highlight_on_page": {
+      "message": "ページ上のすべての長方形を強調表示する"
+   },
+   "menu_contains": {
+      "message": "含む"
+   },
+   "menu_domain": {
+      "message": "ドメイン"
+   },
+   "menu_exact": {
+      "message": "ちょうど"
+   },
+   "menu_once": {
+      "message": "一度"
+   },
+   "menu_page": {
+      "message": "ページ"
+   },
+   "menu_path": {
+      "message": "パス"
+   },
+   "menu_screen": {
+      "message": "画面"
+   },
+   "name": {
+      "message": "Hide Anything - アイテムを隠す"
+   }
+}

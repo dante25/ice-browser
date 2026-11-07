@@ -1,0 +1,5 @@
+{
+   "description": {
+      "message": "Mostrar siempre una pequeña barra de progreso con la carga del buffer en el reproductor de YouTube, incluso en el modo de pantalla completa"
+   }
+}

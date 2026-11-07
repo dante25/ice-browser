@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Eliminar todos los rectángulos en el dominio"
+   },
+   "delete_on_page": {
+      "message": "Eliminar todos los rectángulos en la página"
+   },
+   "description": {
+      "message": "Ocultador de elementos eficaz para Chrome™. Elimina las distracciones."
+   },
+   "highlight_on_page": {
+      "message": "Resalta todos los rectángulos en la página"
+   },
+   "menu_contains": {
+      "message": "Contiene"
+   },
+   "menu_domain": {
+      "message": "Dominio"
+   },
+   "menu_exact": {
+      "message": "Exacto"
+   },
+   "menu_once": {
+      "message": "Una vez"
+   },
+   "menu_page": {
+      "message": "Página"
+   },
+   "menu_path": {
+      "message": "Ruta"
+   },
+   "menu_screen": {
+      "message": "Pantalla"
+   },
+   "name": {
+      "message": "Hide Anything - Ocultar Elementos"
+   }
+}

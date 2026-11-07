@@ -1,0 +1,89 @@
+{
+   "LAST_ITEM_DO_NOT_REMOVE": {
+      "message": "DO NOT REMOVE"
+   },
+   "changelog": {
+      "message": "Journal des modifications"
+   },
+   "contribute": {
+      "message": "Contribuer"
+   },
+   "description": {
+      "message": "Supprime les annonces lors de l'utilisation de Gmail, Outlook.com, Hotmail et Yahoo Mail et ainsi élargir l'espace de vos messages"
+   },
+   "dismiss": {
+      "message": "Fermer"
+   },
+   "enabledWebmailsTitle": {
+      "message": "Bloquer les publicités sur ces webmails"
+   },
+   "extensionUpdated": {
+      "message": "Extension mise à jour !"
+   },
+   "help": {
+      "message": "Aide"
+   },
+   "name": {
+      "message": "Webmail Ad Blocker"
+   },
+   "ok": {
+      "message": "OK"
+   },
+   "option": {
+      "message": "Option"
+   },
+   "options": {
+      "message": "Options"
+   },
+   "popupCheckingPage": {
+      "message": "Checking this page..."
+   },
+   "popupCouldNotDetectTab": {
+      "message": "Could not detect the active tab."
+   },
+   "popupCouldNotReadPageStatus": {
+      "message": "Could not read page status."
+   },
+   "popupHostPermissionNotEnabled": {
+      "message": "Host permission is not enabled."
+   },
+   "popupSiteGmail": {
+      "message": "Gmail"
+   },
+   "popupSiteOutlook": {
+      "message": "Outlook"
+   },
+   "popupSiteYahooMail": {
+      "message": "Yahoo Mail"
+   },
+   "popupStatusActiveOnSite": {
+      "message": "Ad blocking is active on $1."
+   },
+   "popupStatusNotActiveOnSite": {
+      "message": "Ad blocking is not active on $1."
+   },
+   "popupStatusPausedOnSite": {
+      "message": "Ad blocking is paused on $1."
+   },
+   "popupToggleBlockingTitle": {
+      "message": "Enable or disable ad blocking on this host"
+   },
+   "popupUnsupportedPage": {
+      "message": "This page is not supported."
+   },
+   "popupUnsupportedPageHint": {
+      "message": "Open Gmail, Outlook, or Yahoo Mail."
+   },
+   "popupYahooLayoutTweakTitle": {
+      "message": "Yahoo-only layout tweak"
+   },
+   "popupYahooRemoveRightSide": {
+      "message": "Remove right side"
+   },
+   "seeUpdates": {
+      "message": "Voir les mises à jour"
+   },
+   "tryMyOtherExtensions": {
+      "message": "Essayez mes autres extensions"
+   }
+}

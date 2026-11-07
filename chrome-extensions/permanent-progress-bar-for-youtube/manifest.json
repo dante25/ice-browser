@@ -1,0 +1,53 @@
+{
+   "action": {
+      "default_popup": "data/popup/index.html",
+      "default_title": "Permanent Progress Bar for YouTube"
+   },
+   "background": {
+      "service_worker": "worker.js"
+   },
+   "commands": {
+      "_execute_action": {
+      },
+      "toggle_display": {
+         "description": "Use this shortcut to show or hide the permanent progress bar"
+      }
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "data/inject/main.js" ],
+      "matches": [ "*://www.youtube.com/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   }, {
+      "all_frames": true,
+      "css": [ "data/inject/isolated.css" ],
+      "js": [ "data/inject/isolated.js" ],
+      "matches": [ "*://www.youtube.com/*" ],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_description__",
+   "homepage_url": "https://webextension.org/listing/youtube-tools.html?from=progress",
+   "host_permissions": [ "*://www.youtube.com/*" ],
+   "icons": {
+      "128": "data/icons/128.png",
+      "16": "data/icons/16.png",
+      "256": "data/icons/256.png",
+      "32": "data/icons/32.png",
+      "48": "data/icons/48.png",
+      "512": "data/icons/512.png",
+      "64": "data/icons/64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1vRudCMlpl4SnoO5fNjP98cfxo7dDSeTln1q6YHkofVy65rGOkkMeBzOluuz1D35rB3YOlyJ0IAvcNgpRwCIqB2TUV3FbwQoB/unH5dhChupnuzKjWG+BNpAHH6gPzolGjjAhdMhEOjPMjDWex/sortdbLSkMlc0jC71iz+7fi4VNiz/7YusgUj1XCQ4kJfVdgVs348uyMQMZbZL5iyOokBIW3JRf7zhq7dBDeyBMK3ZFeqshAB/JPwLPK7/ZlmMMhLpesu45PduLMXi2l4d+Pfowu3fL4eP74Lt3kXOIzLLo8qsjgDE/x2AOKcOQpmco8qln1hWMVfKlXK+vwRcTwIDAQAB",
+   "manifest_version": 3,
+   "name": "Permanent Progress Bar for YouTube",
+   "options_ui": {
+      "open_in_tab": true,
+      "page": "data/options/index.html"
+   },
+   "permissions": [ "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.3.3"
+}

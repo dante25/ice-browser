@@ -1,0 +1,39 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "images/icon128.png",
+         "16": "images/icon16.png",
+         "32": "images/icon32.png",
+         "48": "images/icon48.png"
+      },
+      "default_popup": "popup.html?source=toolbar"
+   },
+   "background": {
+      "service_worker": "js/background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "js/webmailAdBlocker.js" ],
+      "matches": [ "https://mail.google.com/*", "https://outlook.live.com/*", "https://*.mail.yahoo.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; require-trusted-types-for 'script'"
+   },
+   "default_locale": "en",
+   "description": "__MSG_description__",
+   "homepage_url": "https://jasonsavard.com?ref=homepage_url&ext=WAB",
+   "icons": {
+      "128": "images/icon128.png",
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png"
+   },
+   "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDyJoEaPBoo2GDGmEzephKOBOHhix9CbwmKNIUhZjE0dac2AZwU4hUfrjUAbbABLlGfY43CtT01Z++uRPV8W5/VEQE5uK8FCONMxobONZqXfLMNj/53JrL+ez0OVI0/t43sfL1xdxs+YWIm5pbPUiFHE0YPUg8BCgFVUXHaO2NuawIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_name__",
+   "options_page": "options.html",
+   "permissions": [ "notifications", "alarms", "storage", "activeTab" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "6.2"
+}

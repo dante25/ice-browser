@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "默认质量"
+   },
+   "description": {
+      "message": "轻松设置您在YouTube™上首选的默认视频质量。"
+   },
+   "extensionDisabled": {
+      "message": "扩展已禁用"
+   },
+   "extensionEnabled": {
+      "message": "扩展已启用"
+   },
+   "name": {
+      "message": "YouTube™ 默认质量调整器"
+   },
+   "popupAbout": {
+      "message": "关于"
+   },
+   "popupDonate": {
+      "message": "捐赠"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "选择默认的 YouTube 视频质量。"
+   },
+   "popupQualityOptionsTitle": {
+      "message": "默认质量"
+   },
+   "popupToggleDescription": {
+      "message": "启用/禁用扩展"
+   },
+   "popupToggleTitle": {
+      "message": "设置默认质量"
+   }
+}

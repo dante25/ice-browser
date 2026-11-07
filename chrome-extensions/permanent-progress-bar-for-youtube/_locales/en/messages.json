@@ -1,0 +1,5 @@
+{
+   "description": {
+      "message": "Always display a tiny progress bar with buffer loading on YouTube's player even in the fullscreen mode"
+   }
+}

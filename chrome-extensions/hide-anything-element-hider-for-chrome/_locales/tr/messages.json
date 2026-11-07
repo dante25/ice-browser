@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Alan adındaki tüm dikdörtgenleri sil"
+   },
+   "delete_on_page": {
+      "message": "Sayfadaki tüm dikdörtgenleri sil"
+   },
+   "description": {
+      "message": "Chrome™ için etkili öğe gizleyici. Sadece birkaç tıklamayla dikkat dağıtıcı unsurları ortadan kaldırın."
+   },
+   "highlight_on_page": {
+      "message": "Sayfadaki tüm dikdörtgenleri vurgulayın"
+   },
+   "menu_contains": {
+      "message": "Içerir"
+   },
+   "menu_domain": {
+      "message": "Alan adı"
+   },
+   "menu_exact": {
+      "message": "Bire bir aynı"
+   },
+   "menu_once": {
+      "message": "Bir kere"
+   },
+   "menu_page": {
+      "message": "Sayfa"
+   },
+   "menu_path": {
+      "message": "Yolu"
+   },
+   "menu_screen": {
+      "message": "Ekran"
+   },
+   "name": {
+      "message": "Hide Anything - Öğeleri Gizle"
+   }
+}

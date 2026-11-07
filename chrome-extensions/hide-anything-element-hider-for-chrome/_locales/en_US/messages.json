@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Delete all rectangles on domain"
+   },
+   "delete_on_page": {
+      "message": "Delete all rectangles on page"
+   },
+   "description": {
+      "message": "Best element hider for Chrome™. Remove distractions in a breeze."
+   },
+   "highlight_on_page": {
+      "message": "Highlight all rectangles on page"
+   },
+   "menu_contains": {
+      "message": "Contains"
+   },
+   "menu_domain": {
+      "message": "Domain"
+   },
+   "menu_exact": {
+      "message": "Exact"
+   },
+   "menu_once": {
+      "message": "Once"
+   },
+   "menu_page": {
+      "message": "Page"
+   },
+   "menu_path": {
+      "message": "Path"
+   },
+   "menu_screen": {
+      "message": "Screen"
+   },
+   "name": {
+      "message": "Hide Anything - Element Hider for Chrome™"
+   }
+}

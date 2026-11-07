@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Default quality"
+   },
+   "description": {
+      "message": "Easily set your preferred default video quality for YouTube™"
+   },
+   "extensionDisabled": {
+      "message": "The extension is disabled"
+   },
+   "extensionEnabled": {
+      "message": "The extension is enabled"
+   },
+   "name": {
+      "message": "Default Quality Adjuster for YouTube™"
+   },
+   "popupAbout": {
+      "message": "About"
+   },
+   "popupDonate": {
+      "message": "Donate"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Select the default YouTube video quality."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Default Quality"
+   },
+   "popupToggleDescription": {
+      "message": "Turn on/off the extension"
+   },
+   "popupToggleTitle": {
+      "message": "Set default quality"
+   }
+}

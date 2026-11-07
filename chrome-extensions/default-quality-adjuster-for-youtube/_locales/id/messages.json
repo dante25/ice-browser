@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Kualitas default"
+   },
+   "description": {
+      "message": "Mudah atur kualitas video default yang Anda inginkan untuk YouTube™."
+   },
+   "extensionDisabled": {
+      "message": "Ekstensi dinonaktifkan"
+   },
+   "extensionEnabled": {
+      "message": "Ekstensi diaktifkan"
+   },
+   "name": {
+      "message": "Penyetel Kualitas Default untuk YouTube™"
+   },
+   "popupAbout": {
+      "message": "Tentang"
+   },
+   "popupDonate": {
+      "message": "Donasi"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Pilih kualitas video YouTube default."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Kualitas Default"
+   },
+   "popupToggleDescription": {
+      "message": "Aktifkan/mati kan ekstensi"
+   },
+   "popupToggleTitle": {
+      "message": "Atur kualitas default"
+   }
+}

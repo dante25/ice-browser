@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Elimina tutti i rettangoli sul dominio"
+   },
+   "delete_on_page": {
+      "message": "Elimina tutti i rettangoli sulla pagina"
+   },
+   "description": {
+      "message": "Efficace elemento nascosto per Chrome™. Rimuovi le distrazioni."
+   },
+   "highlight_on_page": {
+      "message": "Evidenzia tutti i rettangoli sulla pagina"
+   },
+   "menu_contains": {
+      "message": "Contiene"
+   },
+   "menu_domain": {
+      "message": "Dominio"
+   },
+   "menu_exact": {
+      "message": "Esatto"
+   },
+   "menu_once": {
+      "message": "Una volta"
+   },
+   "menu_page": {
+      "message": "Pagina"
+   },
+   "menu_path": {
+      "message": "Percorso"
+   },
+   "menu_screen": {
+      "message": "Schermo"
+   },
+   "name": {
+      "message": "Hide Anything - Nascondere Gli Elementi"
+   }
+}

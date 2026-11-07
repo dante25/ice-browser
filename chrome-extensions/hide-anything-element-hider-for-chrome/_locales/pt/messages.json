@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Excluir todos os retângulos no domínio"
+   },
+   "delete_on_page": {
+      "message": "Excluir todos os retângulos na página"
+   },
+   "description": {
+      "message": "Ocultador de elemento eficaz para Chrome™. Remova as distrações."
+   },
+   "highlight_on_page": {
+      "message": "Realçar todos os retângulos na página"
+   },
+   "menu_contains": {
+      "message": "Contém"
+   },
+   "menu_domain": {
+      "message": "Domínio"
+   },
+   "menu_exact": {
+      "message": "Exato"
+   },
+   "menu_once": {
+      "message": "Uma vez"
+   },
+   "menu_page": {
+      "message": "Página"
+   },
+   "menu_path": {
+      "message": "Caminho"
+   },
+   "menu_screen": {
+      "message": "Tela"
+   },
+   "name": {
+      "message": "Hide Anything - Ocultar Itens"
+   }
+}

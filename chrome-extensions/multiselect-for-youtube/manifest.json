@@ -1,0 +1,53 @@
+{
+   "action": {
+      "default_icon": {
+         "24": "icons/24.png",
+         "48": "icons/48.png"
+      },
+      "default_popup": "popup.html",
+      "default_state": "disabled"
+   },
+   "author": "Pollux",
+   "background": {
+      "service_worker": "js/background.js"
+   },
+   "commands": {
+      "toggleMultiSelectMode": {
+         "description": "__MSG_toggleMultiSelectMode__",
+         "suggested_key": {
+            "default": "Ctrl+M"
+         }
+      }
+   },
+   "content_scripts": [ {
+      "css": [ "css/content.css" ],
+      "exclude_matches": [ "https://www.youtube.com/embed/*", "https://www.youtube.com/error/*", "https://www.youtube.com/howyoutubeworks/*", "https://www.youtube.com/intl/*", "https://www.youtube.com/kids/*", "https://www.youtube.com/live_chat/*", "https://www.youtube.com/pop-up-player/*", "https://www.youtube.com/premium*" ],
+      "js": [ "js/content.js" ],
+      "matches": [ "https://www.youtube.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "exclude_matches": [ "https://www.youtube.com/embed/*", "https://www.youtube.com/error/*", "https://www.youtube.com/howyoutubeworks/*", "https://www.youtube.com/intl/*", "https://www.youtube.com/kids/*", "https://www.youtube.com/live_chat/*", "https://www.youtube.com/pop-up-player/*", "https://www.youtube.com/premium*" ],
+      "js": [ "js/main.js" ],
+      "matches": [ "https://www.youtube.com/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_extensionDescription__",
+   "icons": {
+      "128": "icons/128.png",
+      "24": "icons/24.png",
+      "48": "icons/48.png",
+      "96": "icons/96.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu4aLKEMFO0I13PELpvM2JxxiiMdYI1TJeEBhwL8CNwbVDLt6C7SbwaeifvoHXXKbbIpHBJScMopQDABf1fGsia1AqrZsLED/TX/0oAWX1iNnc1P6U7bpvyZZWGh8wuIXxsdbfFRS9Vs28ct+SHrRQh2eOrjP9GGdtloCX4abC2zMFHUUmBDuMmS5FHdwPMKGsavuQOsYCNdZDOlyoyhP5teKITdQDb7odA3QzKa3/41EYL7sUDSu78OxY3l7pmQVcUUHrXKIgVf7PEBUzOg9QjM5YL6KVHSqc/qdHbOtVKcGiKuN5WA/pLp5I85BgukpvWZSwrchxLSJbcREFrDp0wIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_extensionName__",
+   "options_ui": {
+      "open_in_tab": true,
+      "page": "options.html"
+   },
+   "permissions": [ "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "4.0"
+}

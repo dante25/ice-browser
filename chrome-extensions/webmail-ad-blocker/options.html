@@ -1,0 +1,247 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<title>Webmail Ad Blocker -- Options</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+
+    <link rel="stylesheet" href="css/jdom.css">
+
+	<style>
+        #mainContent {
+            --main-accent: var(--button, #2f67a2);
+            --main-accent-soft: color-mix(in srgb, var(--main-accent) 14%, transparent);
+            --main-surface-1: color-mix(in srgb, var(--bg-light-color) 85%, var(--bg-color));
+            --main-surface-2: color-mix(in srgb, var(--bg-light-color) 55%, var(--bg-color));
+            --main-border: color-mix(in srgb, var(--border-color) 70%, transparent);
+            --main-shadow: 0 18px 45px rgba(11, 24, 48, 0.12);
+
+            display: flex;
+            justify-content: center;
+            padding: 24px 20px 30px;
+            background:
+                radial-gradient(800px 280px at 7% -12%, color-mix(in srgb, var(--main-accent) 20%, transparent), transparent 60%),
+                radial-gradient(620px 260px at 90% -35%, color-mix(in srgb, var(--button-text-color, var(--main-accent)) 16%, transparent), transparent 62%);
+        }
+
+        :root[color-scheme='dark'] #mainContent {
+            --main-accent: var(--button-text-color, #a8c8ff);
+            --main-accent-soft: color-mix(in srgb, var(--main-accent) 20%, transparent);
+            --main-surface-1: color-mix(in srgb, var(--bg-light-color) 88%, #1f1f1f);
+            --main-surface-2: color-mix(in srgb, var(--bg-light-color) 68%, #1f1f1f);
+            --main-border: color-mix(in srgb, var(--border-color) 82%, transparent);
+            --main-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        #webmails {
+            position: relative;
+            width: min(400px, 100%);
+            margin: 8px auto 0;
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid var(--main-border);
+            background: linear-gradient(170deg, var(--main-surface-1), var(--main-surface-2));
+            box-shadow: var(--main-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+            animation: card-in 180ms ease-out;
+        }
+
+        #webmails::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(120deg, transparent, color-mix(in srgb, white 10%, transparent));
+            opacity: 0.5;
+        }
+
+        .webmails-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 4px 2px 2px;
+        }
+
+        .webmails-head h2 {
+            margin: 0;
+            font-size: clamp(1.05rem, 1rem + 0.5vw, 1.4rem);
+            letter-spacing: 0.01em;
+        }
+
+        .webmails-help {
+            margin: 0;
+            font-size: 0.92rem;
+            opacity: 0.78;
+        }
+
+        .webmail-section {
+            position: relative;
+            border: 1px solid var(--main-border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 24px;
+            background: color-mix(in srgb, var(--bg-color) 74%, transparent);
+            backdrop-filter: blur(1.5px);
+            transition: border-color 120ms ease, transform 120ms ease, background-color 120ms ease;
+        }
+
+        .webmail-section:focus-within,
+        .webmail-section:hover {
+            border-color: color-mix(in srgb, var(--main-accent) 45%, var(--main-border));
+            background: color-mix(in srgb, var(--bg-color) 84%, var(--main-accent-soft));
+            transform: translateY(-1px);
+        }
+
+        .option-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+
+        .option-row.secondary {
+            font-size: 0.95rem;
+            opacity: 0.92;
+        }
+
+        .option-title {
+            font-weight: 600;
+        }
+
+        .webmail-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .webmail-subsection {
+            margin-left: 28px;
+            padding-left: 14px;
+            xxborder-left: 2px solid color-mix(in srgb, var(--main-accent) 28%, var(--main-border));
+        }
+
+        #reload-tabs {
+            font-size: 0.98rem;
+            border-radius: 12px;
+            margin-top: 10px;
+            padding: 12px 13px;
+            border: 1px solid color-mix(in srgb, #ffbf47 35%, var(--main-border));
+            background: linear-gradient(90deg, color-mix(in srgb, #ffe8a3 42%, transparent), color-mix(in srgb, #ffd56a 58%, transparent));
+            color: color-mix(in srgb, #8a4e00 82%, var(--text-color));
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        @media (max-width: 700px) {
+            #mainContent {
+                padding-inline: 12px;
+            }
+
+            #webmails {
+                padding: 14px;
+                border-radius: 16px;
+            }
+
+            .webmails-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .webmail-section {
+                gap: 10px;
+            }
+
+            .webmail-subsection {
+                margin-left: 8px;
+                padding-left: 10px;
+            }
+        }
+
+        @keyframes card-in {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+	</style>
+    
+    <script src="js/common.js"></script>
+    <script src="js/jdom.js"></script>
+    <script src="js/icons.js"></script>
+	<script src="js/options.js"></script>
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="header-and-secondary-nav">
+            <div class="header-content">
+                <div class="header-start">
+                    <j-button class="side-rail-button" icon="menu" aria-label="Open menu" hidden></j-button>
+                    <div class="logo-and-title">
+                        <img class="logo" src="/images/icon48.png"/>
+                        <a main-title href="https://jasonsavard.com?ref=WABPopupTitle">Webmail Ad Blocker</a>
+                    </div>
+                </div>
+                
+                <nav class="primary-nav" aria-label="Main Navigation"></nav>
+                
+                <div class="utility-items">
+                    <a id="version" href="#"><j-ripple></j-ripple>Version</a>
+                    <a class="inherit" href="https://jasonsavard.com/wiki/Webmail_Ad_Blocker_changelog?ref=WABPopup"><j-ripple></j-ripple><span msg="changelog"></span></a>
+                    <a class="inherit" href="https://jasonsavard.com/contribute?ref=WABPopup"><j-ripple></j-ripple><span msg="contribute"></span></a>
+                    <a class="inherit" href="https://jasonsavard.com/wiki/Webmail_Ad_Blocker?ref=WABPopup"><j-ripple></j-ripple><span msg="help"></span></a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="mainContent">
+        <section id="webmails" aria-labelledby="enabled-webmails-title">
+            <div class="webmails-head">
+                <h2 id="enabled-webmails-title" msg="enabledWebmailsTitle">Ad blocking these webmails</h2>
+            </div>
+
+            <div class="webmail-section">
+                <label class="option-row">
+                    <input type="checkbox" id="gmail" origin="https://mail.google.com/"/>Gmail
+                </label>
+            </div>
+
+            <div class="webmail-section">
+                <label class="option-row">
+                    <input type="checkbox" id="outlook" origin="https://outlook.live.com/"/>Outlook
+                </label>
+            </div>
+
+            <div class="webmail-section">
+                <div class="webmail-group">
+                    <label class="option-row">
+                        <input type="checkbox" id="yahoo" origin="https://*.mail.yahoo.com/"/><span class="option-title">Yahoo Mail</span>
+                    </label>
+                    <div class="webmail-subsection">
+                        <label class="option-row secondary">
+                            <input type="checkbox" id="yahoo-remove-right-side" storage="yahoo-remove-right-side"/>Remove right side
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reload-tabs">Reload your tabs to see the ads removed.</div>
+        </section>
+    </div>
+    
+</body>
+</html>

@@ -1,0 +1,416 @@
+{
+   "addToPlaylist": {
+      "message": "Oynatma listesine kaydet"
+   },
+   "addToQueue": {
+      "message": "Sıraya ekle"
+   },
+   "addToWatchLater": {
+      "message": "Daha sonra izle'ye kaydet"
+   },
+   "alreadyRemoved": {
+      "message": "Video zaten kaldırıldı"
+   },
+   "bottomCenter": {
+      "message": "alt merkez"
+   },
+   "bottomLeft": {
+      "message": "sol alt"
+   },
+   "callout1": {
+      "message": "Burada çoklu seçimi açıp kapatabilirsiniz veya bununla birlikte"
+   },
+   "callout2": {
+      "message": "İşte çoklu seçim için işlem çubuğu."
+   },
+   "callout3": {
+      "message": "Burada işlem çubuğunu tekrar kapatabilirsiniz."
+   },
+   "callout4": {
+      "message": "Bu uzantıyı beğendiyseniz, küçük bir bağış için minnettar olurum."
+   },
+   "callout5": {
+      "message": "Burada kaç tane video seçtiğinizi görebilirsiniz."
+   },
+   "callout6": {
+      "message": "Burada tüm videoları seçebilirsiniz."
+   },
+   "callout7": {
+      "message": "Burada seçilen tüm videoların seçimini tekrar kaldırabilirsiniz."
+   },
+   "callout8": {
+      "message": "İşte ek işlevlere sahip bir menü."
+   },
+   "cancel": {
+      "message": "İptal etmek"
+   },
+   "caseSensitive": {
+      "message": "Harfe duyarlı"
+   },
+   "channelName": {
+      "message": "Kanal ismi"
+   },
+   "chooseOutputFormat": {
+      "message": "Lütfen bir çıktı formatı seçin"
+   },
+   "clickToClose": {
+      "message": "Kapatmak için tıklayın"
+   },
+   "close": {
+      "message": "Kapalı"
+   },
+   "collapse": {
+      "message": "Yıkılmak"
+   },
+   "confirmRemoveContent": {
+      "message": "Seçilen videoları bu listeden kaldırmak istediğinizden emin misiniz?"
+   },
+   "copy": {
+      "message": "Kopyala"
+   },
+   "ctrl": {
+      "message": "Ctrl"
+   },
+   "custom": {
+      "message": "özelleştirmek"
+   },
+   "customMenuWidth": {
+      "message": "Özel menü genişliği"
+   },
+   "cut": {
+      "message": "Kesmek"
+   },
+   "del": {
+      "message": "Del"
+   },
+   "deselectAllVideos": {
+      "message": "Tüm videoların seçimini kaldır"
+   },
+   "donate": {
+      "message": "Bağış yapmak"
+   },
+   "duration": {
+      "message": "Süre"
+   },
+   "end": {
+      "message": "End"
+   },
+   "esc": {
+      "message": "Esc"
+   },
+   "expand": {
+      "message": "Genişletmek"
+   },
+   "exportHistory": {
+      "message": "İhracat geçmişi"
+   },
+   "exportPlaylist": {
+      "message": "Çalma listesini dışa aktar"
+   },
+   "exportSelection": {
+      "message": "Dışa aktarma seçimi"
+   },
+   "exportingHistory": {
+      "message": "Tarih ihraç ediliyor"
+   },
+   "exportingPlaylist": {
+      "message": "Çalma listesi dışa aktarılır."
+   },
+   "extensionDescription": {
+      "message": "Oynatma listenizdeki videoları daha hızlı ve daha kolay taşıyın, sıralayın ve kopyalayın."
+   },
+   "extensionName": {
+      "message": "YouTube™ için çoklu seçim"
+   },
+   "filterHelpTooltip": {
+      "message": "Normal ifade sözdizimi"
+   },
+   "findDuplicatesBackwards": {
+      "message": "Yinelenenleri geriye doğru bul"
+   },
+   "hint100": {
+      "message": "Genel olarak"
+   },
+   "hint101": {
+      "message": "Başlık çubuğundaki mavi simge düğmesiyle çoklu seçimi etkinleştirebilir veya devre dışı bırakabilirsiniz"
+   },
+   "hint101a": {
+      "message": "Çoklu seçim devre dışı bırakılırsa tuş atamaları da devre dışı bırakılır"
+   },
+   "hint102": {
+      "message": "Başka bir sayfaya giderseniz geçerli seçim kaybolur"
+   },
+   "hint103": {
+      "message": "Bir menüde veya sayfada aynı yönde gezinmeye devam ederseniz, ilk öğeden son öğeye ve son öğeden ilk öğeye gidersiniz"
+   },
+   "hint104": {
+      "message": "Özel Menü Genişliği seçeneği etkinleştirildiğinde, fareyi kullanarak sol menünün genişliğini ayarlayabilirsiniz"
+   },
+   "hint105": {
+      "message": "Bu sürümde pano, işletim sistemi panosu değil, uzantı içindeki küçük bir bellektir"
+   },
+   "hint106": {
+      "message": "Tema (koyu/açık) YouTube™'dan otomatik olarak uyarlanır"
+   },
+   "hint200": {
+      "message": "Videoları seçme"
+   },
+   "hint201": {
+      "message": "Fare tıklamasıyla bir videoyu seçebilir veya seçimini kaldırabilirsiniz"
+   },
+   "hint202": {
+      "message": "Odaklanmış bir videoyu Boşluk Çubuğu/Enter ile seçebilir veya seçimini kaldırabilirsiniz"
+   },
+   "hint203": {
+      "message": "Odaklanmış bir videonun turkuaz kenarlığı vardır"
+   },
+   "hint203a": {
+      "message": "Odaklanma görmüyorsanız veya henüz hiçbir video odaklanmadıysa bir gezinme tuşuna basın"
+   },
+   "hint204": {
+      "message": "Seçilen bir video çelik mavisi ile vurgulanacak ve sağ alt köşede bir onay işareti olacaktır"
+   },
+   "hint205": {
+      "message": "Art arda birden fazla video seçmek için Shift tuşunu basılı tutun"
+   },
+   "hint205a": {
+      "message": "Seçmek için ilk videoya tıklayın veya odaklanın, Shift'i basılı tutun ve seçmek için son videoyu tıklayın veya odaklanın"
+   },
+   "hint206": {
+      "message": "Filtreli videoları seçebilirsiniz"
+   },
+   "hint207": {
+      "message": "Seçilen videoların kimliklerini bir dosyaya kaydedebilirsiniz"
+   },
+   "hint207a": {
+      "message": "Çıkış formatları: JSON, TEXT, HTML"
+   },
+   "hint208": {
+      "message": "Çoklu seçim etkinleştirildiğinde, seçilemeyen videolar mor-kırmızı renkle vurgulanır"
+   },
+   "hint300": {
+      "message": "Çalma listeleri"
+   },
+   "hint301": {
+      "message": "Daha sonra izle dahil olmak üzere yalnızca kendi oynatma listelerinize video ekleyebilirsiniz"
+   },
+   "hint302": {
+      "message": "Daha sonra izle, Beğenilen videolar ve Geçmiş dahil olmak üzere yalnızca kendi oynatma listenizdeki videoları silebilirsiniz"
+   },
+   "hint302a": {
+      "message": "Videolar yalnızca güvenlik istemini onaylarsanız silinir"
+   },
+   "hint303": {
+      "message": "Videolar, oynatma listesi ayarlarında yapılandırıldığı gibi bir oynatma listesinin en üstüne veya en altına eklenir"
+   },
+   "hint304": {
+      "message": "Bir dosyadan video ekleyebilirsiniz"
+   },
+   "hint304a": {
+      "message": "İçe aktarma formatları: JSON, TEXT, HTML"
+   },
+   "home": {
+      "message": "Home"
+   },
+   "importVideos": {
+      "message": "Videoları içe aktarın"
+   },
+   "ins": {
+      "message": "Ins"
+   },
+   "invalidData": {
+      "message": "Geçersiz veri"
+   },
+   "invalidFilter": {
+      "message": "Geçersiz normal ifade"
+   },
+   "invertFilter": {
+      "message": "Filtreyi ters çevir"
+   },
+   "kbActivateFocusedMenuItem": {
+      "message": "Odaklanmış menü öğesini etkinleştirir"
+   },
+   "kbCloseMenu": {
+      "message": "Menüyü kapatır"
+   },
+   "kbCopySelectedVideos": {
+      "message": "Seçilen videoları panoya kopyalar"
+   },
+   "kbCutSelectedVideos": {
+      "message": "Seçilen videoları panoya kopyalar ve oynatma listenizden veya geçmişinizden siler (güvenlik istemi ile)"
+   },
+   "kbDeleteSelectedVideos": {
+      "message": "Seçilen videoları veya odaklanılan videoyu oynatma listenizden veya geçmişinizden siler (onay istemiyle birlikte)"
+   },
+   "kbFocusAboveVideo": {
+      "message": "Önceki/yukarıdaki videoyu odaklar"
+   },
+   "kbFocusBelowVideo": {
+      "message": "Sonraki/aşağıdaki videoyu odaklar"
+   },
+   "kbFocusFirstMenuItem": {
+      "message": "İlk menü öğesine odaklanır"
+   },
+   "kbFocusFirstVideo": {
+      "message": "İlk videoyu odaklar"
+   },
+   "kbFocusLastMenuItem": {
+      "message": "Son menü öğesine odaklanır"
+   },
+   "kbFocusLastVideo": {
+      "message": "Son videoyu odaklar (sonraki video grubunu yükler)"
+   },
+   "kbFocusNextMenuItem": {
+      "message": "Sonraki menü öğesine odaklanır"
+   },
+   "kbFocusNextSelectedVideo": {
+      "message": "Bir sonraki seçilen videoyu odaklar"
+   },
+   "kbFocusNextVideo": {
+      "message": "Sonraki videoyu odaklar"
+   },
+   "kbFocusPreviousMenuItem": {
+      "message": "Önceki menü öğesine odaklanır"
+   },
+   "kbFocusPreviousSelectedVideo": {
+      "message": "Önceki seçilen videoyu odaklar"
+   },
+   "kbFocusPreviousVideo": {
+      "message": "Önceki videoyu odaklar"
+   },
+   "kbPasteVideos": {
+      "message": "Panodaki videoları geçerli oynatma listesine yapıştırır"
+   },
+   "kbToggleAllVideos": {
+      "message": "Tüm videoları seçer veya seçimi kaldırır"
+   },
+   "kbToggleFocusedVideo": {
+      "message": "Odaklanan videoyu seçer veya seçimini kaldırır"
+   },
+   "keys": {
+      "message": "Anahtarlar"
+   },
+   "loadEntireHistory": {
+      "message": "Tüm geçmişi yükle"
+   },
+   "loadEntirePage": {
+      "message": "Sayfanın tamamını yükle"
+   },
+   "loadEntirePlaylist": {
+      "message": "Tüm oynatma listesini yükle"
+   },
+   "loadingEntireHistory": {
+      "message": "Tüm geçmiş yükleniyor"
+   },
+   "loadingEntirePage": {
+      "message": "Sayfanın tamamı yükleniyor"
+   },
+   "loadingEntirePlaylist": {
+      "message": "Tüm oynatma listesi şimdi yüklenecek"
+   },
+   "localeDir": {
+      "message": "ltr"
+   },
+   "moveAfter": {
+      "message": "Buraya aşağı taşın"
+   },
+   "moveToBottom": {
+      "message": "En alta taşı"
+   },
+   "moveToTop": {
+      "message": "En üste taşı"
+   },
+   "news": {
+      "message": "\u003Ch2>4.0 sürümünde\u003C/h2>\u003Cspan>🚀 Sayfanın tamamını yükle\u003C/span>\u003Cspan>🚀 Tüm geçmişi yükle\u003C/span>\u003Cspan>🚀 Oynatma listelerindeki seçili videoların sırasını tersine çevir (yalnızca bir blok seçildiğinde)\u003C/span>\u003Cspan>🚀 Oynatma listelerindeki kullanılamayan videoları seçin\u003C/span>\u003Cspan>️✅ Eski \"Çalma listesine kaydet\" iletişim kutusu seçenekler bölümünden etkinleştirilebilir\u003C/span>\u003Cspan>✨ Eylem çubuğundaki ipucu, seçilen videoların süresini gösterir\u003C/span>\u003Cspan>✨ Seçilemeyen videolar mor-kırmızı renkle vurgulanacaktır\u003C/span>\u003Cspan>✨ Tam ekran oynatma sırasında çoklu seçim devre dışı bırakılacaktır\u003C/span>\u003Cspan>✨ Film ve Dizi bölümlerindeki ön izlemeler artık seçilebilir durumda\u003C/span>\u003Cspan>️✨ Tüm Shorts artık seçilebilir\u003C/span>\u003Cspan>🩹️ Filtre için çeviri: Süre\u003C/span>\u003Cspan>🩹️ “Daha sonra izle” listesindeki “Precondition check failed” hatası düzeltildi\u003C/span>\u003Cspan>🩹️ Oynatma listesini dışa aktar\u003C/span>\u003Cspan>🩹️ İhracat geçmişi\u003C/span>\u003Cspan>🩹️ Tüm oynatma listesini yükle\u003C/span>\u003Cspan>🛠️ Sayısız düzeltme ve ayarlama\u003C/span>"
+   },
+   "noDuplicatesFound": {
+      "message": "Yinelenenler bulunamadı"
+   },
+   "noRemovalConfirmation": {
+      "message": "Güvenlik sorgusu olmadan sil"
+   },
+   "noUnavailablesFound": {
+      "message": "Kullanılamayan video bulunamadı"
+   },
+   "oldAddToPlaylist": {
+      "message": "Önceki gibi oynatma listesine ekle"
+   },
+   "paste": {
+      "message": "Yapıştırmak"
+   },
+   "positioning": {
+      "message": "Eylem çubuğunu ve filtreyi konumlandırın"
+   },
+   "preserveSelection": {
+      "message": "Kopyalamadan sonra seçimi koru"
+   },
+   "reloadRequired": {
+      "message": "\u003Cp>Uzantı güncellendi.\u003C/p>\u003Cp>Lütfen bu sayfayı yeniden yükleyin.\u003C/p>"
+   },
+   "remove": {
+      "message": "Kaldırmak"
+   },
+   "removeVideos": {
+      "message": "Bu listeden kaldırmak"
+   },
+   "resetCallouts": {
+      "message": "Tanıtım turunu tekrarlayın"
+   },
+   "reverseOrder": {
+      "message": "Ters sıra"
+   },
+   "selectAllVideos": {
+      "message": "Tüm videoları seç"
+   },
+   "selectDuplicates": {
+      "message": "Yinelenenleri seçin"
+   },
+   "selectUnavailables": {
+      "message": "Kullanılamayan videoları seçin"
+   },
+   "selectWithFilter": {
+      "message": "Filtre ile seçim"
+   },
+   "selected": {
+      "message": "seçilmiş"
+   },
+   "shortcuts": {
+      "message": "Klavye kısayolları"
+   },
+   "shortcutsHeadline1": {
+      "message": "Web sitesinde gezinme"
+   },
+   "shortcutsHeadline2": {
+      "message": "Eylem çubuğunda ve bağlam menüsünde gezinme"
+   },
+   "showPlaylistNames": {
+      "message": "Sol gezinme menüsünde oynatma listesi adlarını göster"
+   },
+   "showVideoIndex": {
+      "message": "Oynatma listelerinizde video numarasını gösterin"
+   },
+   "sortPlaylistNames": {
+      "message": "Çalma listesi adlarını alfabetik olarak sıralayın"
+   },
+   "tabHints": {
+      "message": "İpuçları"
+   },
+   "tabSettings": {
+      "message": "Ayarlar"
+   },
+   "tabShortcuts": {
+      "message": "Tuş bağlamaları"
+   },
+   "tabWhatsNew": {
+      "message": "Ne var ne yok"
+   },
+   "title": {
+      "message": "Başlık"
+   },
+   "toggleMultiSelectMode": {
+      "message": "Çoklu seçimi aç/kapa"
+   },
+   "watched": {
+      "message": "İzledim"
+   }
+}

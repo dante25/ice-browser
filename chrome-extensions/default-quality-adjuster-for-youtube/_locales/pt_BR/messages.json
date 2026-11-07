@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Qualidade padrão"
+   },
+   "description": {
+      "message": "Defina facilmente sua qualidade de vídeo padrão preferida para o YouTube™."
+   },
+   "extensionDisabled": {
+      "message": "A extensão está desativada"
+   },
+   "extensionEnabled": {
+      "message": "A extensão está ativada"
+   },
+   "name": {
+      "message": "Ajustador de Qualidade Padrão para YouTube™"
+   },
+   "popupAbout": {
+      "message": "Sobre"
+   },
+   "popupDonate": {
+      "message": "Doar"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Selecione a qualidade de vídeo padrão do YouTube."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Qualidade Padrão"
+   },
+   "popupToggleDescription": {
+      "message": "Ativar/desativar a extensão"
+   },
+   "popupToggleTitle": {
+      "message": "Definir qualidade padrão"
+   }
+}

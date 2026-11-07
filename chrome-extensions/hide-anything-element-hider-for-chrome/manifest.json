@@ -1,0 +1,28 @@
+{
+   "action": {
+      "default_popup": "pu.html"
+   },
+   "background": {
+      "service_worker": "./b.js"
+   },
+   "content_scripts": [ {
+      "css": [ "s.css" ],
+      "js": [ "./f.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_start"
+   } ],
+   "default_locale": "en_US",
+   "description": "__MSG_description__",
+   "icons": {
+      "128": "ic_128.png",
+      "16": "ic_16.png",
+      "32": "ic_32.png",
+      "48": "ic_48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwtJV53vSTnACuBQ+be4ECfqR9HNwU9FMwgMHvcFbGUAI3NPIgbUFrNLsi7fz/MBETRKHDNzuq2mOYbw9wgPEzLHm1VG0kii8I4lfeYcLKvZegtdkBzPDo0/lIqJcFd5OZxB4YxG5QE5KMX06LT7dyc0rZm2Gy0+KasG1gpVXQP/3Aq81S9u2pMiL6VD3otFPfeoQEzigMXaHWTn2fV1jTJIXJBgfiiCiOn7584tEc+4OeFb9N1dumZKr4JmV7pb2cQo3JWPpbgWhWoSJkNFjk1FjNcv5tZMMzlfTildGc8bEtUy7FDo0KG0JRlaSBpFg0YrRsLL099w6rUtgV3eZ8wIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_name__",
+   "permissions": [ "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.7"
+}

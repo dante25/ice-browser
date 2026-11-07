@@ -1,0 +1,5 @@
+{
+   "description": {
+      "message": "Sempre exibir uma pequena barra de progresso com carga de buffer no player do YouTube, mesmo no modo de tela cheia"
+   }
+}

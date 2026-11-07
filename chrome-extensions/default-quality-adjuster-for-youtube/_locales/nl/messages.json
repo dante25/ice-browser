@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Standaardkwaliteit"
+   },
+   "description": {
+      "message": "Stel eenvoudig uw voorkeursstandaard videokwaliteit in voor YouTube™."
+   },
+   "extensionDisabled": {
+      "message": "De extensie is uitgeschakeld"
+   },
+   "extensionEnabled": {
+      "message": "De extensie is ingeschakeld"
+   },
+   "name": {
+      "message": "Standaardkwaliteitsaanpasser voor YouTube™"
+   },
+   "popupAbout": {
+      "message": "Over"
+   },
+   "popupDonate": {
+      "message": "Doneren"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Selecteer de standaard YouTube videokwaliteit."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Standaardkwaliteit"
+   },
+   "popupToggleDescription": {
+      "message": "Schakel de extensie in/uit"
+   },
+   "popupToggleTitle": {
+      "message": "Stel standaardkwaliteit in"
+   }
+}

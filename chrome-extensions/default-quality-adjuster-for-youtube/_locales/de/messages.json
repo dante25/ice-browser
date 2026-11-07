@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "Standardqualität"
+   },
+   "description": {
+      "message": "Legen Sie ganz einfach Ihre bevorzugte Standardvideowiedergabequalität für YouTube™ fest."
+   },
+   "extensionDisabled": {
+      "message": "Die Erweiterung ist deaktiviert"
+   },
+   "extensionEnabled": {
+      "message": "Die Erweiterung ist aktiviert"
+   },
+   "name": {
+      "message": "Standardqualitätsanpasser für YouTube™"
+   },
+   "popupAbout": {
+      "message": "Über"
+   },
+   "popupDonate": {
+      "message": "Spenden"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "Wählen Sie die Standardqualität für YouTube-Videos aus."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "Standardqualität"
+   },
+   "popupToggleDescription": {
+      "message": "Erweiterung ein-/ausschalten"
+   },
+   "popupToggleTitle": {
+      "message": "Standardqualität festlegen"
+   }
+}

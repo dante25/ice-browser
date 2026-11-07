@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <title>Options Page :: Permanent Progress Bar for YouTube</title>
+  <link rel="stylesheet" type="text/css" href="index.css">
+  <link rel="icon" type="image/png" href="/data/icons/48.png">
+</head>
+<body>
+  <h1>Permanent Progress Bar for YouTube</h1>
+  <div class="tbl">
+    <label for="height">
+      <div>Height of the permanent progress bar</div>
+      <div>Range: 1px - 20px</div>
+    </label>
+    <input type="number" min=1 max=20 id="height">
+    <label for="padding">
+      <div>Padding from YouTube player boundary</div>
+      <div>Range: 0px - 100px</div>
+    </label>
+    <input type="number" min=0 max=100 id="padding">
+    <label for="period">
+      <div>Update progress every (in seconds)</div>
+      <div>Range: 0.5s - 20s</div>
+    </label>
+    <input type="number" min=0.5 max=20 step=0.1 id="period">
+    <label for="progress-color">Progressbar's background color</label>
+    <input type="color" id="progress-color">
+    <label for="embed">Display permanent progress bar in embedded YouTube players</label>
+    <input type="checkbox" id="embed"/>
+    <label for="top">Display permanent progress bar in YouTube.com</label>
+    <input type="checkbox" id="top"/>
+    <label for="chapters">Display chapter dividers</label>
+    <input type="checkbox" id="chapters"/>
+    <label for="hide">Temporary hide the permanent progress bar (supports <a id="shortcut" title="Chrome: Open 'chrome://extensions/shortcuts' in a browser tab
+Firefox: Open 'about:addons' in a browser tab and then use the gear button to define the shortcut">shortcut</a>)</label>
+    <input type="checkbox" id="hide"/>
+  </div>
+
+  <p>
+    <input type="button" id="support" value="Support Development">
+  </p>
+  <p>
+    <input type="button" id="reset" value="Reset">
+    <input type="button" id="save" value="Save Options">
+    <span id="toast"></span>
+  </p>
+  <script src="index.js"></script>
+</body>
+</html>

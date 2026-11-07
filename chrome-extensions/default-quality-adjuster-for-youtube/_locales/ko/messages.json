@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "기본 품질"
+   },
+   "description": {
+      "message": "YouTube™의 기본 비디오 품질을 쉽게 설정하세요."
+   },
+   "extensionDisabled": {
+      "message": "확장 프로그램이 비활성화되었습니다"
+   },
+   "extensionEnabled": {
+      "message": "확장 프로그램이 활성화되었습니다"
+   },
+   "name": {
+      "message": "YouTube™의 기본 품질 조정기"
+   },
+   "popupAbout": {
+      "message": "약"
+   },
+   "popupDonate": {
+      "message": "기부"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "YouTube 동영상의 기본 품질을 선택합니다."
+   },
+   "popupQualityOptionsTitle": {
+      "message": "기본 품질"
+   },
+   "popupToggleDescription": {
+      "message": "확장 기능을 켜거나 끕니다."
+   },
+   "popupToggleTitle": {
+      "message": "기본 품질 설정"
+   }
+}

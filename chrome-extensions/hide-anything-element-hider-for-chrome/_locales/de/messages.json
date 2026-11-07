@@ -1,0 +1,38 @@
+{
+   "delete_on_domain": {
+      "message": "Rechtecke auf der Domain löschen"
+   },
+   "delete_on_page": {
+      "message": "Rechtecke auf der Seite löschen"
+   },
+   "description": {
+      "message": "Effektiver Element-Hider für Chrome™. Ablenkungen beseitigen mit Leichtigkeit."
+   },
+   "highlight_on_page": {
+      "message": "Rechtecke auf der Seite hervorheben"
+   },
+   "menu_contains": {
+      "message": "Enthält"
+   },
+   "menu_domain": {
+      "message": "Domain"
+   },
+   "menu_exact": {
+      "message": "Genau"
+   },
+   "menu_once": {
+      "message": "Einmal"
+   },
+   "menu_page": {
+      "message": "Seite"
+   },
+   "menu_path": {
+      "message": "Pfad"
+   },
+   "menu_screen": {
+      "message": "Bildschirm"
+   },
+   "name": {
+      "message": "Hide Anything - Elemente verbergen"
+   }
+}

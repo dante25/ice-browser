@@ -1,0 +1,68 @@
+{
+   "LAST_ITEM_DO_NOT_REMOVE": {
+      "message": "DO NOT REMOVE"
+   },
+   "currencyCode": {
+      "message": "GBP"
+   },
+   "currencySymbol": {
+      "message": "£"
+   },
+   "description": {
+      "message": "Block ads on the right side of the screen when using Gmail, Yahoo Mail, Hotmail and Outlook.com which expand your message space"
+   },
+   "minimumDonation": {
+      "message": "1.00"
+   },
+   "name": {
+      "message": "Webmail Ad Blocker"
+   },
+   "options": {
+      "message": "Options"
+   },
+   "popupCheckingPage": {
+      "message": "Checking this page..."
+   },
+   "popupCouldNotDetectTab": {
+      "message": "Could not detect the active tab."
+   },
+   "popupCouldNotReadPageStatus": {
+      "message": "Could not read page status."
+   },
+   "popupHostPermissionNotEnabled": {
+      "message": "Host permission is not enabled."
+   },
+   "popupSiteGmail": {
+      "message": "Gmail"
+   },
+   "popupSiteOutlook": {
+      "message": "Outlook"
+   },
+   "popupSiteYahooMail": {
+      "message": "Yahoo Mail"
+   },
+   "popupStatusActiveOnSite": {
+      "message": "Ad blocking is active on $1."
+   },
+   "popupStatusNotActiveOnSite": {
+      "message": "Ad blocking is not active on $1."
+   },
+   "popupStatusPausedOnSite": {
+      "message": "Ad blocking is paused on $1."
+   },
+   "popupToggleBlockingTitle": {
+      "message": "Enable or disable ad blocking on this host"
+   },
+   "popupUnsupportedPage": {
+      "message": "This page is not supported."
+   },
+   "popupUnsupportedPageHint": {
+      "message": "Open Gmail, Outlook, or Yahoo Mail."
+   },
+   "popupYahooLayoutTweakTitle": {
+      "message": "Yahoo-only layout tweak"
+   },
+   "popupYahooRemoveRightSide": {
+      "message": "Remove right side"
+   }
+}

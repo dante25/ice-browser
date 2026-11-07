@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="Arpit Banati">
+    <meta name="description" content="With this extension, you can hide end cards that appear at the end of a youtube video. Cards showing recommended videos and
+    channel subscription will be removed.">
+    <meta name="keywords" content="youtube,video,end,cards,end cards,hide,remove">    
+    <title>Hide Youtube End Cards</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">                       
+    <link rel="stylesheet" type="text/css" href="popup.min.css" />
+</head>
+<body>
+    <img src="./../icons/close.png" id="close" />
+    <div class="title">
+            <img src="./../images/logo.png">
+            <p>Hide Labels and End Cards on Youtube</p>
+    </div>
+    <div class="btn-group-vertical">
+        <div id="cardsToggle" class="checkbox-wrapper"><span>Hide end cards</span><span><input type="checkbox" checked></span></div>
+        <div id="subscribrToggle" class="checkbox-wrapper"><span>Hide subscribe icon</span><span> <input type="checkbox" checked></span></div>        
+        <div id="labelsToggle" class="checkbox-wrapper"><span>Hide labels</span><span><input type="checkbox" checked></span></div> 
+        <div id="externalWebsitesToggle" class="checkbox-wrapper"><span>Run on all websites</span><span><input type="checkbox" checked></span></div>        
+        <button type="button" class="action-buttons blue hidden" id="pauseVideo"><img src="./../icons/pause.png" class="icon" />Don't run for this video</button>
+        <button type="button" class="action-buttons blue hidden" id="pauseList"><img src="./../icons/pause.png" class="icon" />Don't run for this playlist</button>        
+        <button type="button" class="action-buttons blue" id='exceptions'><img src="./../icons/list.png" class="icon" />Edit Exception list</button>
+        <button type="button" class="action-buttons red" id="stop"><img src="./../icons/stop.png" class="icon" />Stop</button>
+        <button type="button" class="action-buttons green hidden" id="start"><img src="./../icons/play.png" class="icon" /></i>Start</button>        
+    </div>
+
+    <script src="popup.min.js"></script>        
+</body>
+</html>

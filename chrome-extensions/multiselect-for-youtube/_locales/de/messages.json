@@ -1,0 +1,416 @@
+{
+   "addToPlaylist": {
+      "message": "Zu Playlist hinzufügen"
+   },
+   "addToQueue": {
+      "message": "Zu Wiedergabeliste hinzufügen"
+   },
+   "addToWatchLater": {
+      "message": "Zu „Später ansehen“ hinzufügen"
+   },
+   "alreadyRemoved": {
+      "message": "Video bereits entfernt"
+   },
+   "bottomCenter": {
+      "message": "unten zentriert"
+   },
+   "bottomLeft": {
+      "message": "unten links"
+   },
+   "callout1": {
+      "message": "Hier schaltest Du die Mehrfachauswahl ein und aus oder mit diesen"
+   },
+   "callout2": {
+      "message": "Hier ist die Aktionsleiste für die Mehrfachauswahl."
+   },
+   "callout3": {
+      "message": "Hier kannst Du die Aktionsleiste wieder schließen."
+   },
+   "callout4": {
+      "message": "Wenn Dir diese Erweiterung gefällt, würde ich mich über eine kleine Spende freuen."
+   },
+   "callout5": {
+      "message": "Hier siehst Du, wie viele Videos Du ausgewählt hast."
+   },
+   "callout6": {
+      "message": "Hier kannst Du alle Videos auswählen."
+   },
+   "callout7": {
+      "message": "Hier kannst Du alle ausgewählten Videos wieder abwählen."
+   },
+   "callout8": {
+      "message": "Hier befindet sich ein Menü mit weiteren Funktionen."
+   },
+   "cancel": {
+      "message": "Abbrechen"
+   },
+   "caseSensitive": {
+      "message": "Groß-/Kleinschreibung beachten"
+   },
+   "channelName": {
+      "message": "Kanalname"
+   },
+   "chooseOutputFormat": {
+      "message": "Bitte wählen Sie ein Ausgabeformat"
+   },
+   "clickToClose": {
+      "message": "Zum Schließen klicken"
+   },
+   "close": {
+      "message": "Schließen"
+   },
+   "collapse": {
+      "message": "Zuklappen"
+   },
+   "confirmRemoveContent": {
+      "message": "Möchtest du die ausgewählten Videos wirklich aus dieser Liste entfernen?"
+   },
+   "copy": {
+      "message": "Kopieren"
+   },
+   "ctrl": {
+      "message": "Strg"
+   },
+   "custom": {
+      "message": "benutzerdefiniert"
+   },
+   "customMenuWidth": {
+      "message": "Benutzerdefinierte Menübreite"
+   },
+   "cut": {
+      "message": "Ausschneiden"
+   },
+   "del": {
+      "message": "Entf"
+   },
+   "deselectAllVideos": {
+      "message": "Alle Videos abwählen"
+   },
+   "donate": {
+      "message": "Spenden"
+   },
+   "duration": {
+      "message": "Dauer"
+   },
+   "end": {
+      "message": "Ende"
+   },
+   "esc": {
+      "message": "Esc"
+   },
+   "expand": {
+      "message": "Aufklappen"
+   },
+   "exportHistory": {
+      "message": "Verlauf exportieren"
+   },
+   "exportPlaylist": {
+      "message": "Playlist exportieren"
+   },
+   "exportSelection": {
+      "message": "Auswahl exportieren"
+   },
+   "exportingHistory": {
+      "message": "Verlauf wird exportiert"
+   },
+   "exportingPlaylist": {
+      "message": "Playlist wird exportiert"
+   },
+   "extensionDescription": {
+      "message": "Verschieben, sortieren und kopieren Sie Videos in Ihren Wiedergabelisten schneller und einfacher."
+   },
+   "extensionName": {
+      "message": "Mehrfachauswahl für YouTube™"
+   },
+   "filterHelpTooltip": {
+      "message": "Syntax regulärer Ausdrücke"
+   },
+   "findDuplicatesBackwards": {
+      "message": "Duplikate rückwärts finden"
+   },
+   "hint100": {
+      "message": "Allgemein"
+   },
+   "hint101": {
+      "message": "Sie können die Mehrfachauswahl mit der blauen Symbolschaltfläche in der Kopfleiste aktivieren und deaktivieren"
+   },
+   "hint101a": {
+      "message": "Wenn die Mehrfachauswahl deaktiviert ist, sind auch die Tastenbelegungen deaktiviert"
+   },
+   "hint102": {
+      "message": "Wenn Sie zu einer anderen Seite navigieren, geht die aktuelle Auswahl verloren"
+   },
+   "hint103": {
+      "message": "Wenn Sie in einem Menü oder auf einer Seite in derselben Richtung weiternavigieren, gelangen Sie vom ersten zum letzten und vom letzten zum ersten Punkt"
+   },
+   "hint104": {
+      "message": "Wenn die Option „Benutzerdefinierte Menübreite“ aktiviert ist, können Sie die Breite des linken Menüs mit der Maus anpassen"
+   },
+   "hint105": {
+      "message": "In dieser Version ist die Zwischenablage ein kleiner Speicher innerhalb der Erweiterung und nicht die Zwischenablage des Betriebssystems"
+   },
+   "hint106": {
+      "message": "Das Design (dunkel/hell) wird automatisch von YouTube™ übernommen"
+   },
+   "hint200": {
+      "message": "Videos auswählen"
+   },
+   "hint201": {
+      "message": "Sie können ein Video per Mausklick auswählen oder abwählen"
+   },
+   "hint202": {
+      "message": "Sie können ein fokussiertes Video mit Leertaste/Eingabetaste auswählen oder abwählen"
+   },
+   "hint203": {
+      "message": "Ein fokussiertes Video hat einen türkisfarbenen Rand"
+   },
+   "hint203a": {
+      "message": "Wenn Sie keinen Fokus sehen oder noch kein Video fokussiert wurde, drücken Sie eine Navigationstaste"
+   },
+   "hint204": {
+      "message": "Ausgewählte Videos werden stahlblau hervorgehoben und haben ein Häkchen in der rechten unteren Ecke"
+   },
+   "hint205": {
+      "message": "Halten Sie die Umschalttaste gedrückt, um mehrere aufeinanderfolgende Videos auszuwählen"
+   },
+   "hint205a": {
+      "message": "Klicken oder fokussieren Sie auf das erste auszuwählende Video, halten Sie die Umschalttaste gedrückt und klicken oder fokussieren Sie auf das letzte auszuwählende Video"
+   },
+   "hint206": {
+      "message": "Sie können Videos mit dem Filter auswählen"
+   },
+   "hint207": {
+      "message": "Sie können die IDs der ausgewählten Videos in einer Datei speichern"
+   },
+   "hint207a": {
+      "message": "Ausgabeformate: JSON, TEXT, HTML"
+   },
+   "hint208": {
+      "message": "Bei aktivierter Mehrfachauswahl, werden nicht auswählbare Videos violett-rot hervorgehoben"
+   },
+   "hint300": {
+      "message": "Playlisten"
+   },
+   "hint301": {
+      "message": "Sie können nur Videos in Ihre eigenen Playlisten einfügen, einschließlich „Später ansehen“"
+   },
+   "hint302": {
+      "message": "Sie können nur Videos in Ihren eigenen Playlisten löschen, einschließlich „Später ansehen“, „Videos, die ich mag“ und Verlauf"
+   },
+   "hint302a": {
+      "message": "Videos werden nur gelöscht, wenn Sie die Sicherheitsabfrage bestätigen"
+   },
+   "hint303": {
+      "message": "Videos werden oben oder unten einer Playlist hinzugefügt, wie in den Playlist-Einstellungen konfiguriert"
+   },
+   "hint304": {
+      "message": "Sie können Videos aus einer Datei hinzufügen"
+   },
+   "hint304a": {
+      "message": "Importformate: JSON, TEXT, HTML"
+   },
+   "home": {
+      "message": "Pos1"
+   },
+   "importVideos": {
+      "message": "Videos importieren"
+   },
+   "ins": {
+      "message": "Einfg"
+   },
+   "invalidData": {
+      "message": "Ungültige Daten"
+   },
+   "invalidFilter": {
+      "message": "Ungültiger regulärer Ausdruck"
+   },
+   "invertFilter": {
+      "message": "Filter umkehren"
+   },
+   "kbActivateFocusedMenuItem": {
+      "message": "Aktiviert den fokussierten Menüpunkt"
+   },
+   "kbCloseMenu": {
+      "message": "Schließt das Menü"
+   },
+   "kbCopySelectedVideos": {
+      "message": "Kopiert die ausgewählten Videos in die Zwischenablage"
+   },
+   "kbCutSelectedVideos": {
+      "message": "Kopiert die ausgewählten Videos in die Zwischenablage und löscht sie aus Ihrer Playlist bzw. dem Verlauf (mit Sicherheitsabfrage)"
+   },
+   "kbDeleteSelectedVideos": {
+      "message": "Löscht die ausgewählten Videos oder das fokussierte Video aus Ihrer Playlist bzw. dem Verlauf (mit Sicherheitsabfrage)"
+   },
+   "kbFocusAboveVideo": {
+      "message": "Fokussiert das vorherige/obere Video"
+   },
+   "kbFocusBelowVideo": {
+      "message": "Fokussiert das nächste/untere Video"
+   },
+   "kbFocusFirstMenuItem": {
+      "message": "Fokussiert den ersten Menüpunkt"
+   },
+   "kbFocusFirstVideo": {
+      "message": "Fokussiert das erste Video"
+   },
+   "kbFocusLastMenuItem": {
+      "message": "Fokussiert den letzten Menüpunkt"
+   },
+   "kbFocusLastVideo": {
+      "message": "Fokussiert das letzte Video (lädt den nächsten Stapel Videos)"
+   },
+   "kbFocusNextMenuItem": {
+      "message": "Fokussiert den nächsten Menüpunkt"
+   },
+   "kbFocusNextSelectedVideo": {
+      "message": "Fokussiert das nächste ausgewählte Video"
+   },
+   "kbFocusNextVideo": {
+      "message": "Fokussiert das nächste Video"
+   },
+   "kbFocusPreviousMenuItem": {
+      "message": "Fokussiert den vorherigen Menüpunkt"
+   },
+   "kbFocusPreviousSelectedVideo": {
+      "message": "Fokussiert das vorherige ausgewählte Video"
+   },
+   "kbFocusPreviousVideo": {
+      "message": "Fokussiert das vorherige Video"
+   },
+   "kbPasteVideos": {
+      "message": "Fügt die Videos aus der Zwischenablage in die aktuelle Playlist ein"
+   },
+   "kbToggleAllVideos": {
+      "message": "Wählt alle Videos aus oder ab"
+   },
+   "kbToggleFocusedVideo": {
+      "message": "Wählt das fokussierte Video aus oder ab"
+   },
+   "keys": {
+      "message": "Tasten"
+   },
+   "loadEntireHistory": {
+      "message": "Gesamten Verlauf laden"
+   },
+   "loadEntirePage": {
+      "message": "Gesamte Seite laden"
+   },
+   "loadEntirePlaylist": {
+      "message": "Gesamte Playlist laden"
+   },
+   "loadingEntireHistory": {
+      "message": "Gesamter Verlauf wird geladen"
+   },
+   "loadingEntirePage": {
+      "message": "Gesamte Seite wird geladen"
+   },
+   "loadingEntirePlaylist": {
+      "message": "Gesamte Playlist wird geladen"
+   },
+   "localeDir": {
+      "message": "ltr"
+   },
+   "moveAfter": {
+      "message": "Hier hinter verschieben"
+   },
+   "moveToBottom": {
+      "message": "Ans Ende verschieben"
+   },
+   "moveToTop": {
+      "message": "An den Anfang verschieben"
+   },
+   "news": {
+      "message": "\u003Ch2>in Version 4.0\u003C/h2>\u003Cspan>🚀 Gesamte Seite laden\u003C/span>\u003Cspan>🚀 Gesamten Verlauf laden\u003C/span>\u003Cspan>🚀 Reihenfolge der ausgewählten Videos in Wiedergabelisten umkehren (nur bei Blockauswahl)\u003C/span>\u003Cspan>🚀 Nicht verfügbare Videos in Wiedergabelisten auswählen\u003C/span>\u003Cspan>✅ Der alte „Zu Playlist hinzufügen“-Dialog kann in den Optionen aktiviert werden\u003C/span>\u003Cspan>✨ Tooltip in der Aktionsleiste mit der Dauer der ausgewählten Videos\u003C/span>\u003Cspan>✨ Nicht auswählbare Videos werden violett-rot hervorgehoben\u003C/span>\u003Cspan>✨ Mehrfachauswahl wird während der Vollbildwiedergabe deaktiviert\u003C/span>\u003Cspan>✨ Vorschauen in Filme & Shows sind jetzt auswählbar\u003C/span>\u003Cspan>✨ Shorts sind jetzt überall auswählbar\u003C/span>\u003Cspan>🩹️ Übersetzung für Filter: Dauer\u003C/span>\u003Cspan>🩹️ Fehler „Precondition check failed“ bei „Später ansehen“\u003C/span>\u003Cspan>🩹️ Playlist exportieren\u003C/span>\u003Cspan>🩹️ Verlauf exportieren\u003C/span>\u003Cspan>🩹️ Gesamte Playlist laden\u003C/span>\u003Cspan>🛠️ Unzählige Korrekturen und Anpassungen\u003C/span>"
+   },
+   "noDuplicatesFound": {
+      "message": "Keine Duplikate gefunden"
+   },
+   "noRemovalConfirmation": {
+      "message": "Löschen ohne Sicherheitsabfrage"
+   },
+   "noUnavailablesFound": {
+      "message": "Keine nicht verfügbaren Videos gefunden"
+   },
+   "oldAddToPlaylist": {
+      "message": "Den alten 'Zu Playlist hinzufügen'-Dialog verwenden"
+   },
+   "paste": {
+      "message": "Einfügen"
+   },
+   "positioning": {
+      "message": "Aktionsleiste und Filter positionieren"
+   },
+   "preserveSelection": {
+      "message": "Auswahl nach dem Kopieren beibehalten"
+   },
+   "reloadRequired": {
+      "message": "\u003Cp>Die Erweiterung wurde aktualisiert.\u003C/p>\u003Cp>Bitte laden Sie diese Seite neu.\u003C/p>"
+   },
+   "remove": {
+      "message": "Entfernen"
+   },
+   "removeVideos": {
+      "message": "Aus dieser Liste entfernen"
+   },
+   "resetCallouts": {
+      "message": "Einführungstour wiederholen"
+   },
+   "reverseOrder": {
+      "message": "Reihenfolge umkehren"
+   },
+   "selectAllVideos": {
+      "message": "Alle Videos auswählen"
+   },
+   "selectDuplicates": {
+      "message": "Duplikate auswählen"
+   },
+   "selectUnavailables": {
+      "message": "Nicht verfügbare Videos auswählen"
+   },
+   "selectWithFilter": {
+      "message": "Mit Filter auswählen"
+   },
+   "selected": {
+      "message": "ausgewählt"
+   },
+   "shortcuts": {
+      "message": "Tastenkombinationen"
+   },
+   "shortcutsHeadline1": {
+      "message": "Navigation auf der Webseite"
+   },
+   "shortcutsHeadline2": {
+      "message": "Navigation im Aktionsleisten- und Kontext-Menü"
+   },
+   "showPlaylistNames": {
+      "message": "Playlist-Namen im linken Navigationsmenü anzeigen"
+   },
+   "showVideoIndex": {
+      "message": "Videoindex in eigenen Playlisten anzeigen"
+   },
+   "sortPlaylistNames": {
+      "message": "Playlist-Namen alphabetisch sortieren"
+   },
+   "tabHints": {
+      "message": "Tipps"
+   },
+   "tabSettings": {
+      "message": "Einstellungen"
+   },
+   "tabShortcuts": {
+      "message": "Tastenbelegungen"
+   },
+   "tabWhatsNew": {
+      "message": "Was gibt's Neues"
+   },
+   "title": {
+      "message": "Titel"
+   },
+   "toggleMultiSelectMode": {
+      "message": "Mehrfachauswahl ein-/ausschalten"
+   },
+   "watched": {
+      "message": "Angeschaut"
+   }
+}

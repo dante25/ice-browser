@@ -1,0 +1,35 @@
+{
+   "defaultQualityMessage": {
+      "message": "デフォルト品質"
+   },
+   "description": {
+      "message": "YouTube™のデフォルトのビデオ画質を簡単に設定できます。"
+   },
+   "extensionDisabled": {
+      "message": "拡張機能は無効になっています"
+   },
+   "extensionEnabled": {
+      "message": "拡張機能が有効になっています"
+   },
+   "name": {
+      "message": "YouTube™のデフォルト品質調整器"
+   },
+   "popupAbout": {
+      "message": "約"
+   },
+   "popupDonate": {
+      "message": "寄付"
+   },
+   "popupQualityOptionsDescription": {
+      "message": "YouTube ビデオのデフォルト品質を選択します。"
+   },
+   "popupQualityOptionsTitle": {
+      "message": "デフォルト品質"
+   },
+   "popupToggleDescription": {
+      "message": "拡張機能のオン/オフを切り替える"
+   },
+   "popupToggleTitle": {
+      "message": "デフォルト品質を設定する"
+   }
+}

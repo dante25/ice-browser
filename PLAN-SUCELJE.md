@@ -43,3 +43,9 @@ Ekstenzije su već kopirane u `~/.config/Ice/extensions/` (vidi `extensions.json
 - Potvrditi grupu za Webmail Ad Blocker, YouTube NonStop i Adblock for YouTube.
 - Istražiti ad blockere (tačka 3), pa odlučiti.
 - Prvo gledamo kod originalnih ekstenzija, da ugrađene verzije budu iste.
+
+## Izvorni kod ekstenzija (kopirano iz Google Chrome profila, 2026-11-07)
+- `own-extensions/`: tvoje dvije (Ultimate SN Downloader 0.11.2, Video Sniffer 1.1.4)
+- `chrome-extensions/`: 15 iz ove liste, tačno onakve kakve su u Chromeu (vidi `chrome-extensions/INDEX.json`: verzija, ID i odakle je kopirano). Sve su Manifest V3.
+- Ostale ekstenzije iz Chromea (za uvoz) su u `~/.config/Ice/extensions/` i nisu u repozitoriju.
+- Ovo je tuđi kod (Chrome Web Store): repozitorij mora ostati privatan, a licence provjeriti prije svake javne objave.

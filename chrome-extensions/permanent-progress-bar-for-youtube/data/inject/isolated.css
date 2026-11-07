@@ -1,0 +1,40 @@
+.pprogg {
+  position: absolute;
+  left: var(--padding, 12px);
+  bottom: 0;
+  width: calc(100% - var(--padding, 12px) * 2);
+  height: var(--height, 3px);
+  background: var(--parent-color, rgba(255, 255, 255, 0.2));
+  z-index: 50;
+  display: none;
+}
+.pprogg.live,
+.pprogg.hidden {
+  display: none !important;
+}
+
+.pprogg [data-type=progress] {
+  background: var(--progress-color, #f00);
+  height: 100%;
+  width: var(--progress, '0');
+  position: absolute;
+}
+
+.pprogg [data-type=loaded] {
+  position: absolute;
+  background: var(--loaded-color, rgba(255, 255, 255, 0.4));
+  height: 100%;
+  width: var(--loaded, '0');
+}
+
+.pprogg span.pos {
+  background: var(--chapter-color, rgba(0, 0, 0, 0.5));
+  width: 2px;
+  height: 100%;
+  position: absolute;
+}
+
+/* do not show on miniplayer */
+.ytp-autohide:not(.ytp-small-mode) .pprogg {
+  display: block;
+}

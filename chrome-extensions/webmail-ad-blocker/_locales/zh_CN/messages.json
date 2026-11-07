@@ -1,0 +1,89 @@
+{
+   "LAST_ITEM_DO_NOT_REMOVE": {
+      "message": "DO NOT REMOVE"
+   },
+   "changelog": {
+      "message": "更新日志"
+   },
+   "contribute": {
+      "message": "贡献"
+   },
+   "description": {
+      "message": "在使用Gmail、Yahoo Mail、Hotmail和Outlook.com时，屏幕右侧的广告被屏蔽，扩展了消息空间"
+   },
+   "dismiss": {
+      "message": "关闭"
+   },
+   "enabledWebmailsTitle": {
+      "message": "广告屏蔽这些邮箱"
+   },
+   "extensionUpdated": {
+      "message": "扩展已更新！"
+   },
+   "help": {
+      "message": "帮助"
+   },
+   "name": {
+      "message": "Webmail Ad Blocker"
+   },
+   "ok": {
+      "message": "确定"
+   },
+   "option": {
+      "message": "选项"
+   },
+   "options": {
+      "message": "选项"
+   },
+   "popupCheckingPage": {
+      "message": "Checking this page..."
+   },
+   "popupCouldNotDetectTab": {
+      "message": "Could not detect the active tab."
+   },
+   "popupCouldNotReadPageStatus": {
+      "message": "Could not read page status."
+   },
+   "popupHostPermissionNotEnabled": {
+      "message": "Host permission is not enabled."
+   },
+   "popupSiteGmail": {
+      "message": "Gmail"
+   },
+   "popupSiteOutlook": {
+      "message": "Outlook"
+   },
+   "popupSiteYahooMail": {
+      "message": "Yahoo Mail"
+   },
+   "popupStatusActiveOnSite": {
+      "message": "Ad blocking is active on $1."
+   },
+   "popupStatusNotActiveOnSite": {
+      "message": "Ad blocking is not active on $1."
+   },
+   "popupStatusPausedOnSite": {
+      "message": "Ad blocking is paused on $1."
+   },
+   "popupToggleBlockingTitle": {
+      "message": "Enable or disable ad blocking on this host"
+   },
+   "popupUnsupportedPage": {
+      "message": "This page is not supported."
+   },
+   "popupUnsupportedPageHint": {
+      "message": "Open Gmail, Outlook, or Yahoo Mail."
+   },
+   "popupYahooLayoutTweakTitle": {
+      "message": "Yahoo-only layout tweak"
+   },
+   "popupYahooRemoveRightSide": {
+      "message": "Remove right side"
+   },
+   "seeUpdates": {
+      "message": "查看更新"
+   },
+   "tryMyOtherExtensions": {
+      "message": "试试我的其他扩展"
+   }
+}
