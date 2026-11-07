@@ -12,7 +12,10 @@ const { createBuiltins, SIDEBAR_ID } = require('../src/builtins');
 const HOME = os.homedir();
 const CONFIG = path.join(HOME, '.config/Ice');
 const DATA = path.join(HOME, '.local/share/ice');
-const CHROME = process.env.ICE_CHROME || path.join(DATA, 'chromium/current/chrome'); // ICE_CHROME: čuvar testira kandidata
+// Motor: ICE_CHROME (čuvar testira kandidata) > korisnikov (čuvar ga ažurira) > onaj iz .deb paketa
+const BUNDLED = path.join(__dirname, '..', 'chromium', 'chrome');
+const USER_CHROME = path.join(DATA, 'chromium/current/chrome');
+const CHROME = process.env.ICE_CHROME || (fs.existsSync(USER_CHROME) ? USER_CHROME : BUNDLED);
 const PROFILE = process.env.ICE_PROFILE || path.join(CONFIG, 'chromium');
 
 const args = process.argv.slice(2);

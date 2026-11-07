@@ -167,8 +167,12 @@ function rclone(...args) {
 }
 function remoteReady() {
   if (process.env.ICE_SYNC_REMOTE) return true;
-  const r = rclone('listremotes');
-  return r.status === 0 && r.stdout.toString().split('\n').includes('ice-drive:');
+  try {
+    const r = rclone('listremotes');
+    return r.status === 0 && r.stdout.toString().split('\n').includes('ice-drive:');
+  } catch {
+    return false; // rclone nije instaliran: sync se jednostavno preskače, Ice se normalno pokreće
+  }
 }
 function download() {
   const tmp = path.join(os.tmpdir(), `ice-sync-${process.pid}`);
