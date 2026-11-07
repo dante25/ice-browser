@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Ice: pregled slika na Google Images",
+  "version": "1.0.0",
+  "description": "Klik na sliku u Google Images otvara pregled preko cijele stranice, s listanjem lijevo/desno.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.google.com/*", "*://www.google.ba/*", "*://www.google.hr/*", "*://www.google.rs/*",
+        "*://www.google.me/*", "*://www.google.si/*", "*://www.google.de/*", "*://www.google.at/*",
+        "*://www.google.ch/*", "*://www.google.co.uk/*", "*://www.google.fr/*", "*://www.google.it/*",
+        "*://www.google.nl/*", "*://www.google.se/*", "*://www.google.com.tr/*", "*://images.google.com/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["viewer.js"],
+      "css": ["viewer.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

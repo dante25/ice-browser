@@ -49,3 +49,29 @@ Ekstenzije su već kopirane u `~/.config/Ice/extensions/` (vidi `extensions.json
 - `chrome-extensions/`: 15 iz ove liste, tačno onakve kakve su u Chromeu (vidi `chrome-extensions/INDEX.json`: verzija, ID i odakle je kopirano). Sve su Manifest V3.
 - Ostale ekstenzije iz Chromea (za uvoz) su u `~/.config/Ice/extensions/` i nisu u repozitoriju.
 - Ovo je tuđi kod (Chrome Web Store): repozitorij mora ostati privatan, a licence provjeriti prije svake javne objave.
+
+## Odluke (2026-11-07)
+- **Način ugradnje: originalni kod.** Ice nosi originalni kod svake ekstenzije u sebi i pokreće ga sam (bez prodavnice i ikonica ekstenzija), s prekidačima u postavkama gdje je traženo. Chromeove funkcije koje Electron nema dodaje biblioteka `electron-chrome-extensions`.
+- **Greške:** popravljaju se jedna po jedna, kako se koja ekstenzija ugrađuje. Svaka popravka se bilježi u `chrome-extensions/FIXES.md`.
+- **Nova ugrađena funkcija (uvijek uključena): pregled slika na Google Images.** Klik na sliku otvara pregled preko cijele stranice (unutar stranice, ne novi prozor), s listanjem lijevo/desno. Pišemo je sami, jer stara ekstenzija za to više ne radi.
+
+Test motora (Electron 45): svih 11 testiranih ekstenzija se učitalo, kod 8 radi na YouTubeu. Nedostaju Chromeove funkcije `commands`, `webNavigation`, `downloads`, `identity`, `tabGroups`.
+
+## Nalazi iz integracije (2026-11-07)
+Urađeno: učitavač ugrađenih funkcija (`src/builtins.js`), dodatak za Chromeove funkcije (`src/crx-shims*.js`),
+sistem popravki koji preživljava updatee (`src/ext-patches.js`). Svih 17 funkcija se učitava, 15 pozadinskih
+dijelova radi bez grešaka, na YouTubeu radi kod 11 funkcija. 19/19 sigurnosnih testova prolazi.
+
+Popravljene greške:
+1. `chrome` objekt zaključan (biblioteka) -> Iceove dodatke nije bilo moguće dodati. Rješenje: novi `chrome` kao nastavak zaključanog.
+2. Chromium 156 pravi zaseban `browser` objekt bez funkcija biblioteke -> Tab Session Manager se nije pokretao (i sve ekstenzije s webextension-polyfill vidjele bi nepotpune funkcije). Rješenje: `browser` = `chrome`.
+3. Hide Labels and End Cards: poruka bez hvatanja greške pri svakom učitavanju YouTubea (greška originala). Popravka u `src/ext-patches.js`.
+4. Testovi su ostavljali žive Electron procese koji drže debug port. Rješenje: test pokreće pravi Electron binarni fajl.
+
+**Blokada (odluka čeka):** u Electronu 45
+- `chrome.declarativeNetRequest` ne radi (ni blokiranje ni zaglavlja),
+- `chrome.webRequest` ekstenzija ne dobija ništa dok Ice koristi bilo koji svoj mrežni filter (phishing, HTTPS-first, GPC),
+- nema `chrome.downloads` ni `chrome.bookmarks`.
+Pogođeno: Adblock for YouTube, Ultimate SN Downloader, Video Sniffer, Search by Image (dio), Bookmarks clean up.
+Opcije: (A) ostati na Electronu i u Iceu napisati DNR, webRequest za ekstenzije, downloads i bookmarks;
+(B) prebaciti osnovu Icea na ungoogled-chromium (pun Chromium bez Googlea, sve ekstenzije rade kao u Chromeu).

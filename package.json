@@ -5,12 +5,16 @@
   "description": "Ice - lagani browser na Chromium motoru",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "check-chrome": "bash scripts/check-chrome.sh",
-    "test": "node test/smoke.mjs",
-    "guardian": "node scripts/guardian.mjs"
+    "start": "node bin/ice.js",
+    "test": "node test/smoke.mjs && node test/gimages.mjs",
+    "guardian": "node scripts/guardian.mjs",
+    "install-desktop": "bash scripts/install-desktop.sh",
+    "import-chrome": "node bin/ice.js --import-chrome"
   },
   "devDependencies": {
     "electron": "45.2.3"
+  },
+  "dependencies": {
+    "electron-chrome-extensions": "4.10.0"
   }
 }

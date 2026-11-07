@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "modifyHeaders", "requestHeaders": [{ "header": "Sec-GPC", "operation": "set", "value": "1" }] },
+    "condition": {
+      "urlFilter": "*",
+      "resourceTypes": ["main_frame", "sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "media", "websocket", "other"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "upgradeScheme" },
+    "condition": { "urlFilter": "|http://", "resourceTypes": ["main_frame"] }
+  },
+  {
+    "id": 3,
+    "priority": 2,
+    "action": { "type": "allow" },
+    "condition": {
+      "regexFilter": "^http://(localhost|127\\.[0-9]+\\.[0-9]+\\.[0-9]+|10\\.[0-9]+\\.[0-9]+\\.[0-9]+|192\\.168\\.[0-9]+\\.[0-9]+|172\\.(1[6-9]|2[0-9]|3[01])\\.[0-9]+\\.[0-9]+|\\[::1\\])(:[0-9]+)?(/|$)",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 2,
+    "action": { "type": "allow" },
+    "condition": { "requestDomains": ["localhost", "local", "test", "lan", "internal", "home.arpa"], "resourceTypes": ["main_frame"] }
+  }
+]

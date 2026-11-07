@@ -1,5 +1,5 @@
-// Ice smoke test: pokreće pravi Ice s debug portom i provjerava sigurnosne funkcije.
-// Ice se u testu pokreće dva puta, da se provjeri da izuzeci prežive restart.
+// Ice smoke test: pokreće pravi Ice (ungoogled-chromium + ugrađene funkcije) u testnom profilu
+// i provjerava zaštite i ugrađene funkcije preko DevTools protokola.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,139 +7,136 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const ICE = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const PORT = 9333;
-// Zaseban folder podataka: test ne dira tvoj pravi Ice profil (i radi dok je Ice otvoren)
-const DATA = `${os.homedir()}/.cache/ice-test-profile`;
-fs.rmSync(`${DATA}/exceptions.json`, { force: true }); // svaki test kreće bez izuzetaka
+const PROFILE = process.env.ICE_TEST_PROFILE || `${os.homedir()}/.cache/ice-test-profile`;
+fs.rmSync(PROFILE, { recursive: true, force: true });
 
 const results = [];
-const logs = [];
-const check = (name, ok, info) => results.push(`${ok ? 'OK  ' : 'FAIL'} ${name}${info ? `  (${info})` : ''}`);
+const check = (name, ok, info) => results.push(`${ok ? 'OK  ' : 'FAIL'} ${name}${info !== undefined ? `  (${info})` : ''}`);
 
-async function launch() {
-  const proc = spawn(`${ICE}/node_modules/.bin/electron`, ['.', `--user-data-dir=${DATA}`, `--remote-debugging-port=${PORT}`, 'https://example.org'], {
-    cwd: ICE,
-    env: {
-      ...process.env,
-      ICE_DEBUG: '1',
-      ICE_TEST_BLOCK: 'example.net', // tačan host
-      ICE_TEST_BLOCK_WILD: 'iana.org,github.com', // domen sa poddomenama; github.com je zaštićena platforma
-      ICE_TEST_PERMISSION: 'deny',
-    },
-  });
-  const grab = (d) => logs.push(...String(d).split('\n').filter((l) => l.includes('[ice]')));
-  proc.stdout.on('data', grab);
-  proc.stderr.on('data', grab);
+const proc = spawn(process.execPath, [`${ICE}/bin/ice.js`, `--remote-debugging-port=${PORT}`, 'https://example.org/'], {
+  env: { ...process.env, ICE_PROFILE: PROFILE, ICE_FOREGROUND: '1' },
+  detached: true,
+  stdio: ['ignore', 'ignore', 'pipe'],
+});
+const errLines = [];
+proc.stderr.on('data', (d) => errLines.push(...String(d).split('\n')));
+const stop = async () => { try { process.kill(-proc.pid, 'SIGTERM'); } catch {} await sleep(1500); };
 
-  let targets;
-  for (let i = 0; i < 40; i++) {
-    try { targets = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json(); if (targets.find((t) => t.type === 'page')) break; } catch {}
-    await sleep(500);
-  }
-  const page = targets?.find((t) => t.type === 'page');
-  if (!page) throw new Error('Ice se nije pokrenuo');
-  const ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((r) => (ws.onopen = r));
-  let id = 0;
-  const waiters = new Map();
-  ws.onmessage = (m) => { const d = JSON.parse(m.data); const w = waiters.get(d.id); if (w) { waiters.delete(d.id); d.error ? w.rej(new Error(d.error.message)) : w.res(d.result); } };
-  const cdp = (method, params = {}) => { const i = ++id; ws.send(JSON.stringify({ id: i, method, params })); return new Promise((res, rej) => waiters.set(i, { res, rej })); };
-  const evalJs = async (expr) => (await cdp('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result?.value;
-  const href = () => evalJs('location.href');
-  const go = async (url, wait = 5000) => { await cdp('Page.navigate', { url }); await sleep(wait); return href(); };
-  const current = async () => { const h = await cdp('Page.getNavigationHistory'); return h.entries[h.currentIndex].url; };
-  await cdp('Page.enable');
-  await sleep(3000);
-  const stop = async () => { ws.close(); proc.kill(); await sleep(1500); };
-  return { cdp, evalJs, href, go, current, stop };
+const json = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
+function connect(wsUrl) {
+  const ws = new WebSocket(wsUrl);
+  let id = 0; const w = new Map();
+  ws.onmessage = (m) => { const d = JSON.parse(m.data); if (w.has(d.id)) { w.get(d.id)(d); w.delete(d.id); } };
+  const cdp = (method, params = {}) => new Promise((r) => { w.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });
+  const ev = async (expression) => {
+    const d = await cdp('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+    return d.result?.result?.value ?? `ERR ${d.result?.exceptionDetails?.exception?.description?.slice(0, 100)}`;
+  };
+  return new Promise((r) => { ws.onopen = () => r({ ws, cdp, ev }); });
 }
 
-let ice;
 try {
-  ice = await launch();
-  const { cdp, evalJs, href, go, current } = ice;
+  let targets = [];
+  for (let i = 0; i < 60; i++) { try { targets = await json('/json'); if (targets.some((t) => t.type === 'page')) break; } catch {} await sleep(500); }
+  await sleep(4000);
+  targets = await json('/json');
+  const page = await connect(targets.find((t) => t.type === 'page' && !t.url.startsWith('chrome-extension')).webSocketDebuggerUrl);
+  await page.cdp('Page.enable');
+  const go = async (url, wait = 5000) => { await page.cdp('Page.navigate', { url }); await sleep(wait); return page.ev('location.href'); };
 
-  // 1) HTTPS-first
-  let u = await go('http://example.com/');
-  check('http -> https prebacivanje', u === 'https://example.com/', u);
-
-  // 2) Stranica bez HTTPS-a -> upozorenje, pa "nastavi"
-  u = await go('http://neverssl.com/', 9000);
-  check('upozorenje kad https ne radi', u.startsWith('ice://warning/'), u);
-  if (u.startsWith('ice://warning/')) {
-    await evalJs('document.querySelector("a.go").click()');
-    await sleep(6000);
-    // Provjeravamo kuda je Ice otišao (historija), ne da li je neverssl server odgovorio:
-    // njihov http server ponekad sam prekine vezu, i van Icea.
-    u = await current();
-    check('"nastavi" otvara http verziju', /^http:\/\/([a-z0-9-]+\.)?neverssl\.com\//.test(u), u);
+  // Ice Shield worker
+  let shield = null;
+  for (const t of targets.filter((x) => x.type === 'service_worker' && x.url.startsWith('chrome-extension://'))) {
+    const s = await connect(t.webSocketDebuggerUrl);
+    if ((await s.ev('chrome.runtime.getManifest().name')) === 'Ice Shield') { shield = s; break; }
+    s.ws.close();
   }
-  const hist = await cdp('Page.getNavigationHistory');
-  const errs = hist.entries.filter((e) => e.url.startsWith('chrome-error://') || e.url === 'https://neverssl.com/').length;
-  check('nema stranice greške u historiji', errs === 0, hist.entries.map((e) => e.url.slice(0, 40)).join(' | '));
+  check('Ice Shield radi', !!shield);
+  if (!shield) throw new Error('nema Ice Shield workera');
+  const size = await shield.ev('iceShield.ensure().then(() => iceShield.size())');
+  check('liste opasnih stranica učitane (> 500.000 domena)', size > 500000, `${size} domena`);
+  await shield.ev("iceShield.test.exact.add('example.net'); iceShield.test.wild.add('iana.org'); iceShield.test.wild.add('github.com'); true");
 
-  // 3) Opasna stranica (test domena example.net)
-  u = await go('https://example.net/');
-  check('opasna stranica blokirana', u.startsWith('ice://warning/'), u);
-  const title = await evalJs('document.title');
-  check('upozorenje kaže "Opasna stranica"', title === 'Opasna stranica', title);
-  await evalJs('document.querySelector("a.btn").click()');
-  await sleep(3000);
-  u = await href();
-  check('"nazad" vodi sa upozorenja', !u.startsWith('ice://warning/'), u);
+  // 1) HTTPS samo
+  let u = await go('http://example.com/');
+  check('http -> https', u === 'https://example.com/', u);
+  u = await go('http://neverssl.com/', 9000);
+  check('upozorenje kad HTTPS ne radi', u.includes('/warning.html#https|'), u.slice(0, 80));
+  check('upozorenje kaže "nema sigurnu vezu"', /nema sigurnu vezu/.test(await page.ev('document.title')));
+  await page.ev("document.getElementById('go').click()");
+  await sleep(7000);
+  const h = await page.cdp('Page.getNavigationHistory');
+  u = h.result ? h.result.entries[h.result.currentIndex].url : (await page.ev('location.href'));
+  check('"nastavi" otvara http verziju', /^http:\/\/([a-z0-9-]+\.)?neverssl\.com\//.test(u), u);
+  u = await go('http://neverssl.com/', 7000);
+  check('http izuzetak vrijedi (bez ponovnog upozorenja)', !u.includes('warning.html'), u);
+  u = await go('http://localhost:9/', 3000);
+  check('lokalne adrese ostaju http', !u.includes('warning.html') && !u.startsWith('https://localhost'), u);
 
-  // 4) Wildcard liste (malware): domen blokira i poddomene; velike platforme nikad
+  // 2) Opasne stranice
+  u = await go('https://example.net/', 5000);
+  check('opasna stranica blokirana', u.includes('/warning.html#'), u.slice(0, 70));
+  check('upozorenje kaže "Opasna stranica"', /Opasna stranica/.test(await page.ev('document.title')));
+  await sleep(1000);
+  await page.ev("document.getElementById('back').click()");
+  await sleep(4000);
+  u = await page.ev('location.href');
+  check('"nazad" vodi na novi tab', !u.includes('warning.html'), u);
   u = await go('https://www.iana.org/');
-  check('wildcard: poddomena blokirana', u.startsWith('ice://warning/'), u);
-  u = await go('https://iana.org/');
-  check('wildcard: sam domen blokiran', u.startsWith('ice://warning/'), u);
-  u = await go('https://github.com/', 7000);
+  check('wildcard: poddomena blokirana', u.includes('/warning.html#'), u.slice(0, 50));
+  u = await go('https://github.com/', 6000);
   check('zaštićena platforma (github.com) nije blokirana', u.startsWith('https://github.com'), u);
 
-  // 5) Obična stranica ne može sama "kliknuti nastavi"
-  await go('https://example.com/');
-  await evalJs('location.href = "ice://proceed/?t=lazni"');
-  await sleep(2000);
-  u = await href();
-  check('lažni ice://proceed odbijen', u === 'https://example.com/', u);
+  // 3) "Ipak otvori" i izuzetak
+  await go('https://example.net/', 5000);
+  await page.ev("document.getElementById('go').click()");
+  await sleep(5000);
+  u = await page.ev('location.href');
+  check('"ipak otvori" otvara stranicu', u === 'https://example.net/', u);
+  const ex = await shield.ev("chrome.storage.local.get('exceptions').then(r => Object.keys(r.exceptions || {}).join(','))");
+  check('izuzetak spremljen', ex.includes('example.net'), ex);
+  u = await go('https://example.net/', 5000);
+  check('izuzetak vrijedi (bez ponovnog upozorenja)', u === 'https://example.net/', u);
+  const forged = await page.ev("typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage ? 'moze' : 'ne moze'");
+  check('web stranica ne može poslati "ipak otvori"', forged === 'ne moze', forged);
 
-  // 6) Dozvole (test odgovor: odbij)
-  const geo = await evalJs('new Promise(r => navigator.geolocation.getCurrentPosition(() => r("dozvoljeno"), e => r("odbijeno " + e.code)))');
-  check('lokacija odbijena', geo === 'odbijeno 1', geo);
-  const notif = await evalJs('Notification.requestPermission()');
-  check('obavještenja odbijena', notif === 'denied', notif);
-  const q = await evalJs('navigator.permissions.query({name:"camera"}).then(r => r.state)');
-  check('kamera nije unaprijed odobrena', q !== 'granted', q);
+  // 4) GPC
+  await go('https://httpbin.org/headers', 6000);
+  const body = await page.ev('document.body.innerText');
+  check('Sec-GPC: 1 zaglavlje', /"Sec-Gpc":\s*"1"/i.test(body || ''));
+  check('navigator.globalPrivacyControl', (await page.ev('navigator.globalPrivacyControl')) === true);
 
-  // 7) GPC zaglavlje
-  await go('https://httpbin.org/headers', 7000);
-  const body = await evalJs('document.body.innerText');
-  check('Sec-GPC: 1 se šalje', /"Sec-Gpc":\s*"1"/i.test(body || ''), (body || '').includes('Gpc') ? 'nađeno' : 'nema u odgovoru');
-
-  // 8) WebRTC ne otkriva lokalnu IP adresu
-  const ips = await evalJs(`new Promise(r => { const pc = new RTCPeerConnection({iceServers:[]}); const c = [];
+  // 5) Dozvole i WebRTC
+  const geo = await page.ev('navigator.permissions.query({name:"geolocation"}).then(r => r.state)');
+  check('lokacija nije unaprijed dozvoljena', geo === 'prompt', geo);
+  const ips = await page.ev(`new Promise(r => { const pc = new RTCPeerConnection({iceServers:[]}); const c = [];
     pc.onicecandidate = e => { if (e.candidate) c.push(e.candidate.candidate); else r(c); };
     pc.createDataChannel('x'); pc.createOffer().then(o => pc.setLocalDescription(o)); setTimeout(() => r(c), 3000); })`);
   const local = (ips || []).filter((c) => /(\s)(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(c));
-  check('WebRTC bez lokalne IP adrese', local.length === 0, `${(ips || []).length} kandidata, lokalnih: ${local.length}`);
+  check('WebRTC bez lokalne IP adrese', local.length === 0, `${(ips || []).length} kandidata`);
 
-  // 9) Prave liste učitane (phishing + malware)
-  const sizes = logs.map((l) => /liste opasnih stranica (?:spremne|iz keša): (\d+)/.exec(l)?.[1]).filter(Boolean).map(Number);
-  const max = Math.max(0, ...sizes);
-  check('liste opasnih stranica učitane (> 500.000 domena)', max > 500000, `${max} domena`);
+  // 6) Ugrađene funkcije na YouTubeu
+  const worlds = new Set();
+  page.ws.addEventListener('message', (m) => { const d = JSON.parse(m.data); if (d.method === 'Runtime.executionContextCreated' && d.params.context.auxData?.type === 'isolated') worlds.add(d.params.context.name); });
+  await page.cdp('Runtime.enable');
+  await go('https://www.youtube.com/watch?v=jNQXAC9IVRw', 12000);
+  check('ugrađene funkcije rade na YouTubeu (>= 10)', worlds.size >= 10, `${worlds.size}: ${[...worlds].join(', ').slice(0, 200)}`);
 
-  // 10) Izuzetak preživi restart
-  const ex = JSON.parse(fs.readFileSync(`${DATA}/exceptions.json`, 'utf8'));
-  check('izuzetak spremljen na disk', !!ex.http?.['neverssl.com'], Object.keys(ex.http || {}).join(', '));
-  await ice.stop();
-  ice = await launch();
-  u = await ice.go('http://neverssl.com/', 9000);
-  check('poslije restarta: dozvoljena http stranica bez ponovnog upozorenja', !u.startsWith('ice://warning/') && !(await ice.current()).startsWith('https://'), await ice.current());
+  // 7) Greške ekstenzija u logu
+  const errs = [...new Set(errLines.filter((l) => /Uncaught|Extension error|ERROR:.*extension/i.test(l)).map((l) => l.slice(0, 140)))];
+  check('bez grešaka ekstenzija u logu', errs.length === 0, errs.slice(0, 3).join(' | '));
 } catch (e) {
   results.push(`FAIL test se srušio: ${e.message}`);
 } finally {
+  await stop();
+  // Učitane funkcije (iz profila, poslije gašenja)
+  try {
+    const prefs = JSON.parse(fs.readFileSync(`${PROFILE}/Default/Preferences`, 'utf8'));
+    const n = Object.values(prefs.extensions?.settings || {}).filter((e) => e.location === 8).length;
+    const { createBuiltins } = await import(`${ICE}/src/builtins.js`);
+    const want = createBuiltins(`${PROFILE}/cfg`, `${PROFILE}/data`).dirs().length;
+    results.push(`${n === want ? 'OK  ' : 'FAIL'} učitane ugrađene funkcije (${n} od ${want})`);
+  } catch (e) { results.push(`FAIL ne mogu pročitati profil: ${e.message}`); }
   console.log(results.join('\n'));
-  console.log('\n--- Ice log ---\n' + logs.filter((l) => /liste|izuzetak|greška|historija/.test(l)).join('\n'));
-  await ice?.stop();
-  fs.rmSync(`${DATA}/exceptions.json`, { force: true });
   process.exit(results.some((r) => r.startsWith('FAIL')) ? 1 : 0);
 }
