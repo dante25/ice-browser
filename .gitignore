@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+# Lični podaci nikad u repozitorij
+*.bin
+*.sqlite
+*.csv
+vault*
+autofill*
+bookmarks.json
+history*
+permissions.json
+exceptions.json
+guardian.json
+extensions/

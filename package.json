@@ -1,0 +1,16 @@
+{
+  "name": "ice-browser",
+  "productName": "Ice",
+  "version": "0.0.1",
+  "description": "Ice - lagani browser na Chromium motoru",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check-chrome": "bash scripts/check-chrome.sh",
+    "test": "node test/smoke.mjs",
+    "guardian": "node scripts/guardian.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.2.3"
+  }
+}
