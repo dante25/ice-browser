@@ -136,7 +136,9 @@ function passwords(chrome, ice) {
         const have = new Set(db.prepare('PRAGMA table_info(logins)').all().map((c) => c.name));
         const use = cols.filter((c) => have.has(c));
         const ins = out.prepare(`INSERT OR REPLACE INTO logins (${use.join(',')}) VALUES (${use.map(() => '?').join(',')})`);
-        for (const r of db.prepare(`SELECT ${use.join(',')} FROM logins`).all()) {
+        const sel = db.prepare(`SELECT ${use.join(',')} FROM logins`);
+        sel.setReadBigInts(true); // Chromeova vremena su veća od JS broja
+        for (const r of sel.all()) {
           if (r.blacklisted_by_user) never++;
           else if (!r.password_value || !r.password_value.length) { empty++; continue; }
           else {
