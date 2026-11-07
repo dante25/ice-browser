@@ -76,5 +76,13 @@ systemctl --user enable --now ice-guardian.timer      # ponovo uključi
 | `exceptions.json` | izuzeci s upozorenja (30 dana) |
 | `guardian.json` | stanje čuvara |
 
+## GitHub
+Privatni repozitorij: https://github.com/dante25/ice-browser (nalog `dante25`, prijava preko `gh`).
+```bash
+git add -A && git commit -m "opis promjene" && git push   # spremi i pošalji promjene
+git status                                                 # šta je promijenjeno
+```
+`.gitignore` drži lične podatke (lozinke, bookmarks, historija, ekstenzije) van repozitorija.
+
 ## Node.js
 Instaliran u `~/.local/node` (v26 LTS), komande `node`/`npm` preko `~/.local/bin`.
