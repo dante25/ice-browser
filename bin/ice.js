@@ -77,11 +77,29 @@ const syncLog = (m) => fs.appendFileSync(path.join(CONFIG, 'sync.log'), `${new D
 const syncCtx = () => ({ configDir: CONFIG, profileDir: PROFILE, chromiumSecret: keyringSecret('chromium', true) });
 const syncOn = () => sync.getPassphrase() && sync.remoteReady();
 
+// Unos bez ispisa na ekran (terminal u "raw" režimu, ništa se ne ponavlja na ekranu)
 function askHidden(q) {
   return new Promise((resolve) => {
-    const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    rl._writeToOutput = (s) => { if (s.includes(q)) process.stdout.write(s); };
-    rl.question(q, (a) => { rl.close(); process.stdout.write('\n'); resolve(a); });
+    const stdin = process.stdin;
+    process.stdout.write(q);
+    if (!stdin.isTTY) { let d = ''; stdin.setEncoding('utf8'); stdin.on('data', (c) => { d += c; }); stdin.on('end', () => resolve(d.split('\n')[0])); return; }
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+    let s = '';
+    const onData = (chunk) => {
+      for (const c of chunk) {
+        if (c === '\r' || c === '\n') {
+          stdin.setRawMode(false); stdin.pause(); stdin.off('data', onData);
+          process.stdout.write('\n');
+          return resolve(s);
+        }
+        if (c === '\u0003') { stdin.setRawMode(false); process.stdout.write('\n'); process.exit(130); }
+        if (c === '\u007f' || c === '\b') { s = s.slice(0, -1); continue; }
+        s += c;
+      }
+    };
+    stdin.on('data', onData);
   });
 }
 
