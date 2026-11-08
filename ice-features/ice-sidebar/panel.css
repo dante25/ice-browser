@@ -37,3 +37,10 @@ body{display:flex;flex-direction:row-reverse;overflow:hidden} /* panel je desno:
 .frame iframe{flex:1;width:100%;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
 .note{margin:0 6px 8px;color:var(--muted);font-size:12px}
 .kbd{font-family:ui-monospace,monospace;background:var(--base);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11px}
+
+.theme{padding:4px 6px 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px}
+.chip{padding:6px 12px;border-radius:8px;background:var(--base);border:1px solid var(--line)}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+body.tab{justify-content:center}
+body.tab .view{max-width:560px;flex:none;width:560px}

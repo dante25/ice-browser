@@ -14,7 +14,8 @@
   "topSites",
   "search",
   "storage",
-  "favicon"
+  "favicon",
+  "nativeMessaging"
  ],
  "side_panel": {
   "default_path": "panel.html"

@@ -10,7 +10,7 @@ const { spawn } = require('child_process');
 const { createBuiltins, SIDEBAR_ID } = require('../src/builtins');
 
 const HOME = os.homedir();
-const CONFIG = path.join(HOME, '.config/Ice');
+const CONFIG = process.env.ICE_CONFIG || path.join(HOME, '.config/Ice');
 const DATA = path.join(HOME, '.local/share/ice');
 // Motor: ICE_CHROME (čuvar testira kandidata) > korisnikov (čuvar ga ažurira) > onaj iz .deb paketa
 const BUNDLED = path.join(__dirname, '..', 'chromium', 'chrome');
@@ -36,12 +36,13 @@ function isRunningProfile() {
 const UI_FILE = path.join(CONFIG, 'ui.json');
 const ui = (() => { try { return JSON.parse(fs.readFileSync(UI_FILE, 'utf8')); } catch { return {}; } })();
 function resolveTheme() {
+  if (ui.theme === 'chromium') return 'none';
   if (ui.theme === 'light' || ui.theme === 'dark') return ui.theme;
   const r = require('child_process').spawnSync('gsettings', ['get', 'org.gnome.desktop.interface', 'color-scheme'], { encoding: 'utf8' });
   return /dark/.test(r.stdout || '') ? 'dark' : 'light';
 }
 if (args[0] === '--theme') {
-  if (!['light', 'dark', 'auto'].includes(args[1])) { console.error('Upotreba: ice --theme light|dark|auto'); process.exit(1); }
+  if (!['light', 'dark', 'auto', 'chromium'].includes(args[1])) { console.error('Upotreba: ice --theme light|dark|auto|chromium'); process.exit(1); }
   fs.mkdirSync(CONFIG, { recursive: true });
   fs.writeFileSync(UI_FILE, JSON.stringify({ ...ui, theme: args[1] }));
   console.log(`Tema: ${args[1]} (vrijedi od sljedećeg pokretanja Icea)`);
@@ -94,6 +95,42 @@ function applyDefaults() {
   const pinned = new Set(p.extensions.pinned_extensions || []);
   pinned.add(SIDEBAR_ID);
   p.extensions.pinned_extensions = [...pinned];
+
+  // Uvijek uključene funkcije ne smiju ostati isključene (npr. nakon klika u Chromiumovim menijima)
+  const info = builtins.info();
+  const always = new Set(info.filter((f) => f.group === 'always' || f.ice).map((f) => f.id).filter(Boolean));
+  for (const [id, e] of Object.entries(p.extensions.settings || {})) {
+    if (always.has(id)) { delete e.disable_reasons; e.state = 1; }
+  }
+
+  // Pri pokretanju uvijek nova početna stranica (bez vraćanja starih tabova)
+  p.session = { ...(p.session || {}), restore_on_startup: 5 };
+  delete p.session.startup_urls;
+
+  // Tema: auto (prati sistem), light, dark ili chromium (Chromiumova zadana). Bira se u Ice panelu
+  // (Ice postavke) ili komandom "ice --theme ...". Primjenjuje se pri pokretanju.
+  const themeId = (info.find((f) => f.group === 'theme') || {}).id;
+  if (themeId) p.extensions.theme = { ...(p.extensions.theme || {}), id: themeId };
+  else if (resolveTheme() === 'none') p.extensions.theme = { id: '', system_theme: 0 };
+  const flagsFile = path.join(PROFILE, 'ice-flags.json');
+  const flags = (() => { try { return JSON.parse(fs.readFileSync(flagsFile, 'utf8')); } catch { return {}; } })();
+
+  // Jednokratno: stare sesije (npr. tabovi iz testova) idu u backup
+  if (!flags.sessionsCleaned) {
+    const sess = path.join(PROFILE, 'Default', 'Sessions');
+    if (fs.existsSync(sess)) fs.renameSync(sess, path.join(PROFILE, `backup-sessions-${Date.now()}`));
+    flags.sessionsCleaned = true;
+  }
+  fs.writeFileSync(flagsFile, JSON.stringify(flags));
+  // Most prema Ice panelu (izbor teme): manifest native messaging hosta u profilu
+  const hostDir = path.join(PROFILE, 'NativeMessagingHosts');
+  fs.mkdirSync(hostDir, { recursive: true });
+  const wrapper = path.join(DATA, 'ice-host');
+  fs.mkdirSync(DATA, { recursive: true });
+  fs.writeFileSync(wrapper, `#!/bin/sh\nexec "${process.execPath}" "${path.join(__dirname, 'ice-host.js')}"\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(hostDir, 'ice.host.json'), JSON.stringify({
+    name: 'ice.host', description: 'Ice panel', path: wrapper, type: 'stdio', allowed_origins: [`chrome-extension://${SIDEBAR_ID}/`],
+  }));
   fs.writeFileSync(file, JSON.stringify(p));
 }
 
@@ -167,16 +204,16 @@ if (!alreadyRunning) {
   if (!process.env.ICE_SESSION && syncOn()) {
     try { const r = sync.pull(syncCtx()); syncLog(`pull: ${r.status}${r.from ? ` od ${r.from}` : ''}`); } catch (e) { syncLog(`pull greška: ${e.message}`); }
   }
-  applyDefaults();
 }
 
 
+const loadDirs = builtins.dirs((m) => console.warn('[ice]', m), resolveTheme());
 const flags = [
   `--user-data-dir=${PROFILE}`,
   '--no-first-run',
   '--no-default-browser-check',
   '--disable-features=DisableLoadExtensionCommandLineSwitch',
-  `--load-extension=${builtins.dirs((m) => console.warn('[ice]', m), resolveTheme()).join(',')}`,
+  `--load-extension=${loadDirs.join(',')}`,
   '--class=Ice',
   '--show-avatar-button=never', // profil je u Ice panelu, ne na traci
   ...args,
@@ -184,6 +221,7 @@ const flags = [
 
 // CHROME_DESKTOP: da panel/dock prikaže Iceovu ikonu i ime (ice-browser.desktop)
 const env = { ...process.env, CHROME_DESKTOP: 'ice-browser.desktop' };
+if (!alreadyRunning) applyDefaults();
 const watchForSync = !alreadyRunning && syncOn() && !process.env.ICE_FOREGROUND;
 if (watchForSync && !process.env.ICE_SESSION) {
   // Odvoji se od terminala i sačekaj da se Ice zatvori, pa pošalji profil na Drive

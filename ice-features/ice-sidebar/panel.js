@@ -181,12 +181,32 @@ async function viewFeature(key) {
 }
 
 // ---------- Ice postavke ----------
+function setTheme(mode) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendNativeMessage('ice.host', { theme: mode }, (r) => {
+      if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+      r?.ok ? resolve() : reject(new Error(r?.error || 'Nije uspjelo.'));
+    });
+  });
+}
+function themeChips() {
+  const note = el('div', { class: 's', style: 'padding:4px 10px;color:var(--muted)' }, 'Odaberi izgled preglednika');
+  const chips = el('div', { class: 'chips' }, ...[['auto', 'Prati sistem'], ['light', 'Svijetla'], ['dark', 'Tamna'], ['default', 'Chromium zadana']].map(([m, t]) =>
+    el('button', { class: 'chip', onclick: async (ev) => {
+      chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
+      ev.currentTarget.classList.add('on');
+      note.textContent = 'Primjenjujem...';
+      try { await setTheme(m); note.textContent = `Tema: ${t}. Primjenjuje se pri sljedećem pokretanju Icea.`; } catch (e) { note.textContent = `Greška: ${e.message}`; }
+    } }, t)));
+  return el('div', { class: 'theme' }, note, chips);
+}
+
 function viewSettings() {
   const m = chrome.runtime.getManifest();
   const row = (ic, t, s, fn) => el('button', { class: 'item', onclick: fn }, el('span', { class: 'ico', html: icon(ic) }), el('span', { class: 'tt' }, el('span', { class: 't' }, t), el('span', { class: 's' }, s)));
   return [head('Ice postavke'), el('div', { class: 'body' },
     el('div', { class: 'grp' }, 'Izgled'),
-    row('settings', 'Tema', 'Prati sistem (svijetla/tamna). Ručno: ice --theme light|dark|auto'),
+    themeChips(),
     el('div', { class: 'grp' }, 'Sigurnost'),
     row('shield', 'Ice Shield', 'Phishing i malware zaštita, HTTPS-first, GPC: uključeno'),
     row('shield', 'Dozvole stranica', 'Kamera, mikrofon, lokacija...', () => chrome.tabs.create({ url: 'chrome://settings/content' })),
@@ -229,5 +249,7 @@ async function buildRail() {
   try { features = await (await fetch('features.json')).json(); } catch { features = []; }
   await buildRail();
   const { lastView } = await chrome.storage.local.get('lastView');
+  // Otvoreno kao običan tab (npr. umjesto chrome://extensions): odmah pregled funkcija
+  if (location.hash === '#page=features') { document.body.classList.add('tab'); return show('features'); }
   show(lastView && (VIEWS[lastView] || lastView.startsWith('feature:')) ? lastView : 'features');
 })();

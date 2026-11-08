@@ -10,6 +10,15 @@ ice --features               # spisak ugrađenih funkcija
 ice --feature video-sniffer off   # isključi funkciju s prekidačem (sn-downloader, video-sniffer, yt-multiselect)
 ```
 
+## Tema
+Bira se u Ice panelu (Ice postavke, Tema) ili komandom; primjenjuje se pri sljedećem pokretanju:
+```bash
+ice --theme auto       # prati sistem (svijetla/tamna)
+ice --theme light      # Ice svijetla
+ice --theme dark       # Ice tamna
+ice --theme chromium   # Chromiumova zadana (bez Ice teme)
+```
+
 ## Prenos iz Google Chromea (Ice mora biti zatvoren)
 ```bash
 ice --import-chrome                   # sve, uključujući lozinke

@@ -39,6 +39,7 @@ const BUILTINS = [
 ];
 
 function createBuiltins(configDir, dataDir) {
+  let lastInfo = [];
   const store = jsonStore(path.join(configDir, 'features.json'), { toggles: {} });
   store.data.toggles ||= {};
   const isEnabled = (b) => b.group === 'always' || store.data.toggles[b.key] !== false;
@@ -49,6 +50,24 @@ function createBuiltins(configDir, dataDir) {
     const rules = [];
     if (!m.key && KEYS[b.key]) rules.push({ id: 'stalni-id', sig: KEYS[b.key].id, manifest: (x) => { x.key = KEYS[b.key].key; } });
     if (b.ice || m.theme) return rules;
+    // Bez stranica dobrodošlice pri svakom pokretanju (vidi src/ice-shim.js)
+    const sw = m.background?.service_worker;
+    if (sw) {
+      rules.push({
+        id: 'bez-dobrodoslice', sig: 'shim-1',
+        manifest: (x, outDir) => {
+          const rel = x.background.service_worker.replace(/^\.\//, '');
+          const dir = path.posix.dirname(rel);
+          const entry = path.posix.join(dir === '.' ? '' : dir, 'ice-entry.js');
+          fs.copyFileSync(path.join(__dirname, 'ice-shim.js'), path.join(outDir, dir === '.' ? '' : dir, 'ice-shim.js'));
+          const orig = './' + path.posix.basename(rel);
+          fs.writeFileSync(path.join(outDir, entry), x.background.type === 'module'
+            ? `import './ice-shim.js';\nimport '${orig}';\n`
+            : `importScripts('ice-shim.js', '${path.posix.basename(rel)}');\n`);
+          x.background.service_worker = entry;
+        },
+      });
+    }
     const popup = ((m.action || m.browser_action || {}).default_popup || '').split('?')[0].replace(/^\.\//, '');
     const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
     const pages = [popup, options].filter(Boolean);
@@ -78,9 +97,15 @@ function createBuiltins(configDir, dataDir) {
       const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
       info.push({ key: b.key, name: b.name, group: b.group, ice: !!b.ice, id: key ? idFromKey(key) : null, popup: popup || null, options: options || null });
     }
-    // Tema: jedna od dvije
-    const t = theme === 'light' ? 'ice-features/ice-theme-light' : 'ice-features/ice-theme-dark';
-    if (fs.existsSync(path.join(ROOT, t, 'manifest.json'))) out.push(path.join(ROOT, t));
+    // Chromium učitava samo JEDNU temu preko komandne linije: light, dark ili none (Chromiumova zadana)
+    if (theme === 'light' || theme === 'dark') {
+      const d = `ice-features/ice-theme-${theme}`;
+      if (fs.existsSync(path.join(ROOT, d, 'manifest.json'))) {
+        out.push(path.join(ROOT, d));
+        info.push({ key: `ice-theme-${theme}`, name: `Ice tema (${theme === 'light' ? 'svijetla' : 'tamna'})`, group: 'theme', ice: true, id: KEYS[theme === 'light' ? 'ice-theme' : 'ice-theme-dark'].id });
+      }
+    }
+    lastInfo = info;
     // Ice panel se kopira u korisnički folder (program može biti instaliran kao .deb, samo za čitanje)
     // i dobija spisak funkcija (features.json)
     const sidebarSrc = path.join(ROOT, 'ice-features/ice-sidebar');
@@ -104,6 +129,7 @@ function createBuiltins(configDir, dataDir) {
       store.save();
     },
     dirs,
+    info: () => lastInfo,
   };
 }
 

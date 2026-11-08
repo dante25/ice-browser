@@ -52,7 +52,7 @@ function prepare(key, srcDir, userDataDir, log = () => {}, extra = []) {
     if (r.manifest) {
       const mf = path.join(outDir, 'manifest.json');
       const m = JSON.parse(fs.readFileSync(mf, 'utf8'));
-      r.manifest(m);
+      r.manifest(m, outDir);
       fs.writeFileSync(mf, JSON.stringify(m, null, 1));
       continue;
     }
