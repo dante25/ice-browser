@@ -39,7 +39,7 @@ defaults:
 env:
   ARCH: x86_64
   ICE_PL_DIR: core-build/.work/portablelinux
-  ICE_COMPILE_CHECK: ${{ inputs.compile_check == false && '0' || '1' }}
+  ICE_COMPILE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.compile_check == false) && '0' || '1' }}
 
 jobs:
   prep:

@@ -23,7 +23,6 @@ BUILTINS = {
         "permanent-progress-bar-for-youtube", "screenshot-youtube",
         "search-by-image", "tab-session-manager", "webmail-ad-blocker",
         "youtube-nonstop"]},
-    "ice-shield": "ice-features/ice-shield",
     "google-images-viewer": "ice-features/google-images-viewer",
 }
 

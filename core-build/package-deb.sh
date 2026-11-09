@@ -81,7 +81,6 @@ search-by-image:chrome-extensions
 tab-session-manager:chrome-extensions
 webmail-ad-blocker:chrome-extensions
 youtube-nonstop:chrome-extensions
-ice-shield:ice-features
 google-images-viewer:ice-features"
 
 # Expected IDs (README table), checked against each manifest "key".
@@ -100,7 +99,6 @@ search-by-image cnojnbdhbhnkbcieeekonklommdnndci
 tab-session-manager iaiomicjabeggjcfkbimgmglanimpnae
 webmail-ad-blocker cbhfdchmklhpcngcgjmpdbjakdggkkjp
 youtube-nonstop nlkaejimjacpillmajjnopmpbkbnocid
-ice-shield lbincgmkngjhncpmjjmghblelehjilfg
 google-images-viewer bblfilgjmibmjophkgpigfedganlieod"
 
 command -v dpkg-deb >/dev/null || die "dpkg-deb not found"
@@ -141,8 +139,8 @@ while IFS=: read -r dir parent; do
     diff -r "$ICE/$parent/$dir" "$O/resources/ice-builtins/$dir" >/dev/null \
         || { diff -r "$ICE/$parent/$dir" "$O/resources/ice-builtins/$dir" | head -20 >&2; die "copy of $parent/$dir differs from source"; }
 done <<< "$BUILTINS"
-[ "$(find "$O/resources/ice-builtins" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 17 ] \
-    || die "expected 17 dirs in resources/ice-builtins"
+[ "$(find "$O/resources/ice-builtins" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 16 ] \
+    || die "expected 16 dirs in resources/ice-builtins"
 while read -r dir id; do
     got="$(python3 -I - "$O/resources/ice-builtins/$dir/manifest.json" <<'PY'
 import base64, hashlib, re, sys
@@ -196,7 +194,30 @@ if bad:
     sys.exit(f"ice-builtins does not match {inc}")
 print(f"[ice-deb] ice-builtins matches compiled-in list ({len(want)} files)")
 PY
-log "17 built-in extensions copied and verified (diff -r, IDs, compiled-in SHA-256 list, 755/644)"
+log "16 built-in extensions copied and verified (diff -r, IDs, compiled-in SHA-256 list, 755/644)"
+
+# --- Add-ons (dodaci): normal extensions, unchanged, loaded from $INSTALL/dodaci by
+# patch ice-06. Updatable with a new .deb, no compiling. tests/ and README.md are not shipped.
+ADDONS="sn-downloader:own-extensions/Ultimate SN Downloader/extension
+video-sniffer:own-extensions/video-sniffer
+ice-shield:ice-features/ice-shield"
+for d in "$ICE"/dodaci/*/; do
+    [ -f "$d/manifest.json" ] || continue
+    ADDONS+=$'\n'"$(basename "$d"):dodaci/$(basename "$d")"
+done
+mkdir -p "$O/dodaci"
+while IFS=: read -r dir src; do
+    [ -f "$ICE/$src/manifest.json" ] || die "missing add-on source $src/manifest.json"
+    [ ! -e "$O/dodaci/$dir" ] || die "duplicate add-on name: $dir"
+    cp -a "$ICE/$src" "$O/dodaci/$dir"
+    rm -rf "$O/dodaci/$dir/tests" "$O/dodaci/$dir/README.md"
+    diff -r -x tests -x README.md "$ICE/$src" "$O/dodaci/$dir" >/dev/null \
+        || { diff -r -x tests -x README.md "$ICE/$src" "$O/dodaci/$dir" | head -20 >&2; die "copy of $src differs from source"; }
+done <<< "$ADDONS"
+find "$O/dodaci" -type d -exec chmod 755 {} +
+find "$O/dodaci" -type f -exec chmod 644 {} +
+[ -z "$(find "$O/dodaci" ! -type f ! -type d)" ] || die "symlinks/special files in dodaci"
+log "add-ons in dodaci/: $(ls "$O/dodaci" | tr '\n' ' ')"
 
 # --- Launcher (CHROME_WRAPPER must point into $INSTALL so Chrome finds xdg-settings/xdg-mime)
 cat > "$O/ice-browser" <<EOF
@@ -292,8 +313,14 @@ dpkg-deb --root-owner-group -Zxz -z6 --build "$P" "$FILE" >/dev/null
 listing="$(dpkg-deb -c "$FILE")"
 grep -qE "^-rwsr-xr-x root/root .* \./opt/ice-browser/chrome-sandbox$" <<< "$listing" \
     || die "chrome-sandbox is not root:root 4755 in the package"
-grep -q "\./opt/ice-browser/resources/ice-builtins/ice-shield/manifest.json$" <<< "$listing" \
+grep -q "\./opt/ice-browser/resources/ice-builtins/google-images-viewer/manifest.json$" <<< "$listing" \
     || die "built-ins missing from the package"
+for a in sn-downloader video-sniffer ice-shield; do
+    grep -q "\./opt/ice-browser/dodaci/$a/manifest.json$" <<< "$listing" || die "add-on $a missing from the package"
+done
+badperm="$(grep ' \./opt/ice-browser/dodaci/' <<< "$listing" \
+    | grep -vE '^(-rw-r--r--|drwxr-xr-x) root/root ' || true)"
+[ -z "$badperm" ] || die "wrong owner/mode in dodaci:"$'\n'"$(echo "$badperm" | head -10)"
 badperm="$(grep ' \./opt/ice-browser/resources/ice-builtins/' <<< "$listing" \
     | grep -vE '^(-rw-r--r--|drwxr-xr-x) root/root ' || true)"
 [ -z "$badperm" ] || die "wrong owner/mode in ice-builtins:"$'\n'"$(echo "$badperm" | head -10)"
