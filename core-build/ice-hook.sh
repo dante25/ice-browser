@@ -57,6 +57,8 @@ ice_apply_patches() {
         exit 1
     fi
 
+    local marker="${_src_dir}/.ice-patching.marker"
+    touch "${marker}"
     local p n=0
     for p in "${patches[@]}"; do
         n=$((n + 1))
@@ -64,7 +66,7 @@ ice_apply_patches() {
         if ! patch -p1 --forward --batch --no-backup-if-mismatch -d "${_src_dir}" -i "$p"; then
             echo "[ice] ERROR: patch $(basename "$p") did not apply cleanly (see FAILED hunks above)." >&2
             local rej
-            find "${_src_dir}" -name '*.rej' -newer "$p" -print 2>/dev/null | head -20 | while read -r rej; do
+            find "${_src_dir}" -name '*.rej' -newer "${marker}" -print 2>/dev/null | head -20 | while read -r rej; do
                 echo "----- ${rej#"${_src_dir}"/}" >&2
                 head -100 "$rej" >&2
             done
@@ -74,14 +76,33 @@ ice_apply_patches() {
     done
 
     # A hunk applied with fuzz is accepted by patch(1); a leftover .rej never is.
-    if find "${_src_dir}" -name '*.rej' -print -quit 2>/dev/null | grep -q .; then
-        echo "[ice] ERROR: .rej files found after applying Ice patches" >&2
-        find "${_src_dir}" -name '*.rej' -print | head -50 >&2
+    local rejects
+    rejects="$(find "${_src_dir}" -name '*.rej' -newer "${marker}" -print 2>/dev/null)"
+    if [ -n "${rejects}" ]; then
+        echo "[ice] ERROR: .rej files found after applying Ice patches:" >&2
+        echo "${rejects}" | head -50 >&2
         exit 1
     fi
+    rm -f "${marker}"
+
+    ice_install_builtins_inc
 
     echo "${digest}" > "${stamp}"
     echo "[ice] Applied ${#patches[@]} Ice patch(es)"
+}
+
+# chrome/browser/extensions/ice_builtins_files.inc (SHA-256 list of every built-in file,
+# compiled into ice_builtins.cc). core-build/build.sh generates it on the host with
+#   python3 core-build/gen-ice-builtins-files.py <repo root> <portablelinux>/ice/ice_builtins_files.inc
+# because the Ice repo (extension sources) is not mounted in the container; here it is
+# copied into the patched tree, before domain substitution and gn gen.
+ice_install_builtins_inc() {
+    local inc="${_root}/ice/ice_builtins_files.inc"
+    local dst="${_src_dir}/chrome/browser/extensions/ice_builtins_files.inc"
+    [ -s "${inc}" ] || { echo "[ice] ERROR: ${inc} missing (run core-build/build.sh setup)" >&2; exit 1; }
+    [ -d "$(dirname "${dst}")" ] || { echo "[ice] ERROR: $(dirname "${dst}") missing" >&2; exit 1; }
+    cp "${inc}" "${dst}"
+    echo "[ice] installed ice_builtins_files.inc ($(grep -c '^    {' "${dst}") files)"
 }
 
 # Prints "<new|mod> <path>" for every C++ source our patches add/modify, plus

@@ -97,6 +97,7 @@ install_hook() {
 
 sync_patches() {
     local -a patches
+    # Only core-build/patches/ice-*.patch (never core-build/patches-gui/).
     mapfile -t patches < <(find "$ICE/core-build/patches" -maxdepth 1 -type f -name 'ice-*.patch' 2>/dev/null | LC_ALL=C sort)
     if [ "${#patches[@]}" -eq 0 ] && [ "${ICE_ALLOW_NO_PATCHES:-0}" != 1 ]; then
         die "no core-build/patches/ice-*.patch found (set ICE_ALLOW_NO_PATCHES=1 to build without)"
@@ -111,6 +112,9 @@ sync_patches() {
     mkdir -p "$PL/ice/patches"
     cp "$ICE/core-build/ice-hook.sh" "$PL/ice/ice-hook.sh"
     [ "${#patches[@]}" -eq 0 ] || cp "${patches[@]}" "$PL/ice/patches/"
+    python3 "$ICE/core-build/gen-ice-builtins-files.py" "$ICE" "$PL/ice/ice_builtins_files.inc" \
+        || die "gen-ice-builtins-files.py failed"
+    log "generated ice_builtins_files.inc ($(grep -c '^    {' "$PL/ice/ice_builtins_files.inc") files)"
     {
         printf 'ICE_COMPILE_CHECK=%q\n' "${ICE_COMPILE_CHECK:-1}"
         printf 'ICE_COMPILE_CHECK_TIMEOUT=%q\n' "${ICE_COMPILE_CHECK_TIMEOUT:-9000}"
