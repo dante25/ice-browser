@@ -8,6 +8,16 @@
 name: Ice core build
 
 on:
+  # workflow_dispatch only works once the file is on the default branch; until
+  # then a push to core-build that touches the build starts it.
+  push:
+    branches: [core-build]
+    paths:
+      - ".github/workflows/core-build.yml"
+      - ".github/actions/ice-core-build/**"
+      - "core-build/patches/**"
+      - "core-build/*.sh"
+      - "core-build/*.py"
   workflow_dispatch:
     inputs:
       compile_check:
@@ -17,6 +27,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ice-core-build
+  cancel-in-progress: true
 
 defaults:
   run:
