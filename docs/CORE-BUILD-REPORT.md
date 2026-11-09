@@ -104,3 +104,10 @@ Utjecaj na konkretne ekstenzije iz repoa (iz njihovih manifesta/koda):
 - **D. Postojeći pristup (`--load-extension`) ali bez ijedne izmjene manifesta i bez `ice-shim.js`**, samo da se provjeri da li su upravo te izmjene kvarile Video Sniffer i SN Downloader. Ne ispunjava cilj "ugrađeno", ali je brz test hipoteze.
 
 Za sve varijante sa kompajliranjem treba jača mašina (tačka 3).
+
+## Odluke korisnika (2026-11-09)
+
+- U jezgru browsera idu **sve ekstenzije osim** Ultimate SN Downloader i Video Sniffer.
+- **SN Downloader i Video Sniffer ostaju odvojeni** od jezgre, kao obične ekstenzije. Razlog: sajtovi se često mijenjaju, pa ih je lakše popravljati i dopunjavati bez novog kompajliranja browsera.
+- Posljedica: otpada prepreka "nema `key`" (tačka 4.1). Sve ekstenzije koje idu u jezgru već imaju `key` u manifestu, pa ostaju isti ID-jevi.
+- Ostaje otvoreno: pristup A ili B za ugrađene ekstenzije i gdje ide build (GitHub Actions ili korisnikova mašina).
