@@ -10,3 +10,7 @@ build passes, move them to `core-build/patches/` (one push = one new build).
 Already promoted to patches/: ice-06 (add-ons from <install>/dodaci), ice-07
 (Ice Shield out of the core, shipped as add-on), ice-08 (indexed DNR rulesets
 of read-only add-ons in the user data dir).
+- ice-20-sidebar-rail.patch: GUI step 2+3 (minimal): always-visible left icon rail
+  (`chrome/browser/ui/views/ice/`) in normal windows with app menu (hamburger), bookmarks,
+  history, downloads, "Funkcije" overlay panel (placeholder), settings and the avatar;
+  the toolbar's ⋮ and avatar buttons are hidden. See docs/gui/SIDEBAR-DESIGN.md.
