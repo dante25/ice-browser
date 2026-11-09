@@ -1,5 +1,6 @@
-// #danger|<adresa>  ili  #https|<adresa>
-const [kind, enc] = location.hash.slice(1).split('|');
+// #danger|<adresa>[|<izvor>|<prijetnja>]  ili  #https|<adresa>
+// izvor: lists (javne liste) ili google (Google Safe Browsing)
+const [kind, enc, source = '', threat = ''] = location.hash.slice(1).split('|');
 const url = decodeURIComponent(enc || '');
 let host = '';
 try { host = new URL(url).hostname; } catch { /* neispravna adresa */ }
@@ -22,6 +23,24 @@ document.getElementById('text').textContent = t.body;
 document.getElementById('go').textContent = t.go;
 document.getElementById('host').textContent = host;
 document.title = `${t.title}: ${host}`;
+
+const THREAT = {
+  URL_PHISHING: 'krađa podataka (phishing / socijalni inženjering)',
+  URL_MALWARE: 'zlonamjerni softver (malware)',
+  URL_UNWANTED: 'neželjeni softver',
+};
+const src = document.getElementById('source');
+if (kind === 'danger' && source === 'google') {
+  src.append(`Izvor: Google Safe Browsing${THREAT[threat] ? ` (${THREAT[threat]})` : ''}. Savjet pruža Google (`);
+  const a = document.createElement('a');
+  a.href = 'https://developers.google.com/safe-browsing/v4/advisory';
+  a.target = '_blank';
+  a.rel = 'noreferrer';
+  a.textContent = 'Advisory provided by Google';
+  src.append(a, ').');
+} else if (kind === 'danger' && source === 'lists') {
+  src.textContent = 'Izvor: javne liste opasnih stranica (Phishing Database, OpenPhish, URLhaus, HaGeZi TIF).';
+}
 
 document.getElementById('back').onclick = () => chrome.tabs.update({ url: 'chrome://newtab/' });
 document.getElementById('go').onclick = async () => {
