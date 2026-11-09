@@ -16,10 +16,7 @@ Napomena: ne može se reproducirati u cloud okruženju (nema GPU).
 - Dvije GPU: NVIDIA (0x10de:0x24dd) + Intel UHD (TGL GT1); Chrome crta na Intelu (render node D1). Optimus.
 - Ganesh GL, hardverska rasterizacija, Graphite isključen, tile mode One-copy.
 - GPU crash count 0, nema izgubljenog konteksta; u logu samo "Frame latency is negative" (viz display.cc).
-- Hipoteza (NEPROVJERENA): Wayland + hibridna grafika + mirovanje -> tile se ne obnove.
-- Ice .deb koristi sistemski Mesa (ne Flatpak runtime) -> možda bug uopšte neće imati.
-## Test sa prvim .deb-om (korisnik, na svojoj mašini)
-1. `ice-browser` (podrazumijevano) — ostaviti ComfyUI tab da miruje, gledati kutije.
-2. `ice-browser --ozone-platform=x11` — isto.
-Ako (2) rješava a (1) ne: ugraditi X11 kao podrazumijevano u launcher.
-Ako oba imaju bug: sljedeći kandidati su GPU rasterizacija i izbor GPU (NVIDIA umjesto Intela).
+- ~~Hipoteza Wayland + hibridna grafika~~ ODBAČENA: korisnik javlja da se isto dešava i na Windowsu.
+- Dakle: uzrok je u Chromium motoru (ili u interakciji s ComfyUI canvasom), ne u OS/drajveru. Ice ga nasljeđuje.
+- Otvorena pitanja korisniku: (1) samo ComfyUI/RunningHub ili i druge canvas stranice? (2) tab cijelo vrijeme prednji ili pozadinski/minimiziran?
+- Sljedeći korak: proučiti Chromium 156 izvor (canvas 2D GPU resursi/hibernacija, tile discard, memorijska politika) i napraviti zakrpu.
