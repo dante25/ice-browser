@@ -18,3 +18,8 @@ s istim ugrađenim funkcijama i dodacima kao desktop Ice.
 - Kod ugrađenih funkcija, dodataka i Ice Shielda (JavaScript) — isti.
 - Zakrpe jezgre (ice-01..08) — uglavnom, uz provjeru.
 - GUI — NE: Android interfejs je Java, piše se poseban dizajn za mali ekran.
+
+## Dizajn-ljuska za telefon (odluka korisnika)
+Prije rada na aplikaciji napraviti HTML ljusku (okvir veličine telefona, iste teme/boje kao desktop)
+da se vidi kako raspored izgleda na displeju: sidebar/funkcije (traka ili panel preko ekrana),
+hamburger meni, avatar, tabovi, kartice funkcija na dodir. Radi se u GUI fazi.
