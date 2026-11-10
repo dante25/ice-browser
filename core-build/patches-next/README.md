@@ -14,3 +14,6 @@ of read-only add-ons in the user data dir).
   (`chrome/browser/ui/views/ice/`) in normal windows with app menu (hamburger), bookmarks,
   history, downloads, "Funkcije" overlay panel (placeholder), settings and the avatar;
   the toolbar's ⋮ and avatar buttons are hidden. See docs/gui/SIDEBAR-DESIGN.md.
+- ice-11-builtins-hidden-no-welcome: Ice built-ins never appear in the toolbar or the
+  extensions (puzzle) menu (reached from the Ice panel instead); on first install / version
+  change a built-in's tabs.create and options pages are suppressed for 2 minutes (no welcome tabs).
