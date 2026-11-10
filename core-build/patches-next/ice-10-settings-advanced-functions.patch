@@ -81,21 +81,21 @@
 +      pref-key="ice.addons.sn_downloader_enabled"
 +      label="$i18n{iceAdvancedSnDownloaderLabel}"
 +      sub-label="$i18n{iceAdvancedSnDownloaderSubLabel}"
-+      @settings-boolean-control-change="${this.onToggleChange_}">
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
 +  </settings-toggle-button>
 +  <div class="hr"></div>
 +  <settings-toggle-button id="videoSniffer"
 +      pref-key="ice.addons.video_sniffer_enabled"
 +      label="$i18n{iceAdvancedVideoSnifferLabel}"
 +      sub-label="$i18n{iceAdvancedVideoSnifferSubLabel}"
-+      @settings-boolean-control-change="${this.onToggleChange_}">
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
 +  </settings-toggle-button>
 +  <div class="hr"></div>
 +  <settings-toggle-button id="multiselectYoutube"
 +      pref-key="ice.builtins.multiselect_youtube_enabled"
 +      label="$i18n{iceAdvancedMultiselectLabel}"
 +      sub-label="$i18n{iceAdvancedMultiselectSubLabel}"
-+      @settings-boolean-control-change="${this.onToggleChange_}">
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
 +  </settings-toggle-button>
 +  <div class="cr-row">
 +    <div id="restartNote" class="flex cr-padded-text cr-secondary-text">
@@ -170,7 +170,7 @@
 +
 +  protected accessor showRestartButton_: boolean = false;
 +
-+  protected onToggleChange_() {
++  protected onSettingsBooleanControlChange_() {
 +    // Any change made by the user only takes effect after a restart.
 +    this.showRestartButton_ = true;
 +  }

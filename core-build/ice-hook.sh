@@ -195,7 +195,7 @@ ice_compile_check() {
     local timeout_s="${ICE_COMPILE_CHECK_TIMEOUT:-9000}"
     echo "[ice] compile check: building ${#targets[@]} object(s) (timeout ${timeout_s}s)"
     local rc=0
-    timeout -k 2m -s INT "${timeout_s}" ninja -C out/Default "${targets[@]}" || rc=$?
+    timeout -k 2m -s INT "${timeout_s}" ninja -k 0 -C out/Default "${targets[@]}" || rc=$?
     if [ "$rc" -eq 124 ]; then
         echo "[ice] WARNING: compile check timed out after ${timeout_s}s (generated-header dependencies not finished); the full build will report errors instead"
         return 0
