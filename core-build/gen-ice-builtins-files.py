@@ -24,6 +24,7 @@ BUILTINS = {
         "search-by-image", "tab-session-manager", "webmail-ad-blocker",
         "youtube-nonstop"]},
     "google-images-viewer": "ice-features/google-images-viewer",
+    "ice-newtab": "ice-features/ice-newtab",
 }
 
 

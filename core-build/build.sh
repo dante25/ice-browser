@@ -116,6 +116,10 @@ sync_patches() {
     mkdir -p "$PL/ice/patches"
     cp "$ICE/core-build/ice-hook.sh" "$PL/ice/ice-hook.sh"
     [ "${#patches[@]}" -eq 0 ] || cp "${patches[@]}" "$PL/ice/patches/"
+    # Binary branding (logos) + "Chromium" -> "Ice" string script, applied by the hook.
+    cp -r "$ICE/core-build/branding" "$PL/ice/branding"
+    cp "$ICE/core-build/ice-rebrand.py" "$PL/ice/ice-rebrand.py"
+    log "branding: $(find "$PL/ice/branding" -type f | wc -l) file(s)"
     python3 "$ICE/core-build/gen-ice-builtins-files.py" "$ICE" "$PL/ice/ice_builtins_files.inc" \
         || die "gen-ice-builtins-files.py failed"
     log "generated ice_builtins_files.inc ($(grep -c '^    {' "$PL/ice/ice_builtins_files.inc") files)"

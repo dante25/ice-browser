@@ -16,7 +16,7 @@ const ctx = await chromium.launchPersistentContext(fs.mkdtempSync(path.join(os.t
 await new Promise(r => setTimeout(r, 15000));
 const workers = ctx.serviceWorkers().map(w => new URL(w.url()).host);
 const pages = ctx.pages().map(p => p.url());
-const withSw = ids.filter(b => !['screenshot-youtube', 'youtube-nonstop', 'google-images-viewer', 'ice-shield'].includes(b.dir));
+const withSw = ids.filter(b => !['screenshot-youtube', 'youtube-nonstop', 'google-images-viewer', 'ice-newtab', 'ice-shield'].includes(b.dir));
 for (const b of withSw) ok(workers.includes(b.id), `ugrađena funkcija radi: ${b.dir}`);
 const addonDirs = fs.readdirSync(path.join(root, 'opt/ice-browser/dodaci'));
 ok(workers.length >= withSw.length + addonDirs.length, `dodaci rade (${addonDirs.join(', ')}); ukupno servis-workera: ${workers.length}`);

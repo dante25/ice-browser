@@ -36,7 +36,7 @@ ice_apply_patches() {
     local -a patches
     mapfile -t patches < <(ice_patch_files)
     local digest
-    digest="$( { [ "${#patches[@]}" -eq 0 ] || cat "${patches[@]}"; } | sha256sum | cut -d' ' -f1)"
+    digest="$( { [ "${#patches[@]}" -eq 0 ] || cat "${patches[@]}"; ice_branding_digest; } | sha256sum | cut -d' ' -f1)"
 
     if [ -f "${stamp}" ]; then
         if [ "$(cat "${stamp}")" = "${digest}" ]; then
@@ -86,6 +86,8 @@ ice_apply_patches() {
     rm -f "${marker}"
 
     ice_install_builtins_inc
+    ice_install_branding
+    ice_rebrand_strings
 
     echo "${digest}" > "${stamp}"
     echo "[ice] Applied ${#patches[@]} Ice patch(es)"
@@ -103,6 +105,36 @@ ice_install_builtins_inc() {
     [ -d "$(dirname "${dst}")" ] || { echo "[ice] ERROR: $(dirname "${dst}") missing" >&2; exit 1; }
     cp "${inc}" "${dst}"
     echo "[ice] installed ice_builtins_files.inc ($(grep -c '^    {' "${dst}") files)"
+}
+
+# Branding inputs, part of the "already patched" digest.
+ice_branding_digest() {
+    local d="${_root}/ice/branding"
+    [ ! -d "$d" ] || (cd "$d" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0r sha256sum)
+    [ ! -f "${_root}/ice/ice-rebrand.py" ] || sha256sum < "${_root}/ice/ice-rebrand.py"
+}
+
+# Binary branding (Ice logos) can't go in a text patch: core-build/build.sh copies
+# core-build/branding/ (same relative paths as under src/) to <portablelinux>/ice/branding,
+# copied here over the patched tree. Only existing files are replaced.
+ice_install_branding() {
+    local d="${_root}/ice/branding"
+    [ -d "$d" ] || { echo "[ice] ERROR: $d missing (run core-build/build.sh setup)" >&2; exit 1; }
+    local f n=0
+    while IFS= read -r -d '' f; do
+        f="${f#./}"
+        [ -f "${_src_dir}/${f}" ] || { echo "[ice] ERROR: branding file has no original in src/: ${f}" >&2; exit 1; }
+        cp "$d/$f" "${_src_dir}/${f}"
+        n=$((n + 1))
+    done < <(cd "$d" && find . -type f -print0)
+    echo "[ice] installed ${n} branding file(s)"
+}
+
+# "Chromium" -> "Ice" in the UI strings (English + translations), see core-build/ice-rebrand.py.
+ice_rebrand_strings() {
+    local py="${_root}/ice/ice-rebrand.py"
+    [ -f "${py}" ] || { echo "[ice] ERROR: ${py} missing (run core-build/build.sh setup)" >&2; exit 1; }
+    python3 -I "${py}" "${_src_dir}" || { echo "[ice] ERROR: ice-rebrand.py failed" >&2; exit 1; }
 }
 
 # Prints "<new|mod> <path>" for every C++ source our patches add/modify, plus

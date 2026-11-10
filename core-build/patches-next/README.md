@@ -17,3 +17,14 @@ of read-only add-ons in the user data dir).
 - ice-11-builtins-hidden-no-welcome: Ice built-ins never appear in the toolbar or the
   extensions (puzzle) menu (reached from the Ice panel instead); on first install / version
   change a built-in's tabs.create and options pages are suppressed for 2 minutes (no welcome tabs).
+- ice-30-ice-theme.patch: Ice default browser colors, light + dark (follows the system),
+  from docs/gui/tema-*.png: new `chrome/browser/ui/color/ice_color_mixer.cc` (frame, tabs,
+  toolbar/rail, omnibox pill, separators), added before the native/custom-theme mixers and
+  only when there is no theme / user color / GTK-Qt theme, so themes still override it.
+  The Linux `kSystemTheme` pref now defaults to "Classic" (Ice colors) instead of GTK/Qt.
+- ice-32-newtab-builtin.patch: `ice-features/ice-newtab` (Ice new tab page) as built-in
+  hchkphbcnnbhopaimgcgfkgjejephmcn.
+- Branding (no patch): `core-build/branding/**` (Ice product_logo PNGs, same paths as
+  under src/) is copied over the tree and `core-build/ice-rebrand.py` renames "Chromium"
+  to "Ice" in chromium_strings.grd / components_chromium_strings.grd + all .xtb
+  translations (moved to the new message IDs). Both run in ice-hook.sh after the patches.

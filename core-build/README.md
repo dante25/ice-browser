@@ -21,7 +21,7 @@ Custom ungoogled-chromium 156.0.8078.79-1 build with Ice's built-in features as
     hide-labels-and-end-cards-on-youtube, multiselect-for-youtube,
     permanent-progress-bar-for-youtube, screenshot-youtube, search-by-image,
     tab-session-manager, webmail-ad-blocker, youtube-nonstop  -> chrome-extensions/<dir>
-  - ice-shield, google-images-viewer -> ice-features/<dir>
+  - ice-shield, google-images-viewer, ice-newtab -> ice-features/<dir>
 - NOT built in (stay separate, normal extensions): Ultimate SN Downloader, Video Sniffer.
 - Pref with on/off switch (only one): `ice.builtins.multiselect_youtube_enabled`
   (bool, profile pref, default true, applied after restart).
@@ -52,6 +52,7 @@ Custom ungoogled-chromium 156.0.8078.79-1 build with Ice's built-in features as
 | nlkaejimjacpillmajjnopmpbkbnocid | youtube-nonstop | yes |
 | lbincgmkngjhncpmjjmghblelehjilfg | ice-shield | no |
 | bblfilgjmibmjophkgpigfedganlieod | google-images-viewer | no |
+| hchkphbcnnbhopaimgcgfkgjejephmcn | ice-newtab | no |
 
 ## Patches (core-build/patches/, applied in order after ungoogled patches)
 

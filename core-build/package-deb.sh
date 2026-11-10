@@ -81,7 +81,8 @@ search-by-image:chrome-extensions
 tab-session-manager:chrome-extensions
 webmail-ad-blocker:chrome-extensions
 youtube-nonstop:chrome-extensions
-google-images-viewer:ice-features"
+google-images-viewer:ice-features
+ice-newtab:ice-features"
 
 # Expected IDs (README table), checked against each manifest "key".
 EXPECTED_IDS="adblock-for-youtube cmedhionkhpnakcndndgjdbohmhepckk
@@ -99,7 +100,8 @@ search-by-image cnojnbdhbhnkbcieeekonklommdnndci
 tab-session-manager iaiomicjabeggjcfkbimgmglanimpnae
 webmail-ad-blocker cbhfdchmklhpcngcgjmpdbjakdggkkjp
 youtube-nonstop nlkaejimjacpillmajjnopmpbkbnocid
-google-images-viewer bblfilgjmibmjophkgpigfedganlieod"
+google-images-viewer bblfilgjmibmjophkgpigfedganlieod
+ice-newtab hchkphbcnnbhopaimgcgfkgjejephmcn"
 
 command -v dpkg-deb >/dev/null || die "dpkg-deb not found"
 command -v python3 >/dev/null || die "python3 not found"
@@ -139,8 +141,8 @@ while IFS=: read -r dir parent; do
     diff -r "$ICE/$parent/$dir" "$O/resources/ice-builtins/$dir" >/dev/null \
         || { diff -r "$ICE/$parent/$dir" "$O/resources/ice-builtins/$dir" | head -20 >&2; die "copy of $parent/$dir differs from source"; }
 done <<< "$BUILTINS"
-[ "$(find "$O/resources/ice-builtins" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 16 ] \
-    || die "expected 16 dirs in resources/ice-builtins"
+[ "$(find "$O/resources/ice-builtins" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 17 ] \
+    || die "expected 17 dirs in resources/ice-builtins"
 while read -r dir id; do
     got="$(python3 -I - "$O/resources/ice-builtins/$dir/manifest.json" <<'PY'
 import base64, hashlib, re, sys
@@ -194,7 +196,7 @@ if bad:
     sys.exit(f"ice-builtins does not match {inc}")
 print(f"[ice-deb] ice-builtins matches compiled-in list ({len(want)} files)")
 PY
-log "16 built-in extensions copied and verified (diff -r, IDs, compiled-in SHA-256 list, 755/644)"
+log "17 built-in extensions copied and verified (diff -r, IDs, compiled-in SHA-256 list, 755/644)"
 
 # --- Add-ons (dodaci): normal extensions, unchanged, loaded from $INSTALL/dodaci by
 # patch ice-06. Updatable with a new .deb, no compiling. tests/ and README.md are not shipped.
