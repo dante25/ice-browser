@@ -10,14 +10,11 @@ name: Ice core build
 on:
   # workflow_dispatch only works once the file is on the default branch; until
   # then a push to core-build that touches the build starts it.
+  # Full build (~10h) only when core-build/RELEASE is changed (bumped on purpose).
   push:
     branches: [core-build]
     paths:
-      - ".github/workflows/core-build.yml"
-      - ".github/actions/ice-core-build/**"
-      - "core-build/patches/**"
-      - "core-build/*.sh"
-      - "core-build/*.py"
+      - "core-build/RELEASE"
   workflow_dispatch:
     inputs:
       compile_check:
