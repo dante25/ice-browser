@@ -149,6 +149,12 @@ ice_compile_check() {
     if [ "$missing" -ne 0 ]; then
         exit 1
     fi
+    # Extra ninja targets (e.g. WebUI type checks), space separated.
+    local t
+    for t in ${ICE_CHECK_TARGETS:-}; do
+        targets+=("$t")
+        echo "[ice] compile check: target $t"
+    done
     if [ "${#targets[@]}" -eq 0 ]; then
         echo "[ice] compile check: no C++ sources touched by Ice patches"
         return 0

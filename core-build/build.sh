@@ -98,7 +98,11 @@ install_hook() {
 sync_patches() {
     local -a patches
     # Only core-build/patches/ice-*.patch (never core-build/patches-gui/).
-    mapfile -t patches < <(find "$ICE/core-build/patches" -maxdepth 1 -type f -name 'ice-*.patch' 2>/dev/null | LC_ALL=C sort)
+    # ICE_WITH_NEXT=1 also takes core-build/patches-next/ (used by the quick check workflow).
+    local -a dirs=("$ICE/core-build/patches")
+    [ "${ICE_WITH_NEXT:-0}" = 1 ] && dirs+=("$ICE/core-build/patches-next")
+    mapfile -t patches < <(find "${dirs[@]}" -maxdepth 1 -type f -name 'ice-*.patch' 2>/dev/null \
+        | awk -F/ '{print $NF"\t"$0}' | LC_ALL=C sort | cut -f2-)
     if [ "${#patches[@]}" -eq 0 ] && [ "${ICE_ALLOW_NO_PATCHES:-0}" != 1 ]; then
         die "no core-build/patches/ice-*.patch found (set ICE_ALLOW_NO_PATCHES=1 to build without)"
     fi
@@ -118,6 +122,7 @@ sync_patches() {
     {
         printf 'ICE_COMPILE_CHECK=%q\n' "${ICE_COMPILE_CHECK:-1}"
         printf 'ICE_COMPILE_CHECK_TIMEOUT=%q\n' "${ICE_COMPILE_CHECK_TIMEOUT:-9000}"
+        printf 'ICE_CHECK_TARGETS=%q\n' "${ICE_CHECK_TARGETS:-}"
         printf 'ICE_ALLOW_NO_PATCHES=%q\n' "${ICE_ALLOW_NO_PATCHES:-0}"
     } > "$PL/ice/env.sh"
     log "Ice patches (applied in this order after ungoogled + portablelinux patches):"
