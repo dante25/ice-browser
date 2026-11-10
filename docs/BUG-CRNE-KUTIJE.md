@@ -20,3 +20,15 @@ Napomena: ne može se reproducirati u cloud okruženju (nema GPU).
 - Dakle: uzrok je u Chromium motoru (ili u interakciji s ComfyUI canvasom), ne u OS/drajveru. Ice ga nasljeđuje.
 - Otvorena pitanja korisniku: (1) samo ComfyUI/RunningHub ili i druge canvas stranice? (2) tab cijelo vrijeme prednji ili pozadinski/minimiziran?
 - Sljedeći korak: proučiti Chromium 156 izvor (canvas 2D GPU resursi/hibernacija, tile discard, memorijska politika) i napraviti zakrpu.
+
+## Nalaz u izvornom kodu Chromium 156 (2026-11-10)
+Platno (canvas 2D) gubi/oslobađa svoju GPU memoriju kad stranica postane skrivena
+(npr. prozor prekriven drugim prozorima ili minimiziran dok se čeka), i to kroz tri mehanizma:
+- `kCanvas2DHibernation` (third_party/blink/common/features.cc) — snimak platna i oslobađanje GPU memorije;
+- `kClearCanvasResourcesInBackground`, `kEvictionUnlocksResources` (cc/base/features.cc) — compositor
+  odbacuje teksturu platna u pozadini (cc/layers/texture_layer_impl.cc MayEvictResourceInBackground).
+U Chromiumu 156 su sva tri **podrazumijevano ISKLJUČENA**. Google ih u Chromeu uključuje daljinski
+(Finch "field trials") — to objašnjava zašto se bug pojavio "prije par mjeseci", i na Windowsu i na Linuxu.
+ungoogled-chromium / Ice nema Finch (`disable_fieldtrial_testing_config=true`, nema servera za varijacije),
+pa ti mehanizmi u Iceu ostaju isključeni. Provjera kod korisnika: ComfyUI tab u Iceu ostaviti da miruje
+(prozor u pozadini) i gledati da li se kutije pojavljuju.
