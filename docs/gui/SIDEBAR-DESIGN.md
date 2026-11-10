@@ -71,3 +71,26 @@ fokusa) ne otvara ga ponovo (zaštita 300 ms). Sadržaj je zasad samo naslov "Fu
   strane — desno od njega.
 - Minimalna širina prozora (`GetMinimumSize`) ne uračunava traku.
 - Panel ne mijenja visinu ako se prozor promijeni dok je otvoren.
+
+## Ice panel (patch `ice-21-ice-panel`)
+
+Panel više nije placeholder: `IceOverlayPanel` drži `views::WebView` sa stranicom
+**chrome://ice-panel** (`chrome/browser/ui/webui/ice/ice_panel_ui.{h,cc}`,
+`IcePanelUIConfig` u `chrome_web_ui_configs.cc`). HTML/CSS/JS su ugrađeni kao C++ raw
+stringovi (`ice_panel_resources.h`, generiše `docs/gui/ice-panel/gen-resources.py` iz
+`docs/gui/ice-panel/panel.{html,css,js}`) i služe se preko `SetRequestFilter` — bez grit-a.
+CSP: `script-src 'self'`, `style-src 'self'`, `img-src 'self' data:`, Trusted Types ostaju.
+
+- **Funkcije** → `#features`, **hamburger** → `#menu` (Alt+F i dalje otvara Chromiumov app meni).
+  WebContents panela se čuva dok je panel zatvoren (brzo ponovno otvaranje, stranica osvježava
+  stanje na `visibilitychange`).
+- `IcePanelHandler` (chrome.send, samo za dokument chrome://ice-panel): `getState`, `setPref`
+  (3 prekidača; "restart pending" se računa u odnosu na vrijednost pri prvoj promjeni),
+  `storageGet`/`storageSet` (`extensions::StorageFrontend`, local/sync, samo Ice ekstenzije;
+  ekstenzija dobija `chrome.storage.onChanged`), `openPopup` (popup ekstenzije u panelu, nativna
+  traka "‹ Nazad"), `openOptions`, `runCommand` (IDC_* preko `chrome::ExecuteCommand`, `restart` →
+  `chrome::AttemptRestart`), `close`.
+- Escape: neobrađeni tasteri iz stranice idu na akceleratore bubble-a
+  (`UnhandledKeyboardEventHandler`); `window.close()` iz popupa zatvara panel.
+
+Snimci: `panel-funkcije-{light,dark}.png`, `panel-meni-{light,dark}.png` (Playwright, 300×700, mock).

@@ -1,0 +1,1917 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -3541,6 +3541,9 @@
+       "views/ice/ice_overlay_panel.h",
+       "views/ice/ice_rail_view.cc",
+       "views/ice/ice_rail_view.h",
++      "webui/ice/ice_panel_resources.h",
++      "webui/ice/ice_panel_ui.cc",
++      "webui/ice/ice_panel_ui.h",
+     ]
+ 
+     sources += get_target_outputs(":webui_name_variants")
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -104,6 +104,7 @@
+ #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_ui.h"
+ #include "chrome/browser/ui/webui/feedback/feedback_ui.h"
+ #include "chrome/browser/ui/webui/history/history_ui.h"
++#include "chrome/browser/ui/webui/ice/ice_panel_ui.h"
+ #include "chrome/browser/ui/webui/infobar_internals/infobar_internals_ui.h"
+ #include "chrome/browser/ui/webui/inspect/inspect_ui.h"
+ #if BUILDFLAG(ENABLE_SESSION_SERVICE)
+@@ -370,6 +371,8 @@
+   map.AddWebUIConfig(std::make_unique<FeedbackUIConfig>());
+   map.AddWebUIConfig(std::make_unique<HistoryUIConfig>());
+   map.AddWebUIConfig(std::make_unique<HistorySidePanelUIConfig>());
++  // Ice: the sidebar panel page (chrome://ice-panel).
++  map.AddWebUIConfig(std::make_unique<ice::IcePanelUIConfig>());
+   map.AddWebUIConfig(std::make_unique<HistoryClustersSidePanelUIConfig>());
+   map.AddWebUIConfig(std::make_unique<InfobarInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<InspectUIConfig>());
+--- a/chrome/browser/ui/views/ice/ice_overlay_panel.cc
++++ b/chrome/browser/ui/views/ice/ice_overlay_panel.cc
+@@ -12,30 +12,43 @@
+ #include "base/functional/bind.h"
+ #include "base/location.h"
+ #include "base/task/single_thread_task_runner.h"
++#include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "components/input/native_web_keyboard_event.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/url_constants.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
++#include "ui/base/page_transition_types.h"
+ #include "ui/gfx/geometry/insets.h"
+ #include "ui/gfx/geometry/size.h"
+-#include "ui/gfx/text_constants.h"
+ #include "ui/views/bubble/bubble_border.h"
+ #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+-#include "ui/views/controls/label.h"
++#include "ui/views/controls/button/label_button.h"
++#include "ui/views/controls/webview/webview.h"
+ #include "ui/views/layout/box_layout.h"
+-#include "ui/views/style/typography.h"
+ #include "ui/views/view.h"
++#include "url/gurl.h"
+ 
+ namespace ice {
+ 
+ namespace {
+ 
+-// Inner padding of the panel.
+-constexpr int kPanelMargin = 16;
+-
+ // A toggle this soon after the panel closed itself is treated as the press
+ // that closed it (see IceOverlayPanel::Toggle()).
+ constexpr base::TimeDelta kReopenGuard = base::Milliseconds(300);
+ 
+-// TODO(ice): localize; the feature cards come in a later patch.
+-constexpr char16_t kPanelTitle[] = u"Funkcije";
++// TODO(ice): localize.
++constexpr char16_t kPanelTitle[] = u"Ice";
++constexpr char16_t kBackLabel[] = u"‹ Nazad";
++
++GURL GetPanelUrl(IceOverlayPanel::Mode mode) {
++  return GURL(std::string(kChromeUIIcePanelURL) +
++              (mode == IceOverlayPanel::Mode::kMenu ? "#menu" : "#features"));
++}
+ 
+ }  // namespace
+ 
+@@ -44,41 +57,60 @@
+   Bubble(const Bubble&) = delete;
+   Bubble& operator=(const Bubble&) = delete;
+   ~Bubble() {
+-    // The widget must be destroyed before its delegate.
++    // Views are owned by the widget; forget them before it goes away. The
++    // widget must be destroyed before its delegate.
++    back_bar = nullptr;
++    web_view = nullptr;
+     widget.reset();
+     delegate.reset();
+   }
+ 
+   std::unique_ptr<views::BubbleDialogDelegate> delegate;
+   std::unique_ptr<views::Widget> widget;
++  raw_ptr<views::View> back_bar = nullptr;
++  raw_ptr<views::WebView> web_view = nullptr;
+ };
+ 
+-IceOverlayPanel::IceOverlayPanel(views::View* anchor_view)
+-    : anchor_view_(anchor_view) {}
++IceOverlayPanel::IceOverlayPanel(views::View* anchor_view, Browser* browser)
++    : anchor_view_(anchor_view), browser_(browser) {}
+ 
+-IceOverlayPanel::~IceOverlayPanel() = default;
++IceOverlayPanel::~IceOverlayPanel() {
++  // The bubble's WebView shows `web_contents_`: destroy it first.
++  bubble_.reset();
++  Observe(nullptr);
++  web_contents_.reset();
++}
+ 
+ bool IceOverlayPanel::IsShowing() const {
+   return !!bubble_;
+ }
+ 
+-void IceOverlayPanel::Toggle() {
++void IceOverlayPanel::Toggle(Mode mode) {
+   if (IsShowing()) {
+-    Close();
++    if (mode_ == mode) {
++      Close();
++    } else {
++      Show(mode);
++    }
+     return;
+   }
+-  if (!last_closed_time_.is_null() &&
++  if (!last_closed_time_.is_null() && last_closed_mode_ == mode &&
+       base::TimeTicks::Now() - last_closed_time_ < kReopenGuard) {
+     return;
+   }
+-  Show();
++  Show(mode);
+ }
+ 
+-void IceOverlayPanel::Show() {
+-  if (IsShowing() || !anchor_view_->GetWidget() ||
+-      !anchor_view_->IsDrawn()) {
++void IceOverlayPanel::Show(Mode mode) {
++  mode_ = mode;
++  if (IsShowing()) {
++    LoadPanelPage(mode);
+     return;
+   }
++  if (!anchor_view_->GetWidget() || !anchor_view_->IsDrawn()) {
++    return;
++  }
++  content::WebContents* web_contents = GetOrCreateWebContents();
+ 
+   auto bubble = std::make_unique<Bubble>();
+   // LEFT_TOP: the panel is placed to the right of the anchor (the rail), with
+@@ -90,29 +122,42 @@
+   delegate->SetShowTitle(false);
+   delegate->SetShowCloseButton(false);
+   delegate->SetAccessibleTitle(std::u16string(kPanelTitle));
+-  delegate->set_margins(gfx::Insets(kPanelMargin));
++  delegate->set_margins(gfx::Insets());
+   delegate->set_close_on_deactivate(true);
+ 
+-  // Placeholder content: title only. Sized so that the visible panel is
+-  // kPanelWidth wide and as tall as the rail.
++  // Content: an optional "Nazad" bar (only while an extension's own page is
++  // shown) above the WebView. kPanelWidth wide and as tall as the rail.
+   auto contents = std::make_unique<views::View>();
+   auto* layout = contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
+       views::BoxLayout::Orientation::kVertical));
+   layout->set_cross_axis_alignment(
+       views::BoxLayout::CrossAxisAlignment::kStretch);
+-  auto* title = contents->AddChildView(std::make_unique<views::Label>(
+-      std::u16string(kPanelTitle), views::style::CONTEXT_DIALOG_TITLE));
+-  title->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++
++  auto back_bar = std::make_unique<views::View>();
++  back_bar->SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(4, 8)));
++  back_bar->AddChildView(std::make_unique<views::LabelButton>(
++      base::BindRepeating(&IceOverlayPanel::GoBackToPanelPage,
++                          base::Unretained(this)),
++      kBackLabel));
++  bubble->back_bar = contents->AddChildView(std::move(back_bar));
++
++  auto web_view = std::make_unique<views::WebView>(browser_->GetProfile());
++  web_view->SetWebContents(web_contents);
++  bubble->web_view = contents->AddChildView(std::move(web_view));
++  layout->SetFlexForView(bubble->web_view, 1);
++
+   contents->SetPreferredSize(
+-      gfx::Size(kPanelWidth - 2 * kPanelMargin,
+-                std::max(anchor_view_->height() - 2 * kPanelMargin,
+-                         title->GetPreferredSize().height())));
++      gfx::Size(kPanelWidth, std::max(anchor_view_->height(), 200)));
++  delegate->SetInitiallyFocusedView(bubble->web_view);
+   delegate->SetContentsView(std::move(contents));
+ 
+   bubble->widget = views::BubbleDialogDelegate::CreateBubble(
+       delegate, base::BindOnce(&IceOverlayPanel::OnBubbleClosing,
+                                weak_factory_.GetWeakPtr()));
+   bubble_ = std::move(bubble);
++  LoadPanelPage(mode);
++  UpdateBackBar();
+   bubble_->widget->Show();
+ }
+ 
+@@ -122,15 +167,114 @@
+   }
+ }
+ 
++BrowserWindowInterface* IceOverlayPanel::GetPanelBrowser() {
++  return browser_;
++}
++
++void IceOverlayPanel::RunPanelCommand(int command_id, bool keep_open) {
++  if (!keep_open) {
++    Close();
++  }
++  chrome::ExecuteCommand(browser_, command_id);
++}
++
++void IceOverlayPanel::ShowPageInPanel(const GURL& url) {
++  if (!web_contents_) {
++    return;
++  }
++  content::NavigationController::LoadURLParams params(url);
++  params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
++  web_contents_->GetController().LoadURLWithParams(params);
++}
++
++void IceOverlayPanel::ClosePanel() {
++  Close();
++}
++
++bool IceOverlayPanel::HandleKeyboardEvent(
++    content::WebContents* source,
++    const input::NativeWebKeyboardEvent& event) {
++  // Lets Escape (and other accelerators of the bubble) work while the page
++  // has focus.
++  if (!bubble_ || !bubble_->widget) {
++    return false;
++  }
++  return unhandled_keyboard_event_handler_.HandleKeyboardEvent(
++      event, bubble_->widget->GetFocusManager());
++}
++
++void IceOverlayPanel::CloseContents(content::WebContents* source) {
++  // window.close() from an extension popup shown in the panel.
++  Close();
++}
++
++void IceOverlayPanel::DidFinishNavigation(
++    content::NavigationHandle* navigation_handle) {
++  UpdateBackBar();
++}
++
++content::WebContents* IceOverlayPanel::GetOrCreateWebContents() {
++  if (!web_contents_) {
++    web_contents_ = content::WebContents::Create(
++        content::WebContents::CreateParams(browser_->GetProfile()));
++    web_contents_->SetDelegate(this);
++    Observe(web_contents_.get());
++    IcePanelHost::CreateForWebContents(web_contents_.get(), this);
++    // Extension pages (popups shown in the panel) need the extension frame
++    // host for their chrome.* APIs, as in a tab.
++    extensions::ChromeExtensionWebContentsObserver::CreateForWebContents(
++        web_contents_.get());
++  }
++  return web_contents_.get();
++}
++
++void IceOverlayPanel::LoadPanelPage(Mode mode) {
++  content::WebContents* web_contents = GetOrCreateWebContents();
++  const GURL url = GetPanelUrl(mode);
++  if (web_contents->GetLastCommittedURL() == url) {
++    return;
++  }
++  // Only the fragment differs while chrome://ice-panel is shown: that is a
++  // same-document navigation and the page switches mode on "hashchange".
++  content::NavigationController::LoadURLParams params(url);
++  params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
++  web_contents->GetController().LoadURLWithParams(params);
++}
++
++bool IceOverlayPanel::IsShowingPanelPage() const {
++  if (!web_contents_) {
++    return true;
++  }
++  const GURL& url = web_contents_->GetLastCommittedURL();
++  return url.is_empty() || (url.SchemeIs(content::kChromeUIScheme) &&
++                            url.host() == kChromeUIIcePanelHost);
++}
++
++void IceOverlayPanel::GoBackToPanelPage() {
++  LoadPanelPage(mode_);
++}
++
++void IceOverlayPanel::UpdateBackBar() {
++  if (bubble_ && bubble_->back_bar) {
++    bubble_->back_bar->SetVisible(!IsShowingPanelPage());
++  }
++}
++
+ void IceOverlayPanel::OnBubbleClosing(views::Widget::ClosedReason reason) {
+   last_closed_time_ = base::TimeTicks::Now();
++  last_closed_mode_ = mode_;
+   if (!bubble_) {
+     return;
+   }
+-  // This can run from inside the widget's own event/activation handling, so
+-  // hide now and delete (widget, then delegate) on a fresh stack. Hiding must
+-  // not trigger a second (deactivation) close.
++  // This can run from inside the widget's own event/activation handling (or
++  // from a message of the panel page itself), so hide now and delete
++  // (widget, then delegate) on a fresh stack. Hiding must not trigger a
++  // second (deactivation) close. The WebContents is kept for the next Show()
++  // and detached now, so a new bubble can attach it right away.
+   bubble_->delegate->set_close_on_deactivate(false);
++  if (bubble_->web_view) {
++    bubble_->web_view->SetWebContents(nullptr);
++  }
+   bubble_->widget->Hide();
+   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
+       FROM_HERE, std::move(bubble_));
+--- a/chrome/browser/ui/views/ice/ice_overlay_panel.h
++++ b/chrome/browser/ui/views/ice/ice_overlay_panel.h
+@@ -10,52 +10,102 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
++#include "chrome/browser/ui/webui/ice/ice_panel_ui.h"
++#include "content/public/browser/web_contents_delegate.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+ #include "ui/views/widget/widget.h"
+ 
++class Browser;
++class GURL;
++
++namespace content {
++class WebContents;
++}  // namespace content
++
+ namespace views {
+ class View;
+ }  // namespace views
+ 
+ namespace ice {
+ 
+-// The Ice sidebar panel ("Funkcije"). It is a bubble widget anchored to the
+-// Ice rail and opens to the right of it, on top of the web contents: the page
+-// is never resized or moved. It closes on Escape, when it loses activation
+-// (click anywhere outside it) or when Toggle() is called while it is shown.
++// The Ice sidebar panel. It is a bubble widget anchored to the Ice rail and
++// opens to the right of it, on top of the web contents: the page is never
++// resized or moved. It closes on Escape, when it loses activation (click
++// anywhere outside it) or when Toggle() is called again for the shown mode.
+ //
+-// Content is a placeholder (title only) for now.
+-class IceOverlayPanel {
++// Content: a views::WebView showing chrome://ice-panel/#features ("Funkcije")
++// or chrome://ice-panel/#menu (the main menu). The panel's WebContents is kept
++// while the panel is closed, so reopening is instant. An extension's own popup
++// page can be shown in the panel too (IcePanelHost::Delegate::
++// ShowPageInPanel()); a native "Nazad" bar then leads back to the Ice page.
++class IceOverlayPanel : public IcePanelHost::Delegate,
++                        public content::WebContentsDelegate,
++                        public content::WebContentsObserver {
+  public:
+   static constexpr int kPanelWidth = 300;
+ 
+-  // `anchor_view` (the rail) must outlive this object.
+-  explicit IceOverlayPanel(views::View* anchor_view);
++  enum class Mode { kFeatures, kMenu };
++
++  // `anchor_view` (the rail) and `browser` must outlive this object.
++  IceOverlayPanel(views::View* anchor_view, Browser* browser);
+   IceOverlayPanel(const IceOverlayPanel&) = delete;
+   IceOverlayPanel& operator=(const IceOverlayPanel&) = delete;
+-  ~IceOverlayPanel();
++  ~IceOverlayPanel() override;
+ 
+   bool IsShowing() const;
+ 
+-  // Shows the panel if it is hidden, closes it if it is shown. A toggle that
+-  // arrives right after the panel closed itself (because the same mouse press
+-  // took activation away from it) only closes and does not reopen it.
+-  void Toggle();
++  // Shows the panel in `mode` if it is hidden or shows another mode, closes
++  // it if it is shown in `mode`. A toggle that arrives right after the panel
++  // closed itself in the same mode (because the same mouse press took
++  // activation away from it) only closes and does not reopen it.
++  void Toggle(Mode mode);
+ 
+-  void Show();
++  void Show(Mode mode);
+   void Close();
+ 
++  // IcePanelHost::Delegate:
++  BrowserWindowInterface* GetPanelBrowser() override;
++  void RunPanelCommand(int command_id, bool keep_open) override;
++  void ShowPageInPanel(const GURL& url) override;
++  void ClosePanel() override;
++
++  // content::WebContentsDelegate:
++  bool HandleKeyboardEvent(content::WebContents* source,
++                           const input::NativeWebKeyboardEvent& event) override;
++  void CloseContents(content::WebContents* source) override;
++
++  // content::WebContentsObserver:
++  void DidFinishNavigation(
++      content::NavigationHandle* navigation_handle) override;
++
+  private:
+   // The bubble delegate and its (client owned) widget. The delegate must
+   // outlive the widget; both are deleted together.
+   struct Bubble;
+ 
++  // Creates the panel's WebContents on first use.
++  content::WebContents* GetOrCreateWebContents();
++  void LoadPanelPage(Mode mode);
++  bool IsShowingPanelPage() const;
++  void GoBackToPanelPage();
++  void UpdateBackBar();
++
+   // Called synchronously whenever the bubble widget is asked to close
+   // (Escape, deactivation, Close()).
+   void OnBubbleClosing(views::Widget::ClosedReason reason);
+ 
+   const raw_ptr<views::View> anchor_view_;
++  const raw_ptr<Browser> browser_;
++  Mode mode_ = Mode::kFeatures;
+   std::unique_ptr<Bubble> bubble_;
+   base::TimeTicks last_closed_time_;
++  Mode last_closed_mode_ = Mode::kFeatures;
++  views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
++
++  // Must be declared last among the members the WebContents can call into:
++  // it is destroyed first.
++  std::unique_ptr<content::WebContents> web_contents_;
+ 
+   base::WeakPtrFactory<IceOverlayPanel> weak_factory_{this};
+ };
+--- a/chrome/browser/ui/views/ice/ice_rail_view.cc
++++ b/chrome/browser/ui/views/ice/ice_rail_view.cc
+@@ -29,6 +29,7 @@
+ #include "ui/views/background.h"
+ #include "ui/views/border.h"
+ #include "ui/views/controls/button/button_controller.h"
++#include "ui/views/controls/button/menu_button_controller.h"
+ #include "ui/views/layout/box_layout.h"
+ #include "ui/views/vector_icons.h"
+ 
+@@ -40,14 +41,20 @@
+ constexpr int kRailVerticalPadding = 8;
+ constexpr int kRailButtonSpacing = 4;
+ 
+-// The browser's app menu (the same menu as the toolbar's three-dot button),
+-// shown with a hamburger icon and anchored to the rail.
++// The hamburger button. A click opens the Ice panel in menu mode
++// (chrome://ice-panel/#menu, `on_press`). It still is the browser's app menu
++// control (the same menu as the toolbar's three-dot button), so Alt+F/Alt+E
++// (BrowserView::ShowAppMenu() -> ShowMenu()) open Chromium's app menu,
++// anchored to the rail.
+ class IceRailAppMenuButton : public BrowserAppMenuButton {
+   METADATA_HEADER(IceRailAppMenuButton, BrowserAppMenuButton)
+ 
+  public:
+-  explicit IceRailAppMenuButton(ToolbarView* toolbar_view)
+-      : BrowserAppMenuButton(toolbar_view) {}
++  IceRailAppMenuButton(ToolbarView* toolbar_view,
++                       views::Button::PressedCallback on_press)
++      : BrowserAppMenuButton(toolbar_view) {
++    menu_button_controller()->SetCallback(std::move(on_press));
++  }
+   IceRailAppMenuButton(const IceRailAppMenuButton&) = delete;
+   IceRailAppMenuButton& operator=(const IceRailAppMenuButton&) = delete;
+   ~IceRailAppMenuButton() override = default;
+@@ -80,9 +87,12 @@
+   layout->set_cross_axis_alignment(
+       views::BoxLayout::CrossAxisAlignment::kCenter);
+ 
+-  // 1. Hamburger: Chromium's app menu.
+-  auto app_menu =
+-      std::make_unique<IceRailAppMenuButton>(browser_view_->toolbar());
++  // 1. Hamburger: the Ice panel in menu mode (Alt+F: Chromium's app menu).
++  // The menu button controller notifies on press, like "Funkcije" below.
++  auto app_menu = std::make_unique<IceRailAppMenuButton>(
++      browser_view_->toolbar(),
++      base::BindRepeating(&IceRailView::TogglePanel, base::Unretained(this),
++                          IceOverlayPanel::Mode::kMenu));
+   app_menu->GetViewAccessibility().SetName(
+       l10n_util::GetStringUTF16(IDS_ACCNAME_APP));
+   app_menu->SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP));
+@@ -98,7 +108,8 @@
+   // 5. "Funkcije": the Ice overlay panel. Notifies on press so a press that
+   // also deactivates (and so closes) an open panel does not reopen it.
+   auto features_button = std::make_unique<ToolbarButton>(base::BindRepeating(
+-      &IceRailView::ToggleFeaturesPanel, base::Unretained(this)));
++      &IceRailView::TogglePanel, base::Unretained(this),
++      IceOverlayPanel::Mode::kFeatures));
+   features_button->SetVectorIcon(vector_icons::kChromeExtensionIcon);
+   features_button->SetTooltipText(u"Funkcije");
+   features_button->GetViewAccessibility().SetName(u"Funkcije");
+@@ -120,7 +131,8 @@
+         std::make_unique<AvatarToolbarButton>(browser_view_->browser()));
+   }
+ 
+-  panel_ = std::make_unique<IceOverlayPanel>(this);
++  panel_ =
++      std::make_unique<IceOverlayPanel>(this, browser_view_->browser());
+ }
+ 
+ IceRailView::~IceRailView() = default;
+@@ -168,8 +180,8 @@
+   chrome::ExecuteCommand(browser_view_->browser(), command_id);
+ }
+ 
+-void IceRailView::ToggleFeaturesPanel() {
+-  panel_->Toggle();
++void IceRailView::TogglePanel(IceOverlayPanel::Mode mode) {
++  panel_->Toggle(mode);
+ }
+ 
+ BEGIN_METADATA(IceRailView)
+--- a/chrome/browser/ui/views/ice/ice_rail_view.h
++++ b/chrome/browser/ui/views/ice/ice_rail_view.h
+@@ -9,6 +9,7 @@
+ #include <string>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/ui/views/ice/ice_overlay_panel.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/views/view.h"
+@@ -23,14 +24,12 @@
+ 
+ namespace ice {
+ 
+-class IceOverlayPanel;
+-
+ // The Ice sidebar rail: a narrow, always-visible column of icon buttons on the
+ // leading edge of every normal browser window, below the toolbar and next to
+ // the web contents (laid out by BrowserViewTabbedLayoutImpl, hidden in
+-// fullscreen). Top to bottom: app menu (hamburger), bookmarks, history,
+-// downloads, "Funkcije" (overlay panel), settings; the profile avatar is at
+-// the bottom.
++// fullscreen). Top to bottom: hamburger (Ice panel in menu mode), bookmarks,
++// history, downloads, "Funkcije" (Ice panel), settings; the profile avatar is
++// at the bottom.
+ class IceRailView : public views::View {
+   METADATA_HEADER(IceRailView, views::View)
+ 
+@@ -53,7 +52,7 @@
+                         const std::u16string& name,
+                         int command_id);
+   void ExecuteBrowserCommand(int command_id);
+-  void ToggleFeaturesPanel();
++  void TogglePanel(IceOverlayPanel::Mode mode);
+ 
+   const raw_ptr<BrowserView> browser_view_;
+   raw_ptr<AppMenuButton> app_menu_button_ = nullptr;
+--- /dev/null
++++ b/chrome/browser/ui/webui/ice/ice_panel_resources.h
+@@ -0,0 +1,643 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// The chrome://ice-panel page (HTML/CSS/JS), compiled in so no grit/grd or
++// build_webui step is needed. Generated from the sources kept in the Ice repo
++// (docs/gui/ice-panel/); edit those and regenerate.
++
++#ifndef CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_RESOURCES_H_
++#define CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_RESOURCES_H_
++
++namespace ice {
++
++inline constexpr char kIcePanelHtml[] = R"ICE(<!doctype html>
++<html lang="bs">
++<head>
++<meta charset="utf-8">
++<meta name="color-scheme" content="light dark">
++<title>Ice</title>
++<link rel="stylesheet" href="panel.css">
++<script src="panel.js" defer></script>
++</head>
++<body>
++<header id="head">
++  <h1 id="title">Funkcije</h1>
++</header>
++<main id="view-features" hidden>
++  <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 1 0 3.7 10.7l4.8 4.8 1.4-1.4-4.8-4.8A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg><input id="search" type="search" placeholder="Traži funkciju" aria-label="Traži funkciju" autocomplete="off"></div>
++  <div id="list"></div>
++  <p id="empty" hidden>Nema funkcija za „<span id="empty-q"></span>“.</p>
++</main>
++<main id="view-menu" hidden></main>
++</body>
++</html>
++)ICE";
++
++inline constexpr char kIcePanelCss[] = R"ICE(:root {
++  --bg: #d1f7ff;
++  --field: #e3fdff;
++  --surface: #f4feff;
++  --border: #c8e5e9;
++  --text: #0b3a4a;
++  --muted: #587d8d;
++  --accent: #94f7ff;
++  --accent-strong: #49e8ff;
++  --on-accent: #0b3a4a;
++  --hover: rgba(11, 58, 74, .07);
++  --track: #b8e0e9;
++  --icon-bg: #ffffff;
++  --danger: #c0392b;
++  color-scheme: light;
++}
++@media (prefers-color-scheme: dark) {
++  :root {
++    --bg: #383838;
++    --field: #2c2c2c;
++    --surface: #333333;
++    --border: #474747;
++    --text: #f2f2f2;
++    --muted: #9eb0b0;
++    --hover: rgba(255, 255, 255, .07);
++    --track: #494949;
++    --icon-bg: #2c2c2c;
++    --danger: #ff8a7a;
++    color-scheme: dark;
++  }
++}
++* { box-sizing: border-box; }
++html, body { margin: 0; }
++html { background: var(--bg); overflow-x: hidden; }
++body {
++  background: var(--bg);
++  color: var(--text);
++  font: 13px/1.35 Ubuntu, "Segoe UI", system-ui, sans-serif;
++  padding: 0 14px 16px;
++  user-select: none;
++}
++[hidden] { display: none !important; }
++button, input, select { font: inherit; color: inherit; }
++button { cursor: pointer; }
++:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
++
++h1 { font-size: 15px; font-weight: 700; margin: 0; padding: 18px 4px 12px; }
++
++.search {
++  display: flex; align-items: center; gap: 6px;
++  background: var(--field); border-radius: 17px; height: 34px; padding: 0 12px;
++  margin-bottom: 6px;
++}
++.search svg { width: 14px; height: 14px; fill: var(--muted); flex: none; }
++.search input {
++  border: 0; background: none; outline: none; flex: 1; min-width: 0; height: 100%;
++}
++.search input::placeholder { color: var(--muted); }
++
++.section {
++  font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
++  color: var(--muted); margin: 18px 6px 6px;
++}
++.row {
++  display: flex; align-items: center; gap: 10px;
++  min-height: 40px; padding: 6px 8px; margin: 6px 0; border-radius: 10px;
++  width: 100%; border: 0; background: none; text-align: left;
++}
++button.row:hover { background: var(--hover); }
++.row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++.ico {
++  width: 22px; height: 22px; border-radius: 6px; flex: none;
++  background: var(--icon-bg); display: grid; place-items: center; overflow: hidden;
++}
++.ico img { width: 16px; height: 16px; }
++.ico svg { width: 14px; height: 14px; fill: var(--muted); }
++
++.card.open > .row { background: var(--accent); color: var(--on-accent); }
++.card.open > .row .chev { transform: rotate(90deg); fill: var(--on-accent); }
++.chev { width: 14px; height: 14px; fill: var(--muted); flex: none; transition: transform .15s; }
++.body {
++  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
++  padding: 12px; margin: 8px 0 10px;
++}
++.body h3 { font-size: 13px; margin: 0 0 8px; }
++.body > * + .group, .body > .group + * { margin-top: 12px; }
++.body .note { color: var(--muted); margin: 0; font-size: 12px; }
++.chips { display: flex; flex-wrap: wrap; gap: 6px; }
++.chip {
++  border: 1px solid var(--border); background: var(--field); border-radius: 6px;
++  padding: 4px 10px;
++}
++.chip:hover { border-color: var(--accent-strong); }
++.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
++
++.opt { display: flex; align-items: center; gap: 10px; min-height: 30px; }
++.opt .name { flex: 1; }
++.opt input[type="color"] {
++  width: 36px; height: 24px; border: 1px solid var(--border); border-radius: 6px;
++  background: var(--field); padding: 1px; cursor: pointer;
++}
++.stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
++.stats b { text-align: right; }
++
++/* Switch */
++.switch { position: relative; width: 34px; height: 20px; flex: none; }
++.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
++.switch span {
++  position: absolute; inset: 0; border-radius: 10px; background: var(--track);
++  transition: background .15s; pointer-events: none;
++}
++.switch span::after {
++  content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
++  border-radius: 50%; background: #fff; transition: transform .15s;
++  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
++}
++.switch input:checked + span { background: var(--accent-strong); }
++.switch input:checked + span::after { transform: translateX(14px); }
++.switch input:focus-visible + span { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
++
++.restart {
++  display: flex; align-items: center; gap: 8px; margin: 2px 8px 0;
++  color: var(--muted); font-size: 12px;
++}
++.restart span { flex: 1; }
++.btn {
++  border: 1px solid var(--border); background: var(--field); border-radius: 8px;
++  padding: 5px 12px;
++}
++.btn:hover { border-color: var(--accent-strong); }
++.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
++.actions { display: flex; gap: 6px; margin-top: 12px; }
++.body > .actions:first-child { margin-top: 0; }
++
++#empty { color: var(--muted); text-align: center; margin-top: 24px; }
++
++/* Menu mode */
++.menu-item { min-height: 36px; margin: 2px 0; }
++.menu-item svg { width: 18px; height: 18px; fill: currentColor; flex: none; opacity: .85; }
++.menu-item .key { color: var(--muted); font-size: 11px; }
++.zoom { display: flex; align-items: center; gap: 4px; }
++.zoom .btn { padding: 3px 10px; min-width: 32px; }
++.sep { height: 1px; background: var(--border); margin: 10px 6px; }
++.menu-item.danger { color: var(--danger); }
++)ICE";
++
++inline constexpr char kIcePanelJs[] = R"ICE('use strict';
++// chrome://ice-panel — Ice sidebar panel ("Funkcije" + glavni meni).
++// Talks to IcePanelHandler (C++) via chrome.send; replies come back through
++// cr.webUIResponse (WebUIMessageHandler::ResolveJavascriptCallback).
++
++const pending = new Map();
++let nextId = 0;
++window.cr = window.cr || {};
++window.cr.webUIResponse = (id, ok, value) => {
++  const p = pending.get(id);
++  if (!p) return;
++  pending.delete(id);
++  ok ? p.resolve(value) : p.reject(value);
++};
++window.cr.webUIListenerCallback = () => {};
++
++function call(name, ...args) {
++  const id = name + '_' + (++nextId);
++  return new Promise((resolve, reject) => {
++    pending.set(id, {resolve, reject});
++    chrome.send(name, [id, ...args]);
++  });
++}
++const send = (name, ...args) => chrome.send(name, args);
++
++// ---------------------------------------------------------------- DOM helpers
++function el(tag, props, ...kids) {
++  const e = document.createElement(tag);
++  for (const [k, v] of Object.entries(props || {})) {
++    if (v === undefined || v === null || v === false) continue;
++    if (k === 'class') e.className = v;
++    else if (k === 'text') e.textContent = v;
++    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
++    else e.setAttribute(k, v === true ? '' : v);
++  }
++  for (const k of kids.flat()) if (k) e.append(k);
++  return e;
++}
++const SVGNS = 'http://www.w3.org/2000/svg';
++function svg(d, cls) {
++  const s = document.createElementNS(SVGNS, 'svg');
++  s.setAttribute('viewBox', '0 0 24 24');
++  s.setAttribute('aria-hidden', 'true');
++  if (cls) s.setAttribute('class', cls);
++  const p = document.createElementNS(SVGNS, 'path');
++  p.setAttribute('d', d);
++  s.append(p);
++  return s;
++}
++
++const I = {
++  chev: 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
++  puzzle: 'M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.7 2.7 0 0 1 0 5.4H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.7 2.7 0 0 1 5.4 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z',
++  newTab: 'M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V5h14v14zm-8-2h2v-4h4v-2h-4V7h-2v4H7v2h4z',
++  newWindow: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 4v10h16V8H4z',
++  incognito: 'M17.06 13c-1.86 0-3.42 1.33-3.82 3.1-.95-.41-1.82-.3-2.48-.01C10.35 14.31 8.79 13 6.94 13 4.77 13 3 14.79 3 17s1.77 4 3.94 4c2.06 0 3.74-1.62 3.9-3.68.34-.24 1.23-.69 2.32.02.18 2.05 1.84 3.66 3.9 3.66 2.17 0 3.94-1.79 3.94-4s-1.77-4-3.94-4zM6.94 19.86c-1.56 0-2.81-1.28-2.81-2.86s1.26-2.86 2.81-2.86 2.81 1.28 2.81 2.86-1.25 2.86-2.81 2.86zm10.12 0c-1.56 0-2.81-1.28-2.81-2.86s1.25-2.86 2.81-2.86 2.82 1.28 2.82 2.86-1.27 2.86-2.82 2.86zM22 10.5H2V12h20v-1.5zm-6.47-7.87c-.22-.49-.78-.75-1.31-.58L12 2.79l-2.23-.74c-.53-.15-1.09.13-1.29.64L6 9h12l-2.44-6.32z',
++  history: 'M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
++  downloads: 'M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z',
++  bookmarks: 'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
++  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z',
++  print: 'M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-1-9H6v4h12V3z',
++  find: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
++  zoom: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM10 7H9v2H7v1h2v2h1v-2h2V9h-2z',
++  fullscreen: 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z',
++  devtools: 'M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z',
++  taskManager: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
++  about: 'M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z',
++  exit: 'M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z',
++  restart: 'M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
++};
++
++// ------------------------------------------------------- feature definitions
++// Ice controls write straight into each extension's own chrome.storage, with
++// exactly the keys/values that extension's code reads (see its popup/options).
++const GROUPS = ['YouTube', 'Stranice', 'Tabovi i oznake', 'Sigurnost', 'Preuzimanja', 'Ostalo'];
++const ON_OFF_STR = {on: 'true', off: 'false', def: 'true'};
++const SPEC = {
++  'default-quality-adjuster-for-youtube': {
++    group: 'YouTube', short: 'Default Quality Adjuster',
++    controls: [
++      {type: 'chips', label: 'Zadani kvalitet', area: 'sync', key: 'preferences',
++       field: 'quality', def: {quality: 'hd720', isEnabled: true},
++       options: [['large', '480p'], ['hd720', '720p'], ['hd1080', '1080p'],
++                 ['hd1440', '1440p'], ['hd2160', '4K'], ['highres', '8K']]},
++      {type: 'toggle', label: 'Uključeno', area: 'sync', key: 'preferences',
++       field: 'isEnabled', def: {quality: 'hd720', isEnabled: true}},
++    ]},
++  'youtube-nonstop': {
++    group: 'YouTube',
++    controls: [{type: 'note', text: 'Automatski potvrđuje „Video je pauziran. Nastaviti gledanje?“. Nema postavki.'}]},
++  'adblock-for-youtube': {group: 'YouTube'},
++  'hide-labels-and-end-cards-on-youtube': {
++    group: 'YouTube', short: 'Hide Labels and End Cards',
++    controls: [
++      {type: 'toggle', label: 'Uključeno', area: 'sync', key: 'HIDE_YT_CARDS:run', ...ON_OFF_STR},
++      {type: 'toggle', label: 'Sakrij kartice na kraju videa', area: 'sync', key: 'HIDE_YT_CARDS:hideCards', ...ON_OFF_STR},
++      {type: 'toggle', label: 'Sakrij dugme za pretplatu (logo)', area: 'sync', key: 'HIDE_YT_CARDS:hideSubscribe', ...ON_OFF_STR},
++      {type: 'toggle', label: 'Sakrij oznake (labels)', area: 'sync', key: 'HIDE_YT_CARDS:hideLabels', ...ON_OFF_STR},
++      {type: 'toggle', label: 'I u videima na drugim stranicama', area: 'sync', key: 'HIDE_YT_CARDS:externalWebsites', ...ON_OFF_STR},
++    ]},
++  'permanent-progress-bar-for-youtube': {
++    group: 'YouTube', short: 'Permanent Progress Bar',
++    controls: [
++      {type: 'toggle', label: 'Stalna traka napretka', area: 'local', key: 'top', def: true},
++      {type: 'toggle', label: 'I u ugrađenim videima', area: 'local', key: 'embed', def: true},
++      {type: 'toggle', label: 'Privremeno sakrij traku', area: 'local', key: 'hide', def: false},
++      {type: 'chips', label: 'Debljina trake', area: 'local', key: 'height', def: 3,
++       options: [[2, '2 px'], [3, '3 px'], [4, '4 px'], [6, '6 px'], [8, '8 px']]},
++      {type: 'color', label: 'Boja trake', area: 'local', key: 'progress-color', def: '#ff0000'},
++    ]},
++  'screenshot-youtube': {
++    group: 'YouTube',
++    controls: [
++      {type: 'chips', label: 'Format slike', area: 'sync', key: 'screenshotFileFormat', def: 'png',
++       options: [['png', 'PNG'], ['jpeg', 'JPEG'], ['webp', 'WebP']]},
++      {type: 'chips', label: 'Snimak ekrana', area: 'sync', key: 'screenshotFunctionality', def: 0,
++       options: [[0, 'Sačuvaj'], [1, 'Kopiraj'], [2, 'Oboje']]},
++      {type: 'toggle', label: 'Tipka P pravi snimak', area: 'sync', key: 'screenshotKey', def: false},
++      {type: 'toggle', label: 'Dugmad za brzinu reprodukcije', area: 'sync', key: 'playbackSpeedButtons', def: false},
++    ]},
++  'multiselect-for-youtube': {group: 'YouTube'},
++  'enable-right-click-for-google-chrome': {
++    group: 'Stranice', short: 'Enable Right Click',
++    controls: [{type: 'note', text: 'Uključuje se klikom na ikonu ekstenzije na stranici koja blokira desni klik i kopiranje.'}]},
++  'hide-anything-element-hider-for-chrome': {group: 'Stranice', short: 'Hide Anything'},
++  'search-by-image': {group: 'Stranice'},
++  'google-images-viewer': {
++    group: 'Stranice', short: 'Pregled slika (Google)',
++    controls: [{type: 'note', text: 'Vraća dugme „Prikaži sliku“ na Google slikama. Uvijek uključeno, nema postavki.'}]},
++  'webmail-ad-blocker': {
++    group: 'Stranice',
++    controls: [
++      {type: 'host', label: 'Blokiraj reklame u Gmailu', area: 'local', key: 'disabledBlockingHosts', host: 'mail.google.com'},
++      {type: 'host', label: 'Blokiraj reklame u Outlooku', area: 'local', key: 'disabledBlockingHosts', host: 'outlook.live.com'},
++      {type: 'host', label: 'Blokiraj reklame u Yahoo Mailu', area: 'local', key: 'disabledBlockingHosts', host: 'mail.yahoo.com'},
++      {type: 'toggle', label: 'Yahoo: ukloni desnu kolonu', area: 'local', key: 'yahoo-remove-right-side', def: false},
++      {type: 'note', text: 'Promjena važi nakon ponovnog učitavanja pošte.'},
++    ]},
++  'go-back-with-backspace': {
++    group: 'Stranice',
++    controls: [
++      {type: 'toggle', label: 'Ne vraćaj se nazad u apletima (PDF, Flash, chat)', area: 'sync', key: 'disableInApplets', def: true},
++    ]},
++  'chrome-tab-counter': {
++    group: 'Tabovi i oznake', short: 'Tab Counter',
++    controls: [
++      {type: 'stats', area: 'local', json: true, items: [
++        ['tabsOpen', 'Otvoreni tabovi'], ['windowsOpen', 'Otvoreni prozori'],
++        ['tabsMax', 'Najviše odjednom'], ['tabsTotal', 'Ukupno otvoreno']]},
++      {type: 'color', label: 'Pozadina brojača', area: 'local', key: 'iconBgColor', def: '#FF0000', json: true, upper: true},
++      {type: 'color', label: 'Boja broja', area: 'local', key: 'iconTextColor', def: '#FFFFFF', json: true, upper: true},
++    ]},
++  'tab-session-manager': {group: 'Tabovi i oznake'},
++  'bookmarks-clean-up': {group: 'Tabovi i oznake'},
++  'ice-shield': {group: 'Sigurnost'},
++  'sn-downloader': {group: 'Preuzimanja'},
++  'video-sniffer': {group: 'Preuzimanja'},
++};
++
++// ------------------------------------------------------------------- storage
++function readValue(c, data) {
++  let v = data[c.key];
++  if (c.json && typeof v === 'string') {
++    try { v = JSON.parse(v); } catch (e) {}
++  }
++  if (c.field) {
++    const obj = (v && typeof v === 'object') ? v : c.def;
++    return c.field in obj ? obj[c.field] : c.def[c.field];
++  }
++  return v === undefined ? c.def : v;
++}
++async function writeValue(f, c, value, data) {
++  let v = value;
++  if (c.field) {
++    const cur = data[c.key];
++    v = Object.assign({}, c.def, (cur && typeof cur === 'object') ? cur : {}, {[c.field]: value});
++  }
++  if (c.json) v = JSON.stringify(v);
++  data[c.key] = v;
++  await call('storageSet', f.id, c.area, {[c.key]: v});
++}
++
++function toggle(checked, label, onChange) {
++  const input = el('input', {type: 'checkbox', role: 'switch', 'aria-label': label});
++  input.checked = !!checked;
++  input.addEventListener('change', () => onChange(input.checked, input));
++  return el('label', {class: 'switch'}, input, el('span'));
++}
++
++function renderControl(f, c, data) {
++  switch (c.type) {
++    case 'note':
++      return el('p', {class: 'note', text: c.text});
++    case 'toggle': {
++      const on = c.on !== undefined ? readValue(c, data) === c.on : !!readValue(c, data);
++      return el('div', {class: 'opt'}, el('span', {class: 'name', text: c.label}),
++          toggle(on, c.label, v => writeValue(f, c, c.on !== undefined ? (v ? c.on : c.off) : v, data)));
++    }
++    case 'host': {
++      const list = () => Array.isArray(data[c.key]) ? data[c.key] : [];
++      return el('div', {class: 'opt'}, el('span', {class: 'name', text: c.label}),
++          toggle(!list().includes(c.host), c.label, v => {
++            const next = list().filter(h => h !== c.host);
++            if (!v) next.push(c.host);
++            return writeValue(f, c, next, data);
++          }));
++    }
++    case 'chips': {
++      const cur = readValue(c, data);
++      const chips = el('div', {class: 'chips', role: 'group', 'aria-label': c.label});
++      for (const [value, text] of c.options) {
++        const b = el('button', {class: 'chip', text, 'aria-pressed': String(value === cur)});
++        b.addEventListener('click', async () => {
++          for (const o of chips.children) o.setAttribute('aria-pressed', String(o === b));
++          await writeValue(f, c, value, data);
++        });
++        chips.append(b);
++      }
++      return el('div', {class: 'group'}, el('h3', {text: c.label}), chips);
++    }
++    case 'color': {
++      const input = el('input', {type: 'color', 'aria-label': c.label});
++      input.value = String(readValue(c, data) || c.def).toLowerCase();
++      input.addEventListener('change', () =>
++          writeValue(f, c, c.upper ? input.value.toUpperCase() : input.value, data));
++      return el('div', {class: 'opt'}, el('span', {class: 'name', text: c.label}), input);
++    }
++    case 'stats': {
++      const g = el('div', {class: 'stats'});
++      for (const [key, label] of c.items) {
++        let v = data[key];
++        if (c.json && typeof v === 'string') { try { v = JSON.parse(v); } catch (e) {} }
++        g.append(el('span', {text: label}), el('b', {text: String(v ?? 0)}));
++      }
++      return el('div', {class: 'group'}, g);
++    }
++  }
++  return null;
++}
++
++async function loadData(f, controls) {
++  const areas = {};
++  for (const c of controls) {
++    if (!c.area) continue;
++    const keys = areas[c.area] || (areas[c.area] = new Set());
++    if (c.key) keys.add(c.key);
++    for (const [k] of c.items || []) keys.add(k);
++  }
++  const data = {};
++  for (const [area, keys] of Object.entries(areas)) {
++    const got = await call('storageGet', f.id, area, [...keys]);
++    // Same key in two areas does not happen in the specs above.
++    Object.assign(data, got || {});
++  }
++  return data;
++}
++
++// ------------------------------------------------------------- features view
++let state = null;
++const openCards = new Set();
++
++function displayName(f) {
++  const s = SPEC[f.dir] || {};
++  return s.short || f.name.replace(/[™®]/g, '').trim();
++}
++function iconBox(src, fallback) {
++  return el('span', {class: 'ico'},
++      src ? el('img', {src, alt: ''}) : svg(fallback || I.puzzle));
++}
++
++async function renderBody(f, body) {
++  const spec = SPEC[f.dir] || {};
++  const controls = spec.controls || [];
++  body.replaceChildren();
++  try {
++    const data = await loadData(f, controls);
++    for (const c of controls) {
++      const n = renderControl(f, c, data);
++      if (n) body.append(n);
++    }
++  } catch (e) {
++    body.append(el('p', {class: 'note', text: 'Postavke trenutno nisu dostupne.'}));
++  }
++  const actions = el('div', {class: 'actions'});
++  if (f.popup) actions.append(el('button', {class: 'btn' + (controls.length ? '' : ' primary'), text: 'Otvori',
++      onclick: () => send('openPopup', f.id)}));
++  if (f.options) actions.append(el('button', {class: 'btn', text: 'Postavke',
++      onclick: () => send('openOptions', f.id)}));
++  if (actions.children.length) body.append(actions);
++  if (!body.children.length) body.append(el('p', {class: 'note', text: 'Uvijek uključeno, nema postavki.'}));
++}
++
++function card(f) {
++  const body = el('div', {class: 'body', hidden: true});
++  const head = el('button', {class: 'row', 'aria-expanded': 'false'},
++      iconBox(f.icon), el('span', {class: 'name', text: displayName(f)}), svg(I.chev, 'chev'));
++  const wrap = el('div', {class: 'card', 'data-name': (displayName(f) + ' ' + f.name).toLowerCase()}, head, body);
++  const setOpen = open => {
++    wrap.classList.toggle('open', open);
++    head.setAttribute('aria-expanded', String(open));
++    body.hidden = !open;
++    open ? openCards.add(f.id) : openCards.delete(f.id);
++    if (open) renderBody(f, body);
++  };
++  head.addEventListener('click', () => setOpen(!wrap.classList.contains('open')));
++  if (openCards.has(f.id)) setOpen(true);
++  return wrap;
++}
++
++function switchRow(s) {
++  const name = s.name.replace(/[™®]/g, '').trim();
++  return el('div', {class: 'row', 'data-name': name.toLowerCase()},
++      iconBox(s.icon, I.downloads), el('span', {class: 'name', text: name}),
++      toggle(s.value, name, async v => {
++        const r = await call('setPref', s.pref, v);
++        state.restartPending = !!(r && r.restartPending);
++        updateRestart();
++      }));
++}
++
++let restartBox = null;
++function updateRestart() {
++  if (restartBox) restartBox.hidden = !state.restartPending;
++}
++
++function renderFeatures() {
++  const list = document.getElementById('list');
++  list.replaceChildren();
++  const sw = el('section', {}, el('div', {class: 'section', text: 'S prekidačem'}));
++  for (const s of state.switches) sw.append(switchRow(s));
++  restartBox = el('div', {class: 'restart'},
++      el('span', {text: 'Primjenjuje se nakon ponovnog pokretanja.'}),
++      el('button', {class: 'btn primary', text: 'Pokreni ponovo', onclick: () => send('runCommand', 'restart')}));
++  sw.append(restartBox);
++  list.append(sw);
++  updateRestart();
++
++  const byGroup = {};
++  for (const f of state.features) {
++    const g = (SPEC[f.dir] || {}).group || 'Ostalo';
++    (byGroup[g] || (byGroup[g] = [])).push(f);
++  }
++  for (const g of GROUPS) {
++    const fs = byGroup[g];
++    if (!fs) continue;
++    fs.sort((a, b) => displayName(a).localeCompare(displayName(b)));
++    list.append(el('section', {}, el('div', {class: 'section', text: g}), fs.map(card)));
++  }
++  applySearch();
++}
++
++function applySearch() {
++  const q = document.getElementById('search').value.trim().toLowerCase();
++  let any = false;
++  for (const sec of document.querySelectorAll('#list section')) {
++    let shown = 0;
++    for (const item of sec.querySelectorAll('[data-name]')) {
++      const ok = !q || item.dataset.name.includes(q);
++      item.hidden = !ok;
++      if (ok) shown++;
++    }
++    sec.hidden = !shown;
++    any = any || !!shown;
++  }
++  if (restartBox) restartBox.hidden = !state.restartPending || !!q;
++  document.getElementById('empty').hidden = any;
++  document.getElementById('empty-q').textContent = q;
++}
++
++// ----------------------------------------------------------------- menu view
++const MENU = [
++  ['Novo', [
++    ['newTab', 'Nova kartica', I.newTab, 'Ctrl+T'],
++    ['newWindow', 'Novi prozor', I.newWindow, 'Ctrl+N'],
++    ['incognito', 'Novi privatni prozor', I.incognito, 'Ctrl+Shift+N'],
++  ]],
++  ['Pregledanje', [
++    ['history', 'Historija', I.history, 'Ctrl+H'],
++    ['downloads', 'Preuzimanja', I.downloads, 'Ctrl+J'],
++    ['bookmarks', 'Upravitelj oznaka', I.bookmarks, 'Ctrl+Shift+O'],
++  ]],
++  ['Stranica', [
++    ['zoom'],
++    ['find', 'Pronađi na stranici', I.find, 'Ctrl+F'],
++    ['print', 'Štampaj', I.print, 'Ctrl+P'],
++    ['fullscreen', 'Cijeli ekran', I.fullscreen, 'F11'],
++  ]],
++  ['Alati', [
++    ['extensions', 'Ekstenzije', I.puzzle],
++    ['taskManager', 'Upravitelj zadataka', I.taskManager, 'Shift+Esc'],
++    ['devTools', 'Alati za programere', I.devtools, 'Ctrl+Shift+I'],
++  ]],
++  ['Ice', [
++    ['settings', 'Postavke', I.settings],
++    ['about', 'O pregledniku Ice', I.about],
++    ['restart', 'Pokreni ponovo', I.restart],
++    ['exit', 'Izlaz', I.exit, 'Ctrl+Shift+Q', 'danger'],
++  ]],
++];
++
++function renderMenu() {
++  const menu = document.getElementById('view-menu');
++  menu.replaceChildren();
++  for (const [title, items] of MENU) {
++    const sec = el('section', {}, el('div', {class: 'section', text: title}));
++    for (const [cmd, label, icon, key, extra] of items) {
++      if (cmd === 'zoom') {
++        sec.append(el('div', {class: 'row menu-item'}, svg(I.zoom), el('span', {class: 'name', text: 'Zumiranje'}),
++            el('span', {class: 'zoom'},
++                el('button', {class: 'btn', text: '−', 'aria-label': 'Umanji', onclick: () => send('runCommand', 'zoomOut')}),
++                el('button', {class: 'btn', text: '100 %', 'aria-label': 'Stvarna veličina', onclick: () => send('runCommand', 'zoomReset')}),
++                el('button', {class: 'btn', text: '+', 'aria-label': 'Uvećaj', onclick: () => send('runCommand', 'zoomIn')}))));
++        continue;
++      }
++      sec.append(el('button', {class: 'row menu-item' + (extra ? ' ' + extra : ''), onclick: () => send('runCommand', cmd)},
++          svg(icon), el('span', {class: 'name', text: label}), key ? el('span', {class: 'key', text: key}) : null));
++    }
++    menu.append(sec);
++  }
++}
++
++// ---------------------------------------------------------------------- main
++async function showMode() {
++  const mode = location.hash === '#menu' ? 'menu' : 'features';
++  document.getElementById('title').textContent = mode === 'menu' ? 'Meni' : 'Funkcije';
++  document.getElementById('view-menu').hidden = mode !== 'menu';
++  document.getElementById('view-features').hidden = mode === 'menu';
++  if (mode === 'menu') {
++    if (!document.getElementById('view-menu').children.length) renderMenu();
++  } else {
++    state = await call('getState');
++    renderFeatures();
++  }
++  window.scrollTo(0, 0);
++}
++
++document.getElementById('search').addEventListener('input', applySearch);
++document.addEventListener('keydown', e => {
++  if (e.key === 'Escape' && !e.defaultPrevented) {
++    const s = document.getElementById('search');
++    if (document.activeElement === s && s.value) {
++      e.preventDefault();
++      s.value = '';
++      applySearch();
++      return;
++    }
++    send('close');
++  }
++});
++window.addEventListener('hashchange', showMode);
++// The panel's WebContents is kept while the panel is closed: refresh the
++// feature list (switch values, loaded add-ons) every time it is shown again.
++document.addEventListener('visibilitychange', () => {
++  if (document.visibilityState === 'visible' && location.hash !== '#menu') showMode();
++});
++showMode();
++)ICE";
++
++}  // namespace ice
++
++#endif  // CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_RESOURCES_H_
+--- /dev/null
++++ b/chrome/browser/ui/webui/ice/ice_panel_ui.cc
+@@ -0,0 +1,618 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui/ice/ice_panel_ui.h"
++
++#include <map>
++#include <memory>
++#include <optional>
++#include <string>
++#include <string_view>
++#include <utility>
++#include <vector>
++
++#include "base/base64.h"
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_util.h"
++#include "base/task/thread_pool.h"
++#include "base/values.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/extensions/ice_builtins.h"
++#include "chrome/browser/lifetime/application_lifetime.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/webui/ice/ice_panel_resources.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "content/public/browser/web_ui_message_handler.h"
++#include "content/public/common/url_constants.h"
++#include "extensions/browser/api/storage/settings_namespace.h"
++#include "extensions/browser/api/storage/storage_area_namespace.h"
++#include "extensions/browser/api/storage/storage_frontend.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/common/api/extension_action/action_info.h"
++#include "extensions/common/constants.h"
++#include "extensions/common/extension.h"
++#include "extensions/common/extension_resource.h"
++#include "extensions/common/icons/extension_icon_set.h"
++#include "extensions/common/manifest_handlers/icons_handler.h"
++#include "extensions/common/manifest_handlers/options_page_info.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++#include "url/gurl.h"
++
++namespace ice {
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(IcePanelHost);
++
++IcePanelHost::IcePanelHost(content::WebContents* web_contents,
++                           Delegate* delegate)
++    : content::WebContentsUserData<IcePanelHost>(*web_contents),
++      delegate_(delegate) {}
++
++IcePanelHost::~IcePanelHost() = default;
++
++// static
++IcePanelHost::Delegate* IcePanelHost::GetDelegate(
++    content::WebContents* web_contents) {
++  IcePanelHost* host = web_contents ? FromWebContents(web_contents) : nullptr;
++  return host ? host->delegate() : nullptr;
++}
++
++namespace {
++
++// The three Ice switches (applied after a restart). `addon_dir` names the
++// add-on directory under <install>/dodaci, `builtin_id` the built-in.
++struct IceSwitch {
++  const char* pref;
++  const char* name;
++  const char* addon_dir;
++  const char* builtin_id;
++};
++constexpr IceSwitch kIceSwitches[] = {
++    {kSnDownloaderEnabledPref, "Ultimate SN Downloader", "sn-downloader",
++     nullptr},
++    {kVideoSnifferEnabledPref, "Video Sniffer", "video-sniffer", nullptr},
++    {kMultiselectEnabledPref, "Multiselect for YouTube", nullptr,
++     "gpgbiinpmelaihndlegbgfkmnpofgfei"},
++};
++
++// Main menu entries of the panel (#menu) -> browser commands.
++struct IcePanelCommand {
++  const char* name;
++  int command_id;
++  bool keep_open;
++};
++constexpr IcePanelCommand kIcePanelCommands[] = {
++    {"newTab", IDC_NEW_TAB, false},
++    {"newWindow", IDC_NEW_WINDOW, false},
++    {"incognito", IDC_NEW_INCOGNITO_WINDOW, false},
++    {"history", IDC_SHOW_HISTORY, false},
++    {"downloads", IDC_SHOW_DOWNLOADS, false},
++    {"bookmarks", IDC_SHOW_BOOKMARK_MANAGER, false},
++    {"settings", IDC_OPTIONS, false},
++    {"extensions", IDC_MANAGE_EXTENSIONS, false},
++    {"print", IDC_PRINT, false},
++    {"find", IDC_FIND, false},
++    {"zoomIn", IDC_ZOOM_PLUS, true},
++    {"zoomOut", IDC_ZOOM_MINUS, true},
++    {"zoomReset", IDC_ZOOM_NORMAL, true},
++    {"fullscreen", IDC_FULLSCREEN, false},
++    {"devTools", IDC_DEV_TOOLS, false},
++    {"taskManager", IDC_TASK_MANAGER, false},
++    {"about", IDC_ABOUT, false},
++    {"exit", IDC_EXIT, false},
++};
++
++// Value of each switch pref when it was first changed from the panel in this
++// browser session; a restart is pending while any differs from it.
++std::map<std::string, bool>& OriginalSwitchValues() {
++  static base::NoDestructor<std::map<std::string, bool>> values;
++  return *values;
++}
++
++bool IsRestartPending(PrefService* prefs) {
++  for (const auto& [pref, original] : OriginalSwitchValues()) {
++    if (prefs->GetBoolean(pref) != original) {
++      return true;
++    }
++  }
++  return false;
++}
++
++struct IceExtension {
++  scoped_refptr<const extensions::Extension> extension;
++  std::string dir;
++  bool addon = false;
++};
++
++// The loaded Ice features: the built-ins (component extensions) and the
++// add-ons loaded from <install>/dodaci/<dir>.
++std::vector<IceExtension> GetIceExtensions(content::BrowserContext* context) {
++  std::vector<IceExtension> result;
++  const extensions::ExtensionSet& enabled =
++      extensions::ExtensionRegistry::Get(context)->enabled_extensions();
++  for (const IceBuiltin& builtin : GetIceBuiltins()) {
++    if (const extensions::Extension* extension =
++            enabled.GetByID(builtin.id)) {
++      result.push_back({base::WrapRefCounted(extension), builtin.dir, false});
++    }
++  }
++  const base::FilePath addons_dir_name =
++      base::FilePath::FromASCII(kIceAddonsDirName);
++  for (const scoped_refptr<const extensions::Extension>& extension : enabled) {
++    if (IsIceBuiltinExtension(extension->id()) ||
++        extension->location() !=
++            extensions::mojom::ManifestLocation::kCommandLine) {
++      continue;
++    }
++    const base::FilePath& path = extension->path();
++    if (path.DirName().BaseName() == addons_dir_name) {
++      result.push_back({extension, path.BaseName().AsUTF8Unsafe(), true});
++    }
++  }
++  return result;
++}
++
++scoped_refptr<const extensions::Extension> FindIceExtension(
++    content::BrowserContext* context,
++    const std::string& id) {
++  for (IceExtension& ice_extension : GetIceExtensions(context)) {
++    if (ice_extension.extension->id() == id) {
++      return std::move(ice_extension.extension);
++    }
++  }
++  return nullptr;
++}
++
++// Runs on a blocking pool: reads the icons and returns them as data: URLs
++// ("" when missing).
++std::vector<std::string> LoadIconsAsDataUrls(
++    std::vector<extensions::ExtensionResource> resources) {
++  constexpr int64_t kMaxIconBytes = 256 * 1024;
++  std::vector<std::string> urls;
++  for (const extensions::ExtensionResource& resource : resources) {
++    std::string url;
++    const base::FilePath path =
++        resource.empty() ? base::FilePath() : resource.GetFilePath();
++    std::optional<int64_t> size =
++        path.empty() ? std::nullopt : base::GetFileSize(path);
++    std::string data;
++    if (size.has_value() && *size > 0 && *size <= kMaxIconBytes &&
++        base::ReadFileToString(path, &data)) {
++      const std::string ext = base::ToLowerASCII(path.Extension());
++      const char* mime = "image/png";
++      if (ext == ".svg") {
++        mime = "image/svg+xml";
++      } else if (ext == ".jpg" || ext == ".jpeg") {
++        mime = "image/jpeg";
++      } else if (ext == ".webp") {
++        mime = "image/webp";
++      } else if (ext == ".gif") {
++        mime = "image/gif";
++      }
++      url = std::string("data:") + mime + ";base64," + base::Base64Encode(data);
++    }
++    urls.push_back(std::move(url));
++  }
++  return urls;
++}
++
++extensions::ExtensionResource GetIconResource(
++    const extensions::Extension* extension) {
++  extensions::ExtensionResource resource =
++      extensions::IconsInfo::GetIconResource(extension, 32,
++                                             ExtensionIconSet::Match::kBigger);
++  if (resource.empty()) {
++    resource = extensions::IconsInfo::GetIconResource(
++        extension, 32, ExtensionIconSet::Match::kSmaller);
++  }
++  return resource;
++}
++
++std::optional<extensions::StorageAreaNamespace> ParseArea(
++    const std::string& area) {
++  if (area == "local") {
++    return extensions::StorageAreaNamespace::kLocal;
++  }
++  if (area == "sync") {
++    return extensions::StorageAreaNamespace::kSync;
++  }
++  return std::nullopt;
++}
++
++class IcePanelHandler : public content::WebUIMessageHandler {
++ public:
++  IcePanelHandler() = default;
++  IcePanelHandler(const IcePanelHandler&) = delete;
++  IcePanelHandler& operator=(const IcePanelHandler&) = delete;
++  ~IcePanelHandler() override = default;
++
++  // content::WebUIMessageHandler:
++  void RegisterMessages() override {
++    Register("getState", &IcePanelHandler::HandleGetState);
++    Register("setPref", &IcePanelHandler::HandleSetPref);
++    Register("storageGet", &IcePanelHandler::HandleStorageGet);
++    Register("storageSet", &IcePanelHandler::HandleStorageSet);
++    Register("openPopup", &IcePanelHandler::HandleOpenPopup);
++    Register("openOptions", &IcePanelHandler::HandleOpenOptions);
++    Register("runCommand", &IcePanelHandler::HandleRunCommand);
++    Register("close", &IcePanelHandler::HandleClose);
++  }
++
++ private:
++  using Handler = void (IcePanelHandler::*)(const base::ListValue&);
++
++  void Register(std::string_view message, Handler handler) {
++    web_ui()->RegisterMessageCallback(
++        message, base::BindRepeating(&IcePanelHandler::Dispatch,
++                                     base::Unretained(this), handler));
++  }
++
++  // Every message must come from the chrome://ice-panel document itself.
++  void Dispatch(Handler handler, const base::ListValue& args) {
++    content::RenderFrameHost* frame = web_ui()->GetRenderFrameHost();
++    if (!frame) {
++      return;
++    }
++    const GURL& url = frame->GetLastCommittedURL();
++    if (!url.SchemeIs(content::kChromeUIScheme) ||
++        url.host() != kChromeUIIcePanelHost) {
++      return;
++    }
++    AllowJavascript();
++    (this->*handler)(args);
++  }
++
++  Profile* profile() { return Profile::FromWebUI(web_ui()); }
++  IcePanelHost::Delegate* delegate() {
++    return IcePanelHost::GetDelegate(web_ui()->GetWebContents());
++  }
++
++  // getState(callbackId) -> {switches, restartPending, features}.
++  void HandleGetState(const base::ListValue& args) {
++    if (args.empty()) {
++      return;
++    }
++    base::Value callback_id = args[0].Clone();
++    std::vector<IceExtension> ice_extensions = GetIceExtensions(profile());
++
++    std::vector<extensions::ExtensionResource> icons;
++    base::ListValue features;
++    for (const IceExtension& ice_extension : ice_extensions) {
++      const extensions::Extension* extension = ice_extension.extension.get();
++      const extensions::ActionInfo* action =
++          extensions::ActionInfo::GetExtensionActionInfo(extension);
++      features.Append(
++          base::DictValue()
++              .Set("id", extension->id())
++              .Set("dir", ice_extension.dir)
++              .Set("name", extension->name())
++              .Set("addon", ice_extension.addon)
++              .Set("popup", action && action->default_popup_url.is_valid())
++              .Set("options",
++                   extensions::OptionsPageInfo::HasOptionsPage(extension)));
++      icons.push_back(GetIconResource(extension));
++    }
++
++    base::ListValue switches;
++    PrefService* prefs = profile()->GetPrefs();
++    for (const IceSwitch& ice_switch : kIceSwitches) {
++      if (!prefs->FindPreference(ice_switch.pref)) {
++        continue;
++      }
++      base::DictValue entry;
++      entry.Set("pref", ice_switch.pref);
++      entry.Set("name", ice_switch.name);
++      entry.Set("value", prefs->GetBoolean(ice_switch.pref));
++      // Index of the matching loaded feature, for its icon.
++      for (size_t i = 0; i < ice_extensions.size(); ++i) {
++        const IceExtension& ice_extension = ice_extensions[i];
++        if ((ice_switch.addon_dir && ice_extension.addon &&
++             ice_extension.dir == ice_switch.addon_dir) ||
++            (ice_switch.builtin_id &&
++             ice_extension.extension->id() == ice_switch.builtin_id)) {
++          entry.Set("name", ice_extension.extension->name());
++          entry.Set("featureIndex", static_cast<int>(i));
++        }
++      }
++      switches.Append(std::move(entry));
++    }
++
++    base::DictValue state;
++    state.Set("features", std::move(features));
++    state.Set("switches", std::move(switches));
++    state.Set("restartPending", IsRestartPending(prefs));
++
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE,
++        {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
++         base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
++        base::BindOnce(&LoadIconsAsDataUrls, std::move(icons)),
++        base::BindOnce(&IcePanelHandler::OnIconsLoaded,
++                       weak_factory_.GetWeakPtr(), std::move(callback_id),
++                       std::move(state)));
++  }
++
++  void OnIconsLoaded(base::Value callback_id,
++                     base::DictValue state,
++                     std::vector<std::string> icons) {
++    if (!IsJavascriptAllowed()) {
++      return;
++    }
++    base::ListValue* features = state.FindList("features");
++    for (size_t i = 0; features && i < features->size() && i < icons.size();
++         ++i) {
++      if (!icons[i].empty()) {
++        (*features)[i].GetDict().Set("icon", icons[i]);
++      }
++    }
++    base::ListValue* switches = state.FindList("switches");
++    for (size_t i = 0; switches && features && i < switches->size(); ++i) {
++      base::DictValue& entry = (*switches)[i].GetDict();
++      std::optional<int> index = entry.FindInt("featureIndex");
++      entry.Remove("featureIndex");
++      if (index && *index >= 0 && static_cast<size_t>(*index) < icons.size() &&
++          !icons[*index].empty()) {
++        entry.Set("icon", icons[*index]);
++      }
++    }
++    ResolveJavascriptCallback(callback_id, state);
++  }
++
++  // setPref(callbackId, name, value) for the three Ice switches only.
++  void HandleSetPref(const base::ListValue& args) {
++    if (args.size() < 3 || !args[1].is_string() || !args[2].is_bool()) {
++      return;
++    }
++    const std::string& name = args[1].GetString();
++    PrefService* prefs = profile()->GetPrefs();
++    bool known = false;
++    for (const IceSwitch& ice_switch : kIceSwitches) {
++      known = known || name == ice_switch.pref;
++    }
++    if (!known || !prefs->FindPreference(name)) {
++      RejectJavascriptCallback(args[0], base::Value("unknown pref"));
++      return;
++    }
++    OriginalSwitchValues().emplace(name, prefs->GetBoolean(name));
++    prefs->SetBoolean(name, args[2].GetBool());
++    ResolveJavascriptCallback(
++        args[0],
++        base::DictValue().Set("restartPending", IsRestartPending(prefs)));
++  }
++
++  // Validates (extensionId, area) of a storage call. Rejects and returns
++  // nullptr if they are not an Ice feature and "local"/"sync".
++  scoped_refptr<const extensions::Extension> GetStorageTarget(
++      const base::ListValue& args,
++      extensions::StorageAreaNamespace* area) {
++    std::optional<extensions::StorageAreaNamespace> parsed =
++        args.size() >= 3 && args[2].is_string()
++            ? ParseArea(args[2].GetString())
++            : std::nullopt;
++    scoped_refptr<const extensions::Extension> extension =
++        args.size() >= 2 && args[1].is_string()
++            ? FindIceExtension(profile(), args[1].GetString())
++            : nullptr;
++    extensions::StorageFrontend* frontend =
++        extensions::StorageFrontend::Get(profile());
++    if (!parsed || !extension || !frontend ||
++        !frontend->IsStorageEnabled(
++            *parsed == extensions::StorageAreaNamespace::kSync
++                ? extensions::settings_namespace::SYNC
++                : extensions::settings_namespace::LOCAL)) {
++      RejectJavascriptCallback(args[0], base::Value("not available"));
++      return nullptr;
++    }
++    *area = *parsed;
++    return extension;
++  }
++
++  // storageGet(callbackId, extensionId, "local"|"sync", keys|null) -> object.
++  // Same store as the extension's chrome.storage.<area>.
++  void HandleStorageGet(const base::ListValue& args) {
++    if (args.empty()) {
++      return;
++    }
++    extensions::StorageAreaNamespace area;
++    scoped_refptr<const extensions::Extension> extension =
++        GetStorageTarget(args, &area);
++    if (!extension) {
++      return;
++    }
++    std::optional<std::vector<std::string>> keys;
++    if (args.size() >= 4 && args[3].is_list()) {
++      keys.emplace();
++      for (const base::Value& key : args[3].GetList()) {
++        if (key.is_string()) {
++          keys->push_back(key.GetString());
++        }
++      }
++    }
++    extensions::StorageFrontend::Get(profile())->GetValues(
++        extension, area, std::move(keys),
++        base::BindOnce(&IcePanelHandler::OnStorageGet,
++                       weak_factory_.GetWeakPtr(), args[0].Clone()));
++  }
++
++  void OnStorageGet(base::Value callback_id,
++                    extensions::StorageFrontend::GetResult result) {
++    if (!IsJavascriptAllowed()) {
++      return;
++    }
++    if (!result.status.success) {
++      RejectJavascriptCallback(callback_id,
++                               base::Value(result.status.error.value_or("")));
++      return;
++    }
++    ResolveJavascriptCallback(
++        callback_id, result.data ? base::Value(std::move(*result.data))
++                                 : base::Value(base::DictValue()));
++  }
++
++  // storageSet(callbackId, extensionId, "local"|"sync", object). Goes through
++  // StorageFrontend, so the extension gets chrome.storage.onChanged.
++  void HandleStorageSet(const base::ListValue& args) {
++    if (args.empty()) {
++      return;
++    }
++    extensions::StorageAreaNamespace area;
++    scoped_refptr<const extensions::Extension> extension =
++        GetStorageTarget(args, &area);
++    if (!extension) {
++      return;
++    }
++    if (args.size() < 4 || !args[3].is_dict()) {
++      RejectJavascriptCallback(args[0], base::Value("bad values"));
++      return;
++    }
++    extensions::StorageFrontend::Get(profile())->Set(
++        extension, area, args[3].GetDict().Clone(),
++        base::BindOnce(&IcePanelHandler::OnStorageSet,
++                       weak_factory_.GetWeakPtr(), args[0].Clone()));
++  }
++
++  void OnStorageSet(base::Value callback_id,
++                    extensions::StorageFrontend::ResultStatus status) {
++    if (!IsJavascriptAllowed()) {
++      return;
++    }
++    if (!status.success) {
++      RejectJavascriptCallback(callback_id,
++                               base::Value(status.error.value_or("")));
++      return;
++    }
++    ResolveJavascriptCallback(callback_id, base::Value(true));
++  }
++
++  // openPopup(extensionId): the extension's own action popup, in the panel.
++  void HandleOpenPopup(const base::ListValue& args) {
++    if (args.empty() || !args[0].is_string()) {
++      return;
++    }
++    scoped_refptr<const extensions::Extension> extension =
++        FindIceExtension(profile(), args[0].GetString());
++    const extensions::ActionInfo* action =
++        extension ? extensions::ActionInfo::GetExtensionActionInfo(
++                        extension.get())
++                  : nullptr;
++    IcePanelHost::Delegate* panel = delegate();
++    if (!action || !action->default_popup_url.is_valid() || !panel ||
++        !action->default_popup_url.SchemeIs(extensions::kExtensionScheme)) {
++      return;
++    }
++    panel->ShowPageInPanel(action->default_popup_url);
++  }
++
++  // openOptions(extensionId): the extension's options page, in a tab.
++  void HandleOpenOptions(const base::ListValue& args) {
++    if (args.empty() || !args[0].is_string()) {
++      return;
++    }
++    scoped_refptr<const extensions::Extension> extension =
++        FindIceExtension(profile(), args[0].GetString());
++    if (!extension ||
++        !extensions::OptionsPageInfo::HasOptionsPage(extension.get())) {
++      return;
++    }
++    if (IcePanelHost::Delegate* panel = delegate()) {
++      BrowserWindowInterface* browser = panel->GetPanelBrowser();
++      panel->ClosePanel();
++      extensions::ExtensionTabUtil::OpenOptionsPage(extension.get(), browser);
++      return;
++    }
++    extensions::ExtensionTabUtil::OpenOptionsPageFromWebContents(
++        extension.get(), web_ui()->GetWebContents());
++  }
++
++  // runCommand(name): main menu entries + "restart".
++  void HandleRunCommand(const base::ListValue& args) {
++    if (args.empty() || !args[0].is_string()) {
++      return;
++    }
++    const std::string& name = args[0].GetString();
++    if (name == "restart") {
++      chrome::AttemptRestart();
++      return;
++    }
++    IcePanelHost::Delegate* panel = delegate();
++    if (!panel) {
++      return;
++    }
++    for (const IcePanelCommand& command : kIcePanelCommands) {
++      if (name == command.name) {
++        panel->RunPanelCommand(command.command_id, command.keep_open);
++        return;
++      }
++    }
++  }
++
++  void HandleClose(const base::ListValue& args) {
++    if (IcePanelHost::Delegate* panel = delegate()) {
++      panel->ClosePanel();
++    }
++  }
++
++  base::WeakPtrFactory<IcePanelHandler> weak_factory_{this};
++};
++
++std::string_view GetResourcePath(const std::string& path) {
++  std::string_view result = path;
++  const size_t query = result.find_first_of("?#");
++  if (query != std::string_view::npos) {
++    result = result.substr(0, query);
++  }
++  return result;
++}
++
++bool ShouldHandleRequest(const std::string& path) {
++  const std::string_view resource = GetResourcePath(path);
++  return resource.empty() || resource == "index.html" ||
++         resource == "panel.css" || resource == "panel.js";
++}
++
++void HandleRequest(const std::string& path,
++                   content::WebUIDataSource::GotDataCallback callback) {
++  const std::string_view resource = GetResourcePath(path);
++  const char* content = kIcePanelHtml;
++  if (resource == "panel.css") {
++    content = kIcePanelCss;
++  } else if (resource == "panel.js") {
++    content = kIcePanelJs;
++  }
++  std::move(callback).Run(
++      base::MakeRefCounted<base::RefCountedString>(std::string(content)));
++}
++
++}  // namespace
++
++IcePanelUI::IcePanelUI(content::WebUI* web_ui)
++    : content::WebUIController(web_ui) {
++  content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
++      Profile::FromWebUI(web_ui), kChromeUIIcePanelHost);
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::ScriptSrc, "script-src 'self';");
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::StyleSrc, "style-src 'self';");
++  // Feature icons are data: URLs (read from the extensions' own files).
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::ImgSrc, "img-src 'self' data:;");
++  source->SetRequestFilter(base::BindRepeating(&ShouldHandleRequest),
++                           base::BindRepeating(&HandleRequest));
++
++  web_ui->AddMessageHandler(std::make_unique<IcePanelHandler>());
++}
++
++IcePanelUI::~IcePanelUI() = default;
++
++}  // namespace ice
+--- /dev/null
++++ b/chrome/browser/ui/webui/ice/ice_panel_ui.h
+@@ -0,0 +1,82 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_UI_H_
++#define CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_UI_H_
++
++#include "base/memory/raw_ptr.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/browser/web_ui_controller.h"
++#include "content/public/browser/webui_config.h"
++#include "content/public/common/url_constants.h"
++
++class BrowserWindowInterface;
++class GURL;
++
++namespace ice {
++
++inline constexpr char kChromeUIIcePanelHost[] = "ice-panel";
++inline constexpr char kChromeUIIcePanelURL[] = "chrome://ice-panel/";
++
++// Connects the chrome://ice-panel page to the native panel that hosts it (the
++// Ice sidebar overlay panel). Attached to the panel's WebContents by the
++// panel, which owns that WebContents and so outlives this object.
++class IcePanelHost : public content::WebContentsUserData<IcePanelHost> {
++ public:
++  class Delegate {
++   public:
++    // The browser window the panel belongs to.
++    virtual BrowserWindowInterface* GetPanelBrowser() = 0;
++    // Runs a browser command (IDC_*) in that window. The panel is closed
++    // first unless `keep_open` is true (e.g. zoom).
++    virtual void RunPanelCommand(int command_id, bool keep_open) = 0;
++    // Shows `url` (an extension's own popup page) inside the panel, with a
++    // native back button that returns to chrome://ice-panel.
++    virtual void ShowPageInPanel(const GURL& url) = 0;
++    virtual void ClosePanel() = 0;
++
++   protected:
++    virtual ~Delegate() = default;
++  };
++
++  IcePanelHost(const IcePanelHost&) = delete;
++  IcePanelHost& operator=(const IcePanelHost&) = delete;
++  ~IcePanelHost() override;
++
++  // Returns the delegate of the panel that hosts `web_contents`, or nullptr
++  // (e.g. chrome://ice-panel opened in a normal tab).
++  static Delegate* GetDelegate(content::WebContents* web_contents);
++
++  Delegate* delegate() { return delegate_; }
++
++ private:
++  friend class content::WebContentsUserData<IcePanelHost>;
++  IcePanelHost(content::WebContents* web_contents, Delegate* delegate);
++
++  const raw_ptr<Delegate> delegate_;
++
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++
++class IcePanelUI;
++
++class IcePanelUIConfig : public content::DefaultWebUIConfig<IcePanelUI> {
++ public:
++  IcePanelUIConfig()
++      : DefaultWebUIConfig(content::kChromeUIScheme, kChromeUIIcePanelHost) {}
++};
++
++// chrome://ice-panel: the content of the Ice sidebar panel ("Funkcije" and
++// the main menu). HTML/CSS/JS are compiled in (ice_panel_resources.h).
++class IcePanelUI : public content::WebUIController {
++ public:
++  explicit IcePanelUI(content::WebUI* web_ui);
++  IcePanelUI(const IcePanelUI&) = delete;
++  IcePanelUI& operator=(const IcePanelUI&) = delete;
++  ~IcePanelUI() override;
++};
++
++}  // namespace ice
++
++#endif  // CHROME_BROWSER_UI_WEBUI_ICE_ICE_PANEL_UI_H_

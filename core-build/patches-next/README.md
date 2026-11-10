@@ -28,3 +28,7 @@ of read-only add-ons in the user data dir).
   under src/) is copied over the tree and `core-build/ice-rebrand.py` renames "Chromium"
   to "Ice" in chromium_strings.grd / components_chromium_strings.grd + all .xtb
   translations (moved to the new message IDs). Both run in ice-hook.sh after the patches.
+- ice-21-ice-panel.patch: chrome://ice-panel (WebUI, resources compiled in) hosted in the
+  ice-20 overlay panel: "Funkcije" cards with Ice controls writing to each feature's
+  chrome.storage, the 3 restart switches, and the main menu (#menu, hamburger). Page sources:
+  docs/gui/ice-panel/. See docs/gui/SIDEBAR-DESIGN.md.
