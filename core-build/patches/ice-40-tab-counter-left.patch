@@ -1,6 +1,6 @@
 --- a/extensions/common/ice_builtin_ids.h
 +++ b/extensions/common/ice_builtin_ids.h
-@@ -23,6 +23,12 @@
+@@ -23,6 +23,21 @@
      "hchkphbcnnbhopaimgcgfkgjejephmcn",
  };
  
@@ -8,6 +8,15 @@
 +// the Tab Counter, whose whole purpose is to show the tab count.
 +inline bool IsIceToolbarBuiltinId(std::string_view id) {
 +  return id == "fhnegjjodccfaliddboelcleikbmapik";
++}
++
++// Toolbar icons that stay pinned, left of the address bar: the Tab Counter
++// (built-in) and the two add-ons whose popups work on the current page (their
++// IDs come from their install path /opt/ice-browser/dodaci/<dir>).
++inline bool IsIcePinnedActionId(std::string_view id) {
++  return IsIceToolbarBuiltinId(id) ||
++         id == "mphpcefjdbdemmjpplkpaidolnacnlgb" ||  // sn-downloader
++         id == "bpgjpdfphkgemklhkdiemkjbmamdmcgd";    // video-sniffer
 +}
 +
  // True for Ice built-ins. They are loaded as component extensions but must
@@ -31,17 +40,21 @@
        extensions::ExtensionManagementFactory::GetForBrowserContext(profile_);
 -  return management->GetForcePinnedList().contains(action_id);
 +  return management->GetForcePinnedList().contains(action_id) ||
-+         ice::IsIceToolbarBuiltinId(action_id);
++         ice::IsIcePinnedActionId(action_id);
  }
  
  void ToolbarActionsModel::MovePinnedAction(const ActionId& action_id,
-@@ -736,6 +738,11 @@
+@@ -736,6 +738,15 @@
                           return !std::ranges::contains(pinned, id);
                         });
  
-+  // Ice: the Tab Counter is always pinned.
-+  if (!std::ranges::contains(pinned, "fhnegjjodccfaliddboelcleikbmapik")) {
-+    pinned.push_back("fhnegjjodccfaliddboelcleikbmapik");
++  // Ice: Tab Counter, SN Downloader and Video Sniffer are always pinned.
++  for (const char* ice_id : {"fhnegjjodccfaliddboelcleikbmapik",
++                             "mphpcefjdbdemmjpplkpaidolnacnlgb",
++                             "bpgjpdfphkgemklhkdiemkjbmamdmcgd"}) {
++    if (!std::ranges::contains(pinned, std::string(ice_id))) {
++      pinned.push_back(ice_id);
++    }
 +  }
 +
    // TODO(pbos): Make sure that the pinned IDs are pruned from ExtensionPrefs on
@@ -53,7 +66,7 @@
      extensions_container_ = AddChildView(std::move(extensions_container));
      extensions_toolbar_coordinator_ =
          std::make_unique<ExtensionsToolbarCoordinator>(extensions_container_);
-+    // Ice: extension icons (the Tab Counter) sit LEFT of the address bar.
++    // Ice: extension icons (Tab Counter, grabbers) sit LEFT of the address bar.
 +    if (location_bar_view_) {
 +      if (auto index = GetIndexOf(location_bar_view_)) {
 +        ReorderChildView(extensions_container_, *index);
