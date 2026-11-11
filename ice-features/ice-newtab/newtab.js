@@ -124,6 +124,7 @@ async function render() {
   }
   for (const site of topSites) {
     if (tiles.length >= MAX_TILES) break;
+    if (/^https?:\/\/(chromewebstore\.google\.com|chrome\.google\.com\/webstore)/.test(site.url)) continue; // zadana pločica Chromiuma
     if (seen.has(site.url) || hiddenSites.includes(site.url)) continue;
     seen.add(site.url);
     tiles.push(makeTile(site, async () => {
