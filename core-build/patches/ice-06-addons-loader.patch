@@ -1,0 +1,142 @@
+--- a/chrome/browser/extensions/ice_builtins.h
++++ b/chrome/browser/extensions/ice_builtins.h
+@@ -18,6 +18,17 @@
+ inline constexpr char kMultiselectEnabledPref[] =
+     "ice.builtins.multiselect_youtube_enabled";
+ 
++// Profile prefs: whether these Ice add-ons are loaded (default on; take effect
++// after a restart). Add-ons are separate, normal extensions shipped in
++// <install>/dodaci/<dir>; every add-on there without a pref is always loaded.
++inline constexpr char kSnDownloaderEnabledPref[] =
++    "ice.addons.sn_downloader_enabled";
++inline constexpr char kVideoSnifferEnabledPref[] =
++    "ice.addons.video_sniffer_enabled";
++
++// Directory next to the browser binary that holds the add-ons.
++inline constexpr char kIceAddonsDirName[] = "dodaci";
++
+ // Directory under chrome::DIR_RESOURCES that holds the built-in features.
+ inline constexpr char kIceBuiltinsDirName[] = "ice-builtins";
+ 
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -2033,6 +2033,8 @@
+   // Ice: on/off switch for the built-in Multiselect for YouTube component
+   // extension. Read once at startup by ComponentLoader (applied after restart).
+   registry->RegisterBooleanPref(ice::kMultiselectEnabledPref, true);
++  registry->RegisterBooleanPref(ice::kSnDownloaderEnabledPref, true);
++  registry->RegisterBooleanPref(ice::kVideoSnifferEnabledPref, true);
+ 
+ #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+ 
+--- a/chrome/browser/extensions/extension_service.h
++++ b/chrome/browser/extensions/extension_service.h
+@@ -255,6 +255,9 @@
+  private:
+   // Loads extensions specified via a command line flag/switch.
+   void LoadExtensionsFromCommandLineFlag(const char* switch_name);
++
++  // Ice: loads the add-ons found in <install>/dodaci/ (see ice_builtins.h).
++  void LoadIceAddons(std::vector<base::FilePath> addon_dirs);
+ #if BUILDFLAG(IS_CHROMEOS)
+   void LoadSigninProfileTestExtension(const std::string& path);
+ #endif
+--- a/chrome/browser/extensions/extension_service.cc
++++ b/chrome/browser/extensions/extension_service.cc
+@@ -14,6 +14,10 @@
+ #include <utility>
+ 
+ #include "base/auto_reset.h"
++#include "base/base_paths.h"
++#include "base/files/file_enumerator.h"
++#include "base/files/file_util.h"
++#include "base/path_service.h"
+ #include "base/check_op.h"
+ #include "base/command_line.h"
+ #include "base/debug/alias.h"
+@@ -46,6 +50,8 @@
+ #include "chrome/browser/extensions/extension_allowlist_factory.h"
+ #include "chrome/browser/extensions/extension_disabled_ui.h"
+ #include "chrome/browser/extensions/extension_error_controller.h"
++#include "chrome/browser/extensions/ice_builtins.h"
++#include "components/prefs/pref_service.h"
+ #include "chrome/browser/extensions/extension_special_storage_policy.h"
+ #include "chrome/browser/extensions/external_install_manager.h"
+ #include "chrome/browser/extensions/external_provider_impl.h"
+@@ -142,6 +148,33 @@
+ 
+ namespace {
+ 
++// Ice: add-ons that can be switched off in settings. Every other add-on in
++// <install>/dodaci/ is always loaded.
++struct IceAddonSwitch {
++  const char* dir;
++  const char* enable_pref;
++};
++constexpr IceAddonSwitch kIceAddonSwitches[] = {
++    {"sn-downloader", ice::kSnDownloaderEnabledPref},
++    {"video-sniffer", ice::kVideoSnifferEnabledPref},
++};
++
++// Runs on the extension file task runner: the add-on directories (those with
++// a manifest.json), sorted by name.
++std::vector<base::FilePath> ListIceAddonDirs(const base::FilePath& root) {
++  std::vector<base::FilePath> dirs;
++  base::FileEnumerator enumerator(root, /*recursive=*/false,
++                                  base::FileEnumerator::DIRECTORIES);
++  for (base::FilePath dir = enumerator.Next(); !dir.empty();
++       dir = enumerator.Next()) {
++    if (base::PathExists(dir.Append(kManifestFilename))) {
++      dirs.push_back(dir);
++    }
++  }
++  std::sort(dirs.begin(), dirs.end());
++  return dirs;
++}
++
+ // Wait this long after an extensions becomes idle before updating it.
+ constexpr base::TimeDelta kUpdateIdleDelay = base::Seconds(5);
+ 
+@@ -372,6 +405,15 @@
+   if (load_command_line_extensions) {
+     LoadExtensionsFromCommandLineFlag(switches::kLoadExtension);
+   }
++  base::FilePath ice_install_dir;
++  if (base::PathService::Get(base::DIR_ASSETS, &ice_install_dir)) {
++    GetExtensionFileTaskRunner()->PostTaskAndReplyWithResult(
++        FROM_HERE,
++        base::BindOnce(&ListIceAddonDirs,
++                       ice_install_dir.AppendASCII(ice::kIceAddonsDirName)),
++        base::BindOnce(&ExtensionService::LoadIceAddons,
++                       weak_ptr_factory_.GetWeakPtr()));
++  }
+   EnabledReloadableExtensions();
+   delayed_install_manager_->FinishInstallationsDelayedByShutdown();
+   SetReadyAndNotifyListeners();
+@@ -398,6 +440,26 @@
+   }
+ }
+ 
++void ExtensionService::LoadIceAddons(std::vector<base::FilePath> addon_dirs) {
++  PrefService* prefs = profile_->GetPrefs();
++  for (const base::FilePath& dir : addon_dirs) {
++    bool enabled = true;
++    for (const IceAddonSwitch& addon_switch : kIceAddonSwitches) {
++      if (dir.BaseName().value() == addon_switch.dir &&
++          prefs->FindPreference(addon_switch.enable_pref)) {
++        enabled = prefs->GetBoolean(addon_switch.enable_pref);
++      }
++    }
++    if (!enabled) {
++      continue;
++    }
++    // Same path as --load-extension: a normal unpacked extension, unchanged.
++    std::string extension_id;
++    UnpackedInstaller::Create(profile_)->LoadFromCommandLine(
++        dir, &extension_id, /*only_allow_apps=*/false);
++  }
++}
++
+ void ExtensionService::EnabledReloadableExtensions() {
+   TRACE_EVENT0("browser,startup",
+                "ExtensionService::EnabledReloadableExtensions");

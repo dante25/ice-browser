@@ -1,0 +1,22 @@
+{
+ "manifest_version": 3,
+ "name": "Ice nova kartica",
+ "version": "1.0.0",
+ "description": "Ice početna stranica: pretraga zadanim pretraživačem i prečice.",
+ "permissions": [
+  "topSites",
+  "search",
+  "storage",
+  "favicon"
+ ],
+ "chrome_url_overrides": {
+  "newtab": "newtab.html"
+ },
+ "icons": {
+  "16": "icons/ice-16.png",
+  "32": "icons/ice-32.png",
+  "48": "icons/ice-48.png",
+  "128": "icons/ice-128.png"
+ },
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqVt6D4Ms7zTuq1rzCQ0LJomL/CXTpPxUGsmiX/nhO+yLXntd5bMZ7dDfNSxRTLSYah9geUW+rEqeivdwEWQ8BYTlSZw/AISjrtU7wbWyu2yQFFcjYasVaUTvSkJu4AyroKgOIRJp/ybFmlH6EI1GNap+rt7/SlunoCORZtDVKetGKIBDPKU73BV61m2e6i2DzvpsHG29tdrbtYVHsoKCukjSWZRlt0/GFG5B1gQaRDOdbtlMW3Hn8otpPf21XWcfWs//Ue0ENn65u9ZhD7LZxKa9sSy7tVWPVtVAti8k+aRDOJ4cEejbtFXZw71U6Jn76aMTS4DFwt4eRjbyTLW35QIDAQAB"
+}

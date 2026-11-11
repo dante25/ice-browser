@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/unit.test.mjs && NODE_PATH=$(npm root -g) node tests/e2e.mjs"
+  }
+}

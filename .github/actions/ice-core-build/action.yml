@@ -1,0 +1,84 @@
+name: Ice core build part
+description: >
+  One part of the Ice core build (mirrors ungoogled-chromium-portablelinux
+  .github/actions/build at 156.0.8078.79-1): restore Docker image and build tree,
+  run core-build/build.sh (prep or one 5h ninja part), export and upload the build tree.
+
+inputs:
+  prepare-only:
+    description: "If 'true', only prepare the tree (download, patch, gn gen, compile check)."
+    required: false
+    default: "false"
+  final:
+    description: "If 'true', this is the last part and must fail if it runs out of time."
+    required: false
+    default: "false"
+
+outputs:
+  status:
+    description: "'running' if the build is not complete, 'completed' if it is."
+    value: ${{ steps.build.outputs.status }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up portablelinux checkout and Ice hook
+      shell: bash
+      run: bash core-build/build.sh setup
+
+    - name: Download Docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-image-${{ env.ARCH }}
+        path: /tmp
+
+    - name: Load Docker image
+      shell: bash
+      run: docker load -i /tmp/chromium-builder.tar && rm -f /tmp/chromium-builder.tar
+
+    - name: Free disk space
+      if: ${{ inputs.prepare-only == 'true' }}
+      shell: bash
+      run: |
+        # same removals as portablelinux .github/scripts/import-cache.sh (which the parts run)
+        sudo rm -rf /usr/local/lib/android /usr/local/.ghcup /usr/lib/jvm \
+                    /usr/lib/google-cloud-sdk /usr/lib/dotnet /usr/share/swift
+        df -h /
+
+    - name: Download build cache
+      if: ${{ inputs.prepare-only != 'true' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: build-cache-${{ env.ARCH }}
+        path: ${{ env.ICE_PL_DIR }}/.github/cache/
+
+    - name: Import build cache
+      if: ${{ inputs.prepare-only != 'true' }}
+      shell: bash
+      run: bash "$ICE_PL_DIR/.github/scripts/import-cache.sh" && df -h /
+
+    - name: Build
+      id: build
+      shell: bash
+      env:
+        _gha_final: ${{ inputs.final }}
+      run: |
+        if [ "${{ inputs.prepare-only }}" = true ]; then
+          bash core-build/build.sh prep
+        else
+          bash core-build/build.sh part
+        fi
+
+    - name: Export build cache
+      shell: bash
+      run: bash "$ICE_PL_DIR/.github/scripts/export-cache.sh" && df -h /
+
+    - name: Upload build cache
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-cache-${{ env.ARCH }}
+        path: ${{ env.ICE_PL_DIR }}/.github/cache/build-cache-${{ env.ARCH }}.tar.zst
+        if-no-files-found: error
+        overwrite: true
+        retention-days: 3
+        compression-level: 0
