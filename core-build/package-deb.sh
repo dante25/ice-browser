@@ -221,6 +221,26 @@ find "$O/dodaci" -type f -exec chmod 644 {} +
 [ -z "$(find "$O/dodaci" ! -type f ! -type d)" ] || die "symlinks/special files in dodaci"
 log "add-ons in dodaci/: $(ls "$O/dodaci" | tr '\n' ' ')"
 
+# --- Uvoz iz drugog browsera: Python uvoznik + native messaging host za dodatak dodaci/ice-uvoz
+# (bez kompajliranja). Manifest hosta ide u /etc/chromium/native-messaging-hosts i, preko launchera,
+# u <profil>/NativeMessagingHosts.
+UVOZ_ID="dfhbiomgcficgkidolpkoiafdoegbbha"
+grep -q '"key"' "$O/dodaci/ice-uvoz/manifest.json" || die "dodaci/ice-uvoz has no manifest key"
+python3 -I -c 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "$ICE/core-build/uvoz/ice-uvoz.py" \
+    || die "ice-uvoz.py has a syntax error"
+install -D -m 755 "$ICE/core-build/uvoz/ice-uvoz.py" "$O/uvoz/ice-uvoz.py"
+cat > "$O/uvoz/ice.uvoz.json" <<UVOZ
+{
+  "name": "ice.uvoz",
+  "description": "Ice: uvoz iz drugog browsera",
+  "path": "$INSTALL/uvoz/ice-uvoz.py",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://$UVOZ_ID/"]
+}
+UVOZ
+chmod 644 "$O/uvoz/ice.uvoz.json"
+install -D -m 644 "$O/uvoz/ice.uvoz.json" "$P/etc/chromium/native-messaging-hosts/ice.uvoz.json"
+
 # --- Launcher (CHROME_WRAPPER must point into $INSTALL so Chrome finds xdg-settings/xdg-mime)
 cat > "$O/ice-browser" <<EOF
 #!/bin/bash
@@ -232,7 +252,10 @@ export CHROME_DESKTOP="ice-browser.desktop"
 extra=()
 case " \$* " in
     *" --user-data-dir="*|*" --user-data-dir "*) ;;
-    *) extra+=("--user-data-dir=\${ICE_PROFILE:-\${XDG_CONFIG_HOME:-\$HOME/.config}/ice-browser}") ;;
+    *) ud="\${ICE_PROFILE:-\${XDG_CONFIG_HOME:-\$HOME/.config}/ice-browser}"
+       extra+=("--user-data-dir=\$ud")
+       # host dodatka "Uvoz iz drugog browsera"
+       mkdir -p "\$ud/NativeMessagingHosts" 2>/dev/null && cp -f "\$HERE/uvoz/ice.uvoz.json" "\$ud/NativeMessagingHosts/" 2>/dev/null || true ;;
 esac
 exec "\$HERE/chrome" --class=Ice "\${extra[@]}" "\$@"
 EOF
@@ -283,7 +306,7 @@ Priority: optional
 Architecture: amd64
 Installed-Size: $SIZE
 Depends: $DEPENDS
-Recommends: libva2, libvulkan1, libu2f-udev, upower
+Recommends: libva2, libvulkan1, libu2f-udev, upower, python3, python3-gi, gir1.2-secret-1, python3-cryptography | openssl
 Provides: www-browser
 Maintainer: Ice <noreply@users.noreply.github.com>
 Homepage: https://github.com/dante25/ice-browser
@@ -317,7 +340,7 @@ grep -qE "^-rwsr-xr-x root/root .* \./opt/ice-browser/chrome-sandbox$" <<< "$lis
     || die "chrome-sandbox is not root:root 4755 in the package"
 grep -q "\./opt/ice-browser/resources/ice-builtins/google-images-viewer/manifest.json$" <<< "$listing" \
     || die "built-ins missing from the package"
-for a in sn-downloader video-sniffer ice-shield; do
+for a in sn-downloader video-sniffer ice-shield ice-uvoz; do
     grep -q "\./opt/ice-browser/dodaci/$a/manifest.json$" <<< "$listing" || die "add-on $a missing from the package"
 done
 badperm="$(grep ' \./opt/ice-browser/dodaci/' <<< "$listing" \
@@ -326,6 +349,8 @@ badperm="$(grep ' \./opt/ice-browser/dodaci/' <<< "$listing" \
 badperm="$(grep ' \./opt/ice-browser/resources/ice-builtins/' <<< "$listing" \
     | grep -vE '^(-rw-r--r--|drwxr-xr-x) root/root ' || true)"
 [ -z "$badperm" ] || die "wrong owner/mode in ice-builtins:"$'\n'"$(echo "$badperm" | head -10)"
+grep -qE "^-rwxr-xr-x root/root .* \./opt/ice-browser/uvoz/ice-uvoz.py$" <<< "$listing" \
+    || die "ice-uvoz.py missing or not executable"
 dpkg-deb -f "$FILE" Package Version Depends >/dev/null
 echo "$FILE"
 ls -la "$FILE" | awk '{printf "[ice-deb] size: %.1f MB\n", $5/1048576}'

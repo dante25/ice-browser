@@ -14,3 +14,6 @@ Već uključeno u paket (izvor u repou):
 - `video-sniffer` ← `own-extensions/video-sniffer`
 - `ice-shield`    ← `ice-features/ice-shield` (sigurnosni sloj; liste se same ažuriraju)
 - + svaki folder u ovom `dodaci/` direktoriju.
+
+- `ice-uvoz` (ovdje u `dodaci/`): uvoz iz drugog browsera. Stranica dodatka razgovara s
+  `/opt/ice-browser/uvoz/ice-uvoz.py` (izvor: `core-build/uvoz/`) preko native messaginga `ice.uvoz`.

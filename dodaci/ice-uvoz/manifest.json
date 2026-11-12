@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Uvoz iz drugog browsera",
+  "short_name": "Uvoz",
+  "version": "1.0.0",
+  "description": "Uvoz bookmarksa, historije, lozinki i dozvola stranica iz Chromea, Bravea, Edgea, Vivaldija, Opere, Chromiuma i Firefoxa.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7BgLYbogp6CiSb4bemZLkQSbqZ4KpaDAJBhgsBH89Fa3ALGcldi7oKBTI63Ii5KYYaPMlIgIbpN93EYzKS1o96j2dQZcn1xA4+Hizn5E7bjyIZ9IVF8nbWF7iSnaSndwcdixR7L/H/zz+OoIgnmkobxijhqswa+E1z1937S5aEXavx6S+OckOcdY+tTFfaP67Hrye7WpNFyFFOrVkh3ws94tYEP5NYXq6GG1uKfjwaX88DRN1KgLKL3PI5SEZ9ZMf0XxMY8stDgtA2ljV/lsNwninvsa7JmgDHrYZoFzxDgBIsjH6pAWvDq+GITHSNOsnGlNnw5P19jh6nHjkTZKtwIDAQAB",
+  "permissions": ["nativeMessaging"],
+  "action": {
+    "default_popup": "uvoz.html",
+    "default_title": "Uvoz iz drugog browsera",
+    "default_icon": { "16": "icons/ice-16.png", "32": "icons/ice-32.png" }
+  },
+  "options_page": "uvoz.html",
+  "icons": { "16": "icons/ice-16.png", "32": "icons/ice-32.png", "48": "icons/ice-48.png", "128": "icons/ice-128.png" }
+}
