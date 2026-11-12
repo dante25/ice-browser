@@ -9,7 +9,8 @@ function syncAll() { $('all').checked = KEYS.every(k => $(k).checked || ($('srRo
 function validate() { const keys = desc && (desc.site === 'ig' || desc.site === 'fb') ? KEYS : desc && desc.site === 'ih' ? ['photos'] : ['photos', 'videos']; $('start').disabled = !(desc && desc.type !== 'home' && keys.some(k => $(k).checked)); }
 
 async function init() {
-  [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const wanted = Number(new URLSearchParams(location.search).get('tab')); // otvoreno kao prozor: tab se predaje u adresi
+  tab = wanted ? await chrome.tabs.get(wanted) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   const st = await sendSW({ t: 'state' });
   const s = (st && st.settings) || {};
   folderOk = !!(st && st.folder && st.folder.set && st.folder.permission === 'granted');

@@ -585,3 +585,16 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   } catch (e) { console.error('[USN] message handler failed', msg && msg.t, e && e.stack); try { respond({ error: String(e && e.stack || e) }); } catch (e2) {} } })();
   return true;
 });
+
+// Ice: klik na ikonu otvara popup kao prozor unutar prozora preglednika (Chromiumov popup ispod ikone
+// zna otići izvan ekrana kad su ikone ekstenzija lijevo od adresne trake).
+let actionWindow = null;
+async function openActionWindow(tab) {
+  if (actionWindow) { try { await chrome.windows.remove(actionWindow); } catch (e) {} actionWindow = null; }
+  const b = await popupBounds(372, 640);
+  const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/popup.html?tab=' + (tab && tab.id)), type: 'popup', focused: true, ...b });
+  actionWindow = w.id;
+}
+chrome.action.onClicked.addListener(openActionWindow);
+chrome.windows.onRemoved.addListener(id => { if (id === actionWindow) actionWindow = null; });
+globalThis.iceOpenAction = openActionWindow;

@@ -463,7 +463,8 @@ async function render() {
 }
 
 (async () => {
-  [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const wanted = Number(new URLSearchParams(location.search).get('tab')); // otvoreno kao prozor: tab se predaje u adresi
+  tab = wanted ? await chrome.tabs.get(wanted) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   key = `tab:${tab.id}`;
   document.getElementById('tabtitle').textContent = tab.title || tab.url;
   await setReferer().catch(() => {});

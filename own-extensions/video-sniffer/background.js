@@ -121,3 +121,23 @@ chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove([`tab:${tabId}`, `url:${tabId}`, `main:${tabId}`, `yt:${tabId}`]));
+
+// Ice: klik na ikonu otvara popup kao prozor unutar prozora preglednika (Chromiumov popup ispod ikone
+// zna otići izvan ekrana kad su ikone ekstenzija lijevo od adresne trake).
+let iceActionWindow = null;
+async function iceOpenAction(tab) {
+  if (iceActionWindow) { try { await chrome.windows.remove(iceActionWindow); } catch (e) {} iceActionWindow = null; }
+  let b = { width: 440, height: 640, left: 100, top: 80 };
+  try {
+    const cur = await chrome.windows.getLastFocused();
+    if (cur && cur.width > 0 && cur.left !== undefined) {
+      const w = Math.min(440, Math.max(300, cur.width - 40)), h = Math.min(640, Math.max(240, cur.height - 80));
+      b = { width: w, height: h, left: Math.max(0, Math.round(cur.left + cur.width - w - 20)), top: Math.max(0, Math.round(cur.top + 60)) };
+    }
+  } catch (e) {}
+  const w = await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?tab=' + (tab && tab.id)), type: 'popup', focused: true, ...b });
+  iceActionWindow = w.id;
+}
+chrome.action.onClicked.addListener(iceOpenAction);
+chrome.windows.onRemoved.addListener((id) => { if (id === iceActionWindow) iceActionWindow = null; });
+globalThis.iceOpenAction = iceOpenAction;
