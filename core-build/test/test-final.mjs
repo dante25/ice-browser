@@ -16,6 +16,15 @@ const env = { ...process.env, ICE_IMPORT_HOME: home, ICE_PROFILE: prof, ICE_TEST
 const launch = () => chromium.launchPersistentContext(prof, { executablePath: `${OPT}/chrome`, headless: true, env, args: ['--no-sandbox'],
   ignoreDefaultArgs: ['--disable-extensions', '--disable-component-extensions-with-background-pages'] });
 
+// 0) Launcher: pokreće Ice, upisuje host uvoza u profil i jednom po paketu popravlja registraciju dodataka
+{
+  const lp = path.join(T, 'launcher-prof');
+  const r0 = spawnSync(`${OPT}/ice-browser`, ['--no-sandbox', '--headless=new', '--dump-dom', 'about:blank'], { env: { ...process.env, ICE_PROFILE: lp }, encoding: 'utf8', timeout: 60000 });
+  ok(r0.status === 0 && /<html/.test(r0.stdout), `launcher pokreće Ice (izlaz ${r0.status})`);
+  const ver = fs.readFileSync(`${OPT}/VERSION`, 'utf8').trim();
+  ok(fs.existsSync(path.join(lp, 'ice-paket-verzija')) && fs.readFileSync(path.join(lp, 'ice-paket-verzija'), 'utf8').trim() === ver, `launcher: oznaka paketa u profilu (${ver})`);
+  ok(fs.existsSync(path.join(lp, 'NativeMessagingHosts/ice.uvoz.json')), 'launcher: host uvoza upisan u profil');
+}
 let ctx = await launch();
 await new Promise((r) => setTimeout(r, 12000));
 // 1) Dodaci: pozadinska skripta radi, popup ispod ikone je onaj iz manifesta

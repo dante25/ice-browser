@@ -239,6 +239,7 @@ cat > "$O/uvoz/ice.uvoz.json" <<UVOZ
 }
 UVOZ
 chmod 644 "$O/uvoz/ice.uvoz.json"
+echo "$VERSION" > "$O/VERSION"; chmod 644 "$O/VERSION"
 install -D -m 644 "$O/uvoz/ice.uvoz.json" "$P/etc/chromium/native-messaging-hosts/ice.uvoz.json"
 
 # --- Launcher (CHROME_WRAPPER must point into $INSTALL so Chrome finds xdg-settings/xdg-mime)
@@ -255,7 +256,9 @@ case " \$* " in
     *) ud="\${ICE_PROFILE:-\${XDG_CONFIG_HOME:-\$HOME/.config}/ice-browser}"
        extra+=("--user-data-dir=\$ud")
        # host dodatka "Uvoz iz drugog browsera"
-       mkdir -p "\$ud/NativeMessagingHosts" 2>/dev/null && cp -f "\$HERE/uvoz/ice.uvoz.json" "\$ud/NativeMessagingHosts/" 2>/dev/null || true ;;
+       mkdir -p "\$ud/NativeMessagingHosts" 2>/dev/null && cp -f "\$HERE/uvoz/ice.uvoz.json" "\$ud/NativeMessagingHosts/" 2>/dev/null || true
+       # jednom po paketu: dodaci se registruju iznova (inače ostanu bez pozadinske skripte ili sa starom)
+       ICE_PROFILE="\$ud" python3 "\$HERE/uvoz/ice-uvoz.py" --repair-profile >/dev/null 2>&1 || true ;;
 esac
 exec "\$HERE/chrome" --class=Ice "\${extra[@]}" "\$@"
 EOF

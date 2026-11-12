@@ -10,6 +10,7 @@ uveze i ponovo ga pokrene. Prije uvoza se pravi rezervna kopija izmijenjenih faj
   ice-uvoz.py --list               pronađeni browseri
   ice-uvoz.py --import <broj> [--only bookmarks,history,passwords,settings]   (Ice zatvoren)
   ice-uvoz.py --restart-import     zatvori Ice, izvrši zakazani uvoz, pokreni Ice
+  ice-uvoz.py --repair-profile     (launcher) jednom po paketu: ponovna registracija pozadinskih skripti dodataka
 """
 import configparser
 import hashlib
@@ -614,6 +615,51 @@ def show_bookmark_bar():
             json.dump(p, f, ensure_ascii=False)
 
 
+# ---------- Popravka profila poslije instalacije novog paketa ----------
+ADDONS_DIR = os.environ.get('ICE_ADDONS_DIR') or os.path.join(os.path.dirname(HERE), 'dodaci')
+VERSION_FILE = os.path.join(os.path.dirname(HERE), 'VERSION')
+
+
+def repair_profile():
+    """Preglednik u profilu pamti verziju za koju je registrovao pozadinsku skriptu dodatka i ne registruje je
+    ponovo dok se verzija dodatka ne promijeni, iako su fajlovi u paketu drugačiji. Poslije instalacije novog
+    paketa to ostavi dodatak bez pozadinske skripte (dugmad ne reaguju) ili sa starom. Zato se pri prvom
+    pokretanju novog paketa taj zapis obriše za dodatke iz <instalacija>/dodaci, pa ih preglednik registruje
+    iznova. Kod dodataka se ne dira. Radi samo dok je Ice zatvoren."""
+    try:
+        version = open(VERSION_FILE, encoding='utf-8').read().strip()
+    except OSError:
+        version = 'nepoznato'
+    marker = os.path.join(PROFILE, 'ice-paket-verzija')
+    try:
+        if open(marker, encoding='utf-8').read().strip() == version:
+            return
+    except OSError:
+        pass
+    if ice_pid():
+        return  # Ice već radi s ovim profilom: sljedeći put
+    path = os.path.join(PROFILE, 'Default', 'Preferences')
+    p = read_json(path, None)
+    if isinstance(p, dict):
+        root = os.path.realpath(ADDONS_DIR) + os.sep
+        n = 0
+        for e in ((p.get('extensions') or {}).get('settings') or {}).values():
+            if isinstance(e, dict) and os.path.realpath(str(e.get('path') or '')).startswith(root):
+                if e.pop('service_worker_registration_info', None) is not None:
+                    n += 1
+        if n:
+            tmp = path + '.ice-tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(p, f, ensure_ascii=False)
+            os.replace(tmp, path)
+    try:
+        os.makedirs(PROFILE, exist_ok=True)
+        with open(marker, 'w', encoding='utf-8') as f:
+            f.write(version + '\n')
+    except OSError:
+        pass
+
+
 # ---------- Native messaging host ----------
 def host():
     raw = sys.stdin.buffer.read(4)
@@ -676,6 +722,8 @@ def main(argv):
         if '--json' in argv:
             print('JSON ' + json.dumps(r, ensure_ascii=False))
         sys.exit(1 if r['failed'] else 0)
+    elif '--repair-profile' in argv:
+        repair_profile()
     elif '--restart-import' in argv:
         restart_import()
     else:
