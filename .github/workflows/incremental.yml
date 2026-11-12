@@ -1,0 +1,97 @@
+# Ice inkrementalna gradnja: mala izmjena jezgre BEZ pune gradnje (~10 h).
+# Uzima kompletno kompajlirano stablo iz ranijeg pokretanja (artefakt build-cache-x86_64), primijeni
+# core-build/incremental/apply.sh na izvorni kod, pa ninja ponovo kompajlira samo izmijenjene fajlove
+# i povezuje chrome. Zatim pakuje .deb i sprema novo stablo za sljedeću inkrementalnu gradnju.
+# Pokreće se kad se promijeni core-build/incremental/** (namjerno).
+name: Ice incremental build
+
+on:
+  push:
+    branches: ["claude/vibrant-gauss-9sqpu7", core-build]
+    paths:
+      - "core-build/incremental/**"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ice-incremental
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH: x86_64
+  ICE_PL_DIR: core-build/.work/portablelinux
+  ICE_DEB_VERSION: 156.0.8078.79-6
+  BASE_RUN: "42979799215"   # Ice core build -4 (kompletno stablo)
+
+jobs:
+  build:
+    name: Incremental build + .deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone portablelinux 156.0.8078.79-1 and hook Ice
+        run: bash core-build/build.sh setup
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (from cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.ICE_PL_DIR }}/docker
+          file: ${{ env.ICE_PL_DIR }}/docker/build.Dockerfile
+          tags: chromium-builder:trixie-slim
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Download compiled build tree
+        uses: actions/download-artifact@v4
+        with:
+          name: build-cache-${{ env.ARCH }}
+          path: ${{ env.ICE_PL_DIR }}/.github/cache/
+          run-id: ${{ env.BASE_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Import build tree
+        run: bash "$ICE_PL_DIR/.github/scripts/import-cache.sh" && df -h /
+
+      - name: Apply incremental source change
+        run: bash core-build/incremental/apply.sh "$ICE_PL_DIR/build/src"
+
+      - name: Build (ninja, only what changed)
+        id: build
+        env:
+          _gha_final: "true"
+        run: bash core-build/build.sh part
+
+      - name: Build .deb
+        run: bash core-build/package-deb.sh --dest dist
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ice-browser-deb
+          path: dist/ice-browser_*_amd64.deb
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Export build tree
+        run: bash "$ICE_PL_DIR/.github/scripts/export-cache.sh" && df -h /
+
+      - name: Upload build tree (base for the next incremental build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-cache-${{ env.ARCH }}
+          path: ${{ env.ICE_PL_DIR }}/.github/cache/build-cache-${{ env.ARCH }}.tar.zst
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

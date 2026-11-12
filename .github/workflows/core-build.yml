@@ -12,7 +12,7 @@ on:
   # then a push to core-build that touches the build starts it.
   # Full build (~10h) only when core-build/RELEASE is changed (bumped on purpose).
   push:
-    branches: [core-build, "claude/vibrant-gauss-9sqpu7"]
+    branches: [core-build]
     paths:
       - "core-build/RELEASE"
   workflow_dispatch:
