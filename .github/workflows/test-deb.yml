@@ -45,3 +45,8 @@ jobs:
       - name: Test installed package (add-on popups, import)
         if: ${{ !cancelled() }}
         run: NODE_PATH="$(npm root -g)" node core-build/test/test-final.mjs
+      - name: Video Sniffer in Ice vs stock Chromium (same page)
+        if: ${{ !cancelled() }}
+        run: |
+          npx --yes playwright install chromium >/dev/null 2>&1 || true
+          NODE_PATH="$(npm root -g)" node core-build/test/test-sniffer.mjs
