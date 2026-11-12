@@ -18,7 +18,9 @@ const workers = ctx.serviceWorkers().map(w => new URL(w.url()).host);
 const pages = ctx.pages().map(p => p.url());
 const withSw = ids.filter(b => !['screenshot-youtube', 'youtube-nonstop', 'google-images-viewer', 'ice-newtab', 'ice-shield'].includes(b.dir));
 for (const b of withSw) ok(workers.includes(b.id), `ugrađena funkcija radi: ${b.dir}`);
-const addonDirs = fs.readdirSync(path.join(root, 'opt/ice-browser/dodaci'));
+// dodaci bez pozadinske skripte (npr. ice-uvoz: samo stranica) se ne broje među servis-workere
+const addonDirs = fs.readdirSync(path.join(root, 'opt/ice-browser/dodaci'))
+  .filter(d => JSON.parse(fs.readFileSync(path.join(root, 'opt/ice-browser/dodaci', d, 'manifest.json'), 'utf8')).background?.service_worker);
 ok(workers.length >= withSw.length + addonDirs.length, `dodaci rade (${addonDirs.join(', ')}); ukupno servis-workera: ${workers.length}`);
 ok(pages.every(u => u === 'about:blank' || u.startsWith('chrome://newtab') || u.startsWith('chrome-extension://') && false || u === 'chrome://new-tab-page/'), `nema dobrodošlica-tabova (otvoreno: ${pages.join(' , ')})`);
 const p = await ctx.newPage();

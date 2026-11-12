@@ -43,4 +43,5 @@ jobs:
       - name: Test unpacked package (built-ins, panel, settings)
         run: NODE_PATH="$(npm root -g)" node core-build/test/test-deb.mjs dist/ice-browser_*_amd64.deb
       - name: Test installed package (add-on popups, import)
+        if: ${{ !cancelled() }}
         run: NODE_PATH="$(npm root -g)" node core-build/test/test-final.mjs
