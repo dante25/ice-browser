@@ -121,29 +121,3 @@ chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove([`tab:${tabId}`, `url:${tabId}`, `main:${tabId}`, `yt:${tabId}`]));
-
-// Ice: ikone su lijevo od adresne trake, pa Chromiumov popup ispod ikone ode izvan ekrana kad je prozor
-// uz lijevu ivicu (maksimiziran). Zato klik na ikonu otvara popup kao mali prozor ispod ikona, uvijek u
-// vidljivom dijelu. default_popup ostaje u manifestu: Ice panel ga prikazuje unutar sebe.
-let iceActionWindow = null;
-async function iceOpenAction(tab) {
-  if (iceActionWindow) { try { await chrome.windows.remove(iceActionWindow); } catch (e) {} iceActionWindow = null; }
-  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: 'normal' }); if (!tab) [tab] = await chrome.tabs.query({ active: true, windowType: 'normal' }); } catch (e) {} }
-  let b = { width: 440, height: 640, left: 100, top: 90 };
-  try {
-    const cur = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }); // prozor preglednika, ne drugi popup
-    if (cur && cur.width > 0 && cur.left !== undefined) {
-      const w = Math.min(440, Math.max(300, cur.width - 40)), h = Math.min(640, Math.max(240, cur.height - 110));
-      b = { width: w, height: h, left: Math.max(0, Math.round(cur.left + Math.min(70, Math.max(0, cur.width - w)))), top: Math.max(0, Math.round(cur.top + 90)) };
-    }
-  } catch (e) {}
-  const w = await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?tab=' + ((tab && tab.id) || '')), type: 'popup', focused: true, ...b });
-  iceActionWindow = w ? w.id : null;
-}
-const iceNoBubble = () => { try { chrome.action.setPopup({ popup: '' }); } catch (e) {} };
-iceNoBubble();
-chrome.runtime.onStartup.addListener(iceNoBubble);
-chrome.runtime.onInstalled.addListener(iceNoBubble);
-chrome.action.onClicked.addListener(iceOpenAction);
-chrome.windows.onRemoved.addListener((id) => { if (id === iceActionWindow) iceActionWindow = null; });
-chrome.runtime.onMessage.addListener((m) => { if (m && m.t === 'ice:action-window') iceOpenAction(null); });

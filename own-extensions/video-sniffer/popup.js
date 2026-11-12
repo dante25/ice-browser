@@ -1,5 +1,3 @@
-// Ice: balon ispod ikone ode izvan ekrana; ako se stranica ipak otvori kao balon, prebacuje se u prozor
-try { if (!new URLSearchParams(location.search).get('tab') && chrome.extension.getViews({ type: 'popup' }).includes(window)) { chrome.runtime.sendMessage({ t: 'ice:action-window' }); window.close(); } } catch (e) {}
 const list = document.getElementById('list');
 const empty = document.getElementById('empty');
 let tab;
@@ -465,8 +463,7 @@ async function render() {
 }
 
 (async () => {
-  const wanted = Number(new URLSearchParams(location.search).get('tab')); // otvoreno kao prozor: tab se predaje u adresi
-  tab = wanted ? await chrome.tabs.get(wanted) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+  [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   key = `tab:${tab.id}`;
   document.getElementById('tabtitle').textContent = tab.title || tab.url;
   await setReferer().catch(() => {});

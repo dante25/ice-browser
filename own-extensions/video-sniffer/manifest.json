@@ -14,8 +14,8 @@
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Video Sniffer"
+    "default_title": "Video Sniffer",
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {

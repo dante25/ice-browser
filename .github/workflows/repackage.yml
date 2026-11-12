@@ -8,10 +8,7 @@ on:
   push:
     branches: ["claude/vibrant-gauss-9sqpu7"]
     paths:
-      - "own-extensions/**"
-      - "dodaci/**"
-      - "core-build/package-deb.sh"
-      - ".github/workflows/repackage.yml"
+      - ".github/workflows/repackage-run"   # pokreće se samo kad se ovaj fajl promijeni (namjerno)
   workflow_dispatch:
     inputs:
       base_run:

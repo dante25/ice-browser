@@ -1,5 +1,3 @@
-// Ice: balon ispod ikone ode izvan ekrana; ako se stranica ipak otvori kao balon, prebacuje se u prozor
-try { if (!new URLSearchParams(location.search).get('tab') && chrome.extension.getViews({ type: 'popup' }).includes(window)) { chrome.runtime.sendMessage({ t: 'ice:action-window' }); window.close(); } } catch (e) {}
 const $ = id => document.getElementById(id);
 let tab = null, desc = null, folderOk = false;
 const KEYS = ['photos', 'videos', 'storyreel'];
@@ -11,8 +9,7 @@ function syncAll() { $('all').checked = KEYS.every(k => $(k).checked || ($('srRo
 function validate() { const keys = desc && (desc.site === 'ig' || desc.site === 'fb') ? KEYS : desc && desc.site === 'ih' ? ['photos'] : ['photos', 'videos']; $('start').disabled = !(desc && desc.type !== 'home' && keys.some(k => $(k).checked)); }
 
 async function init() {
-  const wanted = Number(new URLSearchParams(location.search).get('tab')); // otvoreno kao prozor: tab se predaje u adresi
-  tab = wanted ? await chrome.tabs.get(wanted) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+  [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const st = await sendSW({ t: 'state' });
   const s = (st && st.settings) || {};
   folderOk = !!(st && st.folder && st.folder.set && st.folder.permission === 'granted');

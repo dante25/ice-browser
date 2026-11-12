@@ -12,7 +12,7 @@ on:
   # then a push to core-build that touches the build starts it.
   # Full build (~10h) only when core-build/RELEASE is changed (bumped on purpose).
   push:
-    branches: [core-build]
+    branches: [core-build, "claude/vibrant-gauss-9sqpu7"]
     paths:
       - "core-build/RELEASE"
   workflow_dispatch:
@@ -36,7 +36,7 @@ defaults:
 env:
   ARCH: x86_64
   ICE_PL_DIR: core-build/.work/portablelinux
-  ICE_DEB_VERSION: 156.0.8078.79-4
+  ICE_DEB_VERSION: 156.0.8078.79-6
   ICE_COMPILE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.compile_check == false) && '0' || '1' }}
 
 jobs:
