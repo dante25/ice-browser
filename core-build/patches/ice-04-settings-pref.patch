@@ -1,0 +1,21 @@
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -250,6 +250,7 @@
+ #include "chrome/browser/extensions/component_loader_prefs.h"
+ #include "chrome/browser/extensions/extension_url_overrides.h"
+ #include "chrome/browser/extensions/extension_util.h"
++#include "chrome/browser/extensions/ice_builtins.h"
+ #include "chrome/browser/extensions/low_trust_policy_install_block_manager.h"
+ #include "chrome/browser/extensions/preinstalled_extensions.h"
+ #include "chrome/browser/ui/extensions/extension_settings_overridden_dialog.h"
+@@ -2029,6 +2030,10 @@
+   extensions::RegisterSettingsOverriddenUiPrefs(registry);
+   ExtensionSettingsOverriddenDialog::RegisterProfilePrefs(registry);
+ 
++  // Ice: on/off switch for the built-in Multiselect for YouTube component
++  // extension. Read once at startup by ComponentLoader (applied after restart).
++  registry->RegisterBooleanPref(ice::kMultiselectEnabledPref, true);
++
+ #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+ 
+ #if BUILDFLAG(ENABLE_EXTENSIONS)

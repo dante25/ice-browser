@@ -1,0 +1,57 @@
+# Quick check (~35-60 min): applies core-build/patches + core-build/patches-next on top of
+# ungoogled-chromium 156, runs gn gen and compiles only what Ice patches touch (plus the
+# settings WebUI type check). No full build, no .deb. Catches errors before the 10h build.
+name: Ice quick check
+
+on:
+  push:
+    branches: [core-build]
+    paths:
+      - "core-build/patches-next/**"
+      - ".github/workflows/core-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ice-core-check
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH: x86_64
+  ICE_PL_DIR: core-build/.work/portablelinux
+  ICE_WITH_NEXT: "1"
+  ICE_COMPILE_CHECK: "1"
+  ICE_CHECK_TARGETS: "chrome/browser/resources/settings:build_ts"
+
+jobs:
+  check:
+    name: Patch + compile check
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone portablelinux and hook Ice patches (+ patches-next)
+        run: bash core-build/build.sh setup
+      - uses: docker/setup-buildx-action@v3
+      - name: Build Docker image (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.ICE_PL_DIR }}/docker
+          file: ${{ env.ICE_PL_DIR }}/docker/build.Dockerfile
+          tags: chromium-builder:trixie-slim
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/local/.ghcup /usr/lib/jvm \
+                      /usr/lib/google-cloud-sdk /usr/lib/dotnet /usr/share/swift
+          df -h /
+      - name: Download, patch, gn gen, compile check
+        run: bash core-build/build.sh prep

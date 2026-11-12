@@ -341,10 +341,28 @@ async function ihEnsure() {
   if (!ihLoaded) ihLoaded = (async () => {
     let hosts = (await chrome.storage.local.get('ihHosts')).ihHosts;
     if (!hosts || !hosts.length) { hosts = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/hostf.xml'))).text()); chrome.storage.local.set({ ihHosts: hosts }); }
-    setHosts(hosts);
+    setHosts([...(await ihCustom()), ...hosts]);
   })();
   await ihLoaded;
   S.ihCount = hostCount();
+}
+
+// Custom host rules, added by hand in the progress window (⚙). Kept apart from the host file (an import of a new
+// hostf.xml does not remove them) and checked BEFORE it, so a custom rule also overrides a host-file rule.
+const ihCustom = async () => (await chrome.storage.local.get('ihCustom')).ihCustom || [];
+async function ihReapply() {
+  const hosts = (await chrome.storage.local.get('ihHosts')).ihHosts || [];
+  setHosts([...(await ihCustom()), ...hosts]); S.ihCount = hostCount(); ihLoaded = Promise.resolve();
+}
+function ihCheckRule(r) {
+  const id = String((r && r.id) || '').trim(), url = String((r && r.url) || '').trim(), sp = String((r && r.sp) || '').trim(), test = String((r && r.test) || '').trim();
+  if (!id || id.length > 100) return { error: 'Site name is required (max 100 characters).' };
+  if (!url) return { error: 'Link pattern is required.' };
+  let re; try { re = new RegExp(url, 'i'); } catch (e) { return { error: 'Link pattern is not a valid regular expression: ' + e.message }; }
+  if (!sp) return { error: 'Image rule is required.' };
+  if (/^function\b/.test(sp) && !/^function\s*\(\s*\w+\s*,\s*\w+\s*\)\s*\{[\s\S]*\}$/.test(sp)) return { error: 'A function rule must look like: function(pageData, pageUrl) { ... }' };
+  if (test && !re.test(test)) return { error: 'The test link does not match the link pattern.' };
+  return { rule: { id, url, sp, post: '', maxThreads: 0 } };
 }
 
 // a request from the service worker with a chosen Referer (a worker cannot set that header itself): a one-request rule
@@ -531,7 +549,10 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
         return respond({ queued: (msg.links || []).length });
       }
       case 'ih:net': return respond(await ihFetch(msg.method, msg.url, msg.headers, msg.body));
-      case 'ih:import': { const hosts = parseHostFile(String(msg.text || '')); if (!hosts.length) return respond({ error: 'No <host> entries found in that file.' }); await chrome.storage.local.set({ ihHosts: hosts }); setHosts(hosts); S.ihCount = hostCount(); ihLoaded = Promise.resolve(); broadcastSoon(); return respond({ count: hosts.length }); }
+      case 'ih:import': { const hosts = parseHostFile(String(msg.text || '')); if (!hosts.length) return respond({ error: 'No <host> entries found in that file.' }); await chrome.storage.local.set({ ihHosts: hosts }); await ihReapply(); broadcastSoon(); return respond({ count: hosts.length }); }
+      case 'ih:custom:list': return respond({ rules: await ihCustom() });
+      case 'ih:custom:add': { const c = ihCheckRule(msg.rule); if (c.error) return respond(c); const rules = [c.rule, ...(await ihCustom()).filter(x => x.id !== c.rule.id)]; await chrome.storage.local.set({ ihCustom: rules }); await ihReapply(); broadcastSoon(); return respond({ ok: true, rules }); }
+      case 'ih:custom:del': { const rules = (await ihCustom()).filter(x => x.id !== String(msg.id)); await chrome.storage.local.set({ ihCustom: rules }); await ihReapply(); broadcastSoon(); return respond({ ok: true, rules }); }
       case 'job:addstep': if (j) { j.steps.push(msg.step); j.stepIndex = j.steps.length - 1; j.navigating = true; touch(j); } return respond({});
       case 'job:step': if (j) { j.stepIndex = msg.stepIndex; j.navigating = !!msg.navigating; touch(j); } return respond({});
       case 'gate': return respond(j ? await gate(j, msg.kind) : { cancel: true });
