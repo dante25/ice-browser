@@ -593,3 +593,12 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   } catch (e) { console.error('[USN] message handler failed', msg && msg.t, e && e.stack); try { respond({ error: String(e && e.stack || e) }); } catch (e2) {} } })();
   return true;
 });
+
+// Ice: build -5 je isključio popup ispod ikone (action.setPopup('')), a to stanje ostaje zapamćeno u profilu.
+// Ovdje se popup iz manifesta vraća pri svakom pokretanju; ako klik ipak stigne ovamo (popup još isključen),
+// popup se vrati i odmah otvori.
+const iceRestorePopup = () => { try { return chrome.action.setPopup({ popup: chrome.runtime.getManifest().action.default_popup }); } catch (e) {} };
+iceRestorePopup();
+chrome.runtime.onStartup.addListener(iceRestorePopup);
+chrome.runtime.onInstalled.addListener(iceRestorePopup);
+chrome.action.onClicked.addListener(async () => { try { await iceRestorePopup(); await chrome.action.openPopup(); } catch (e) {} });

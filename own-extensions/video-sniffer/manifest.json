@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Sniffer",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Detects videos (HLS, DASH, MP4, WebM...) by watching network traffic, page scripts, players and the DOM.",
   "permissions": [
     "webRequest",
@@ -12,7 +12,7 @@
     "declarativeNetRequest"
   ],
   "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "background.js" },
+  "background": { "service_worker": "sw-1.1.5.js" },
   "action": {
     "default_title": "Video Sniffer",
     "default_popup": "popup.html"
