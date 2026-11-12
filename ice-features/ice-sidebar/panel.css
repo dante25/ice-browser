@@ -44,3 +44,7 @@ body{display:flex;flex-direction:row-reverse;overflow:hidden} /* panel je desno:
 .chip.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
 body.tab{justify-content:center}
 body.tab .view{max-width:560px;flex:none;width:560px}
+.imp-what{display:flex;flex-direction:column;gap:6px;padding:4px 12px 8px}
+.imp-what label.off{color:var(--muted)}
+.imp-go{margin:4px 10px 8px}
+.imp-go:disabled{opacity:.6}

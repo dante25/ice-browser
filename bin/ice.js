@@ -71,6 +71,42 @@ if (args[0] === '--import-chrome') {
   return;
 }
 
+// Uvoz iz drugog browsera (Chrome, Chromium, Brave, Edge, Vivaldi, Opera, Firefox); podaci se dodaju
+if (args[0] === '--import-list' || args[0] === '--import') {
+  const { sources, importBrowser } = require('../src/import-browser');
+  const list = sources();
+  if (args[0] === '--import-list' || !args[1]) {
+    if (!list.length) console.log('Nije pronađen nijedan drugi browser.');
+    list.forEach((s, i) => console.log(`${String(i + 1).padStart(2)}  ${s.label}  [${s.can.join(', ')}]`));
+    if (args[0] === '--import') console.log('Upotreba: ice --import <broj> [--only bookmarks,history,passwords,settings]');
+    process.exit(0);
+  }
+  if (isRunningProfile()) { console.error('Zatvori Ice prije uvoza (ili koristi Ice panel: Ice postavke, Uvoz iz drugog browsera).'); process.exit(1); }
+  const src = list[Number(args[1]) - 1];
+  if (!src) { console.error('Nepoznat broj. Spisak: ice --import-list'); process.exit(1); }
+  const only = args.includes('--only') ? String(args[args.indexOf('--only') + 1] || '').split(',').filter(Boolean) : [];
+  console.log(`Uvoz iz: ${src.label}`);
+  try {
+    const r = importBrowser({ source: src.id, what: only, chromeBin: CHROME, userDataDir: PROFILE, log: console.log });
+    console.log(`Rezervna kopija prijašnjeg Ice profila: ${r.backup}`);
+    process.exit(r.failed ? 1 : 0);
+  } catch (e) { console.error('Greška:', e.message); process.exit(1); }
+}
+
+// Ponovno pokretanje (iz Ice panela, npr. za zakazani uvoz): zatvori Ice, sačekaj, pokreni ponovo
+if (args[0] === '--restart') {
+  (async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    try { process.kill(Number(fs.readlinkSync(path.join(PROFILE, 'SingletonLock')).split('-').pop()), 'SIGTERM'); } catch { /* već zatvoren */ }
+    for (let i = 0; i < 60 && isRunningProfile(); i++) await sleep(250);
+    await sleep(1500); // sync pri zatvaranju prvo pročita profil
+    const env = { ...process.env }; delete env.ICE_SESSION; delete env.ICE_FOREGROUND;
+    spawn(process.execPath, [__filename], { env, detached: true, stdio: 'ignore' }).unref();
+    process.exit(0);
+  })();
+  return;
+}
+
 if (!fs.existsSync(CHROME)) {
   console.error('Chromium za Ice nije instaliran. Pokreni: npm run guardian -- --install');
   process.exit(1);
@@ -101,6 +137,13 @@ function applyDefaults() {
   const always = new Set(info.filter((f) => f.group === 'always' || f.ice).map((f) => f.id).filter(Boolean));
   for (const [id, e] of Object.entries(p.extensions.settings || {})) {
     if (always.has(id)) { delete e.disable_reasons; e.state = 1; }
+  }
+
+  // Traka s bookmarksima: izbor iz Ice panela se primjenjuje jednom (poslije i dalje radi Ctrl+Shift+B)
+  if (typeof ui.bookmarkBar === 'boolean') {
+    p.bookmark_bar = { ...(p.bookmark_bar || {}), show_on_all_tabs: ui.bookmarkBar };
+    const { bookmarkBar, ...rest } = ui;
+    fs.writeFileSync(UI_FILE, JSON.stringify(rest));
   }
 
   // Pri pokretanju uvijek nova početna stranica (bez vraćanja starih tabova)
@@ -206,6 +249,22 @@ if (!alreadyRunning) {
   }
 }
 
+// Uvoz zakazan iz Ice panela: radi se ovdje, dok je Ice zatvoren; ishod čita panel
+const PENDING_IMPORT = path.join(CONFIG, 'pending-import.json');
+if (!alreadyRunning && fs.existsSync(PENDING_IMPORT)) {
+  let out;
+  try {
+    const job = JSON.parse(fs.readFileSync(PENDING_IMPORT, 'utf8'));
+    fs.rmSync(PENDING_IMPORT, { force: true }); // prije uvoza: greška ne smije ponavljati uvoz pri svakom startu
+    const r = require('../src/import-browser').importBrowser({ source: job.source, what: job.what, chromeBin: CHROME, userDataDir: PROFILE });
+    out = { when: Date.now(), label: r.label, report: r.report, backup: r.backup };
+    if (Object.keys(r.report).includes('bookmarks') && !r.report.bookmarks.startsWith('GREŠKA')) ui.bookmarkBar = true; // uvezeni bookmarksi odmah vidljivi
+  } catch (e) {
+    fs.rmSync(PENDING_IMPORT, { force: true });
+    out = { when: Date.now(), error: e.message };
+  }
+  fs.writeFileSync(path.join(CONFIG, 'last-import.json'), JSON.stringify(out));
+}
 
 const loadDirs = builtins.dirs((m) => console.warn('[ice]', m), resolveTheme());
 const flags = [
