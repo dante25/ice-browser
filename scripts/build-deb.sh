@@ -4,7 +4,7 @@
 set -euo pipefail
 ICE="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ICE/dist}"
-VER="${ICE_VERSION:-0.1.0}"
+VER="${ICE_VERSION:-0.2.0}"
 CHROMIUM="${ICE_CHROMIUM_DIR:-$HOME/.local/share/ice/chromium/current}"
 NODE="${ICE_NODE:-$(readlink -f "$(command -v node)")}"
 STAGE="$(mktemp -d)"
@@ -83,6 +83,6 @@ chmod 755 "$P/DEBIAN/postinst" "$P/DEBIAN/postrm"
 
 mkdir -p "$OUT"
 FILE="$OUT/ice-browser_${VER}_amd64.deb"
-fakeroot dpkg-deb -Zxz -z6 --build "$P" "$FILE" >/dev/null
+dpkg-deb --root-owner-group -Zxz -z6 --build "$P" "$FILE" >/dev/null
 echo "$FILE"
 ls -la "$FILE" | awk '{print "veličina:", $5/1048576 " MB"}'

@@ -303,10 +303,23 @@ async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) 
 }
 
 // ------------------------------------------------------------------ progress window
+// Ice: bez zadane pozicije prozor se na nekim sistemima otvori izvan ekrana (lijevo). Postavlja se
+// unutar prozora u kojem je korisnik, uz njegov desni gornji ugao, uvijek u vidljivom dijelu.
+async function popupBounds(width, height) {
+  try {
+    const cur = await chrome.windows.getLastFocused();
+    if (cur && cur.width > 0 && cur.left !== undefined) {
+      const w = Math.min(width, Math.max(300, cur.width - 40));
+      const h = Math.min(height, Math.max(200, cur.height - 80));
+      return { width: w, height: h, left: Math.max(0, Math.round(cur.left + cur.width - w - 20)), top: Math.max(0, Math.round(cur.top + 60)) };
+    }
+  } catch (e) {}
+  return { width, height, left: 100, top: 80 };
+}
 async function openManager(focus = false) {
   try {
     if (S.managerWindow) { try { await chrome.windows.get(S.managerWindow); if (focus) await chrome.windows.update(S.managerWindow, { focused: true }); return; } catch (e) { S.managerWindow = null; } }
-    const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/manager.html'), type: 'popup', width: 520, height: 700, focused: focus });
+    const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/manager.html'), type: 'popup', ...(await popupBounds(520, 700)), focused: focus });
     S.managerWindow = w.id;
   } catch (e) { /* no window API in this context */ }
 }
@@ -314,7 +327,7 @@ let folderWindow = null;
 async function openFolderWindow() {
   try {
     if (folderWindow) { try { await chrome.windows.update(folderWindow, { focused: true }); return; } catch (e) { folderWindow = null; } }
-    const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/folder.html'), type: 'popup', width: 460, height: 330, focused: true });
+    const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/folder.html'), type: 'popup', ...(await popupBounds(460, 330)), focused: true });
     folderWindow = w.id;
   } catch (e) {}
 }
