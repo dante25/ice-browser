@@ -13,8 +13,8 @@
   ],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
-  "ice_popup": "popup.html",
   "action": {
+    "default_popup": "popup.html",
     "default_title": "Video Sniffer"
   },
   "content_scripts": [

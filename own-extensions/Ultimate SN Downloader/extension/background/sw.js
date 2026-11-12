@@ -305,13 +305,14 @@ async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) 
 // ------------------------------------------------------------------ progress window
 // Ice: bez zadane pozicije prozor se na nekim sistemima otvori izvan ekrana (lijevo). Postavlja se
 // unutar prozora u kojem je korisnik, uz njegov desni gornji ugao, uvijek u vidljivom dijelu.
-async function popupBounds(width, height) {
+async function popupBounds(width, height, underIcons = false) {
   try {
     const cur = await chrome.windows.getLastFocused();
     if (cur && cur.width > 0 && cur.left !== undefined) {
       const w = Math.min(width, Math.max(300, cur.width - 40));
       const h = Math.min(height, Math.max(200, cur.height - 80));
-      return { width: w, height: h, left: Math.max(0, Math.round(cur.left + cur.width - w - 20)), top: Math.max(0, Math.round(cur.top + 60)) };
+      const left = underIcons ? cur.left + Math.min(70, Math.max(0, cur.width - w)) : cur.left + cur.width - w - 20;
+      return { width: w, height: h, left: Math.max(0, Math.round(left)), top: Math.max(0, Math.round(cur.top + (underIcons ? 90 : 60))) };
     }
   } catch (e) {}
   return { width, height, left: 100, top: 80 };
@@ -607,15 +608,21 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   return true;
 });
 
-// Ice: klik na ikonu otvara popup kao prozor unutar prozora preglednika (Chromiumov popup ispod ikone
-// zna otići izvan ekrana kad su ikone ekstenzija lijevo od adresne trake).
+// Ice: ikone su lijevo od adresne trake, pa Chromiumov popup ispod ikone ode izvan ekrana kad je prozor
+// uz lijevu ivicu (maksimiziran). Zato klik na ikonu otvara popup kao mali prozor ispod ikona, uvijek u
+// vidljivom dijelu. default_popup ostaje u manifestu: Ice panel ga prikazuje unutar sebe.
 let actionWindow = null;
 async function openActionWindow(tab) {
   if (actionWindow) { try { await chrome.windows.remove(actionWindow); } catch (e) {} actionWindow = null; }
-  const b = await popupBounds(372, 640);
-  const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/popup.html?tab=' + (tab && tab.id)), type: 'popup', focused: true, ...b });
+  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }); } catch (e) {} }
+  const b = await popupBounds(372, 640, true);
+  const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/popup.html?tab=' + ((tab && tab.id) || '')), type: 'popup', focused: true, ...b });
   actionWindow = w.id;
 }
+const noBubble = () => { try { chrome.action.setPopup({ popup: '' }); } catch (e) {} };
+noBubble();
+chrome.runtime.onStartup.addListener(noBubble);
+chrome.runtime.onInstalled.addListener(noBubble);
 chrome.action.onClicked.addListener(openActionWindow);
 chrome.windows.onRemoved.addListener(id => { if (id === actionWindow) actionWindow = null; });
-globalThis.iceOpenAction = openActionWindow;
+chrome.runtime.onMessage.addListener((m) => { if (m && m.t === 'ice:action-window') openActionWindow(null); });

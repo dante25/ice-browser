@@ -1,3 +1,5 @@
+// Ice: balon ispod ikone ode izvan ekrana; ako se stranica ipak otvori kao balon, prebacuje se u prozor
+try { if (!new URLSearchParams(location.search).get('tab') && chrome.extension.getViews({ type: 'popup' }).includes(window)) { chrome.runtime.sendMessage({ t: 'ice:action-window' }); window.close(); } } catch (e) {}
 const $ = id => document.getElementById(id);
 let tab = null, desc = null, folderOk = false;
 const KEYS = ['photos', 'videos', 'storyreel'];

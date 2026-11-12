@@ -1,7 +1,5 @@
 // Ugrađene funkcije Icea: originalni kod ekstenzija (chrome-extensions/, own-extensions/) i Iceove
 // vlastite (ice-features/). Chromium ih učitava pri svakom pokretanju Icea.
-// Ekstenzije koje same otvaraju popup kao prozor (klik na ikonu) nemaju default_popup, pa je stranica popupa
-// navedena u "ice_popup" (treba panelu da je prikaže unutar sebe).
 //   toggle: može se isključiti (npm start -- --feature <key> off)
 //   always: uvijek uključeno
 const fs = require('fs');
@@ -70,7 +68,7 @@ function createBuiltins(configDir, dataDir) {
         },
       });
     }
-    const popup = ((m.action || m.browser_action || {}).default_popup || m.ice_popup || '').split('?')[0].replace(/^\.\//, '');
+    const popup = ((m.action || m.browser_action || {}).default_popup || '').split('?')[0].replace(/^\.\//, '');
     const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
     const pages = [popup, options].filter(Boolean);
     if (pages.length) {
@@ -95,7 +93,7 @@ function createBuiltins(configDir, dataDir) {
       const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
       if (b.key !== 'ice-sidebar') out.push(patches.prepare(b.key, dir, dataDir, log, manifestRules(b, m)));
       const key = m.key || KEYS[b.key]?.key;
-      const popup = ((m.action || m.browser_action || {}).default_popup || m.ice_popup || '').replace(/^\.\//, '');
+      const popup = ((m.action || m.browser_action || {}).default_popup || '').replace(/^\.\//, '');
       const options = (m.options_page || m.options_ui?.page || '').replace(/^\.\//, '');
       info.push({ key: b.key, name: b.name, group: b.group, ice: !!b.ice, id: key ? idFromKey(key) : null, popup: popup || null, options: options || null });
     }
