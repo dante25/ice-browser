@@ -307,7 +307,7 @@ async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) 
 // unutar prozora u kojem je korisnik, uz njegov desni gornji ugao, uvijek u vidljivom dijelu.
 async function popupBounds(width, height, underIcons = false) {
   try {
-    const cur = await chrome.windows.getLastFocused();
+    const cur = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }); // prozor preglednika, ne drugi popup
     if (cur && cur.width > 0 && cur.left !== undefined) {
       const w = Math.min(width, Math.max(300, cur.width - 40));
       const h = Math.min(height, Math.max(200, cur.height - 80));
@@ -614,7 +614,7 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
 let actionWindow = null;
 async function openActionWindow(tab) {
   if (actionWindow) { try { await chrome.windows.remove(actionWindow); } catch (e) {} actionWindow = null; }
-  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }); } catch (e) {} }
+  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: 'normal' }); if (!tab) [tab] = await chrome.tabs.query({ active: true, windowType: 'normal' }); } catch (e) {} }
   const b = await popupBounds(372, 640, true);
   const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/popup.html?tab=' + ((tab && tab.id) || '')), type: 'popup', focused: true, ...b });
   actionWindow = w ? w.id : null;

@@ -128,10 +128,10 @@ chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove([`tab
 let iceActionWindow = null;
 async function iceOpenAction(tab) {
   if (iceActionWindow) { try { await chrome.windows.remove(iceActionWindow); } catch (e) {} iceActionWindow = null; }
-  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }); } catch (e) {} }
+  if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: 'normal' }); if (!tab) [tab] = await chrome.tabs.query({ active: true, windowType: 'normal' }); } catch (e) {} }
   let b = { width: 440, height: 640, left: 100, top: 90 };
   try {
-    const cur = await chrome.windows.getLastFocused();
+    const cur = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }); // prozor preglednika, ne drugi popup
     if (cur && cur.width > 0 && cur.left !== undefined) {
       const w = Math.min(440, Math.max(300, cur.width - 40)), h = Math.min(640, Math.max(240, cur.height - 110));
       b = { width: w, height: h, left: Math.max(0, Math.round(cur.left + Math.min(70, Math.max(0, cur.width - w)))), top: Math.max(0, Math.round(cur.top + 90)) };
