@@ -138,7 +138,7 @@ async function iceOpenAction(tab) {
     }
   } catch (e) {}
   const w = await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?tab=' + ((tab && tab.id) || '')), type: 'popup', focused: true, ...b });
-  iceActionWindow = w.id;
+  iceActionWindow = w ? w.id : null;
 }
 const iceNoBubble = () => { try { chrome.action.setPopup({ popup: '' }); } catch (e) {} };
 iceNoBubble();

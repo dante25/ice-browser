@@ -617,7 +617,7 @@ async function openActionWindow(tab) {
   if (!tab || !tab.id) { try { [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true }); } catch (e) {} }
   const b = await popupBounds(372, 640, true);
   const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/popup.html?tab=' + ((tab && tab.id) || '')), type: 'popup', focused: true, ...b });
-  actionWindow = w.id;
+  actionWindow = w ? w.id : null;
 }
 const noBubble = () => { try { chrome.action.setPopup({ popup: '' }); } catch (e) {} };
 noBubble();
