@@ -32,6 +32,33 @@ for (const [dir, id] of Object.entries(ADDONS)) {
   } catch (e) { ok(false, `${dir}: popup: ${e.message}`); }
   await p.close();
 }
+// 1b) SN Downloader na Facebooku (bez prijave): skripta na stranici postoji i odgovara na zahtjeve
+{
+  const fb = await ctx.newPage();
+  try {
+    await fb.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await fb.waitForTimeout(4000);
+    const r = await fb.evaluate(async () => {
+      const rpc = (method, args, ms = 20000) => new Promise((res) => {
+        const id = 900000 + Math.floor(Math.random() * 1e5); const t0 = Date.now();
+        const t = setTimeout(() => { removeEventListener('message', h); res({ error: 'timeout ' + method }); }, ms);
+        function h(ev) { const d = ev.data; if (ev.source === window && d && d.__usd === 1 && d.dir === 'res' && d.id === id) { clearTimeout(t); removeEventListener('message', h); res({ ms: Date.now() - t0, result: d.result }); } }
+        addEventListener('message', h);
+        postMessage({ __usd: 1, dir: 'rpc', id, method, args: args || {} }, location.origin);
+      });
+      const meta = await rpc('meta');
+      const f = await rpc('fetch', { url: location.origin + '/robots.txt', method: 'GET', plain: true, headers: { accept: 'text/plain' } });
+      return { hook: typeof window.__usd, fetchWrapped: !/\[native code\]/.test(String(window.fetch)), url: location.href,
+        meta: meta.error || `${meta.ms} ms, naslov: ${String(meta.result && meta.result.title).slice(0, 40)}`,
+        fetch: f.error || `${f.ms} ms, status ${f.result && f.result.status}${f.result && f.result.error ? ' ' + f.result.error : ''}` };
+    });
+    console.log('     Facebook proba:', JSON.stringify(r));
+    ok(r.hook === 'object', 'sn-downloader: skripta na stranici (main_hook) je učitana na facebook.com');
+    ok(!/timeout/.test(r.meta), `sn-downloader: zahtjev prema stranici dobija odgovor (${r.meta})`);
+    ok(!/timeout/.test(r.fetch), `sn-downloader: mrežni zahtjev sa stranice se završava (${r.fetch})`);
+  } catch (e) { console.log('     Facebook proba nije izvedena: ' + e.message.split('\n')[0]); }
+  await fb.close();
+}
 // 2) Dodatak Uvoz: stranica se otvara, host odgovara, nalazi drugi browser
 const p = await ctx.newPage();
 try {

@@ -18,8 +18,9 @@ Već uključeno u paket (izvor u repou):
 - `ice-uvoz` (ovdje u `dodaci/`): uvoz iz drugog browsera. Stranica dodatka razgovara s
   `/opt/ice-browser/uvoz/ice-uvoz.py` (izvor: `core-build/uvoz/`) preko native messaginga `ice.uvoz`.
 
-## Izmjena pozadinske skripte dodatka (service worker)
-Preglednik drži keširanu pozadinsku skriptu dodatka i NE uzima novu samo zato što se fajl ili verzija
-promijenila. Kad se mijenja pozadinska skripta, mora se promijeniti i IME ulazne skripte u manifestu
-(`background.service_worker`), npr. `sw-1.1.5.js` koji samo učita pravu skriptu. Inače stara pozadinska
-skripta radi s novim stranicama dodatka (tako je build -5 ugasio popup SN Downloadera i Video Sniffera).
+## Tuđi/vlastiti kod se ne mijenja
+`own-extensions/` (SN Downloader, Video Sniffer) ide u paket bajt-za-bajt, bez Iceovih izmjena. Sve što Ice
+treba oko njih rješava se izvan njihovog koda (jezgra, launcher, poseban dodatak).
+
+Napomena o kešu: preglednik drži keširanu pozadinsku skriptu dodatka i ne uzima novu samo zato što se fajl
+promijenio; nova se učita kad se promijeni IME ulazne skripte u manifestu (`background.service_worker`).

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ultimate SN Downloader",
-  "version": "0.11.4",
+  "version": "0.11.3",
   "description": "Download photos and videos from Instagram, Facebook, X, DeviantArt and Flickr, and images from any gallery page (Image Host Grabber with the host file).",
   "minimum_chrome_version": "110",
   "icons": {
@@ -19,7 +19,7 @@
     }
   },
   "background": {
-    "service_worker": "background/sw-0.11.4.js",
+    "service_worker": "background/sw.js",
     "type": "module"
   },
   "permissions": [
