@@ -139,100 +139,19 @@
         bitrate: f.bitrate || 0,
       }));
     const sig = `${id}:${formats.length}`;
-    const info = { id, title: pr.videoDetails.title || '', formats };
-    const cached = streamsCache?.id === id ? streamsCache.streams : null;
+    let sts;
+    try {
+      sts = window.ytcfg?.get?.('STS');
+    } catch {}
+    const info = { id, title: pr.videoDetails.title || '', formats, sts };
     if (sig !== lastYoutube) {
       lastYoutube = sig;
-      // Streams found earlier are always resent: a post without them would erase them in the popup.
-      window.postMessage({ __vsniffer: 1, items: [], youtube: cached ? { ...info, streams: cached } : info }, '*');
+      // The direct streams are requested by content.js (isolated world), the way Video DownloadHelper does it:
+      // a request made from the page goes through whatever other extensions (ad blockers) did to fetch / JSON.
+      window.postMessage({ __vsniffer: 1, items: [], youtube: info }, '*');
     }
-    if (!cached) fetchStreams(info);
   }
 
-  // The web player gets no file URLs from YouTube any more, so the streams are requested the way
-  // YouTube's own apps do it. Direct mp4 video + audio URLs come back; the downloader merges them.
-  // Several app clients are tried in turn, each first with the browser's login and then without it
-  // (an app client asked with web cookies is sometimes refused): the first one that returns file URLs
-  // wins. What every attempt answered is kept in `diag` and shown in the popup when nothing was found.
-  const YT_CLIENTS = [
-    {
-      id: '101',
-      ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
-      client: { clientName: 'VISIONOS', clientVersion: '1.02', deviceMake: 'Apple', deviceModel: 'RealityDevice17,1', osName: 'visionOS', osVersion: '26.5.23O471' },
-    },
-    {
-      id: '28',
-      ua: 'com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip',
-      client: { clientName: 'ANDROID_VR', clientVersion: '1.65.10', deviceMake: 'Oculus', deviceModel: 'Quest 3', androidSdkVersion: 32, osName: 'Android', osVersion: '12L' },
-    },
-    {
-      id: '5',
-      ua: 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)',
-      client: { clientName: 'IOS', clientVersion: '20.10.4', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.3.2.22D82' },
-    },
-  ];
-  let streamsCache = null; // { id, streams } once the direct streams of a video were found
-  let streamsBusy = false;
-  let streamTries = 0;
-  let streamsTriesFor = '';
-  async function askPlayer(c, info, anon) {
-    const key = window.ytcfg?.get?.('INNERTUBE_API_KEY');
-    const visitor = window.ytcfg?.get?.('VISITOR_DATA') || '';
-    const headers = { 'content-type': 'application/json', 'x-youtube-client-name': c.id, 'x-youtube-client-version': c.client.clientVersion };
-    if (visitor) headers['x-goog-visitor-id'] = visitor;
-    const client = { ...c.client, hl: 'en', gl: 'US', ...(visitor ? { visitorData: visitor } : {}) };
-    const r = await fetch(`/youtubei/v1/player?prettyPrint=false${key ? `&key=${key}` : ''}`, {
-      method: 'POST',
-      credentials: anon ? 'omit' : 'same-origin',
-      headers,
-      body: JSON.stringify({ context: { client }, videoId: info.id, contentCheckOk: true, racyCheckOk: true }),
-    });
-    if (!r.ok) return { note: `HTTP ${r.status}` };
-    const j = await r.json();
-    const sd = j.streamingData || {};
-    const every = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
-    const all = every.filter((f) => f.url);
-    const pick = (f) => ({ itag: f.itag, height: f.height || 0, fps: f.fps || 0, size: Number(f.contentLength) || 0, url: f.url });
-    const video = all.filter((f) => /^video\/mp4/.test(f.mimeType) && f.qualityLabel && !f.audioQuality).map(pick);
-    const muxed = all.filter((f) => /^video\/mp4/.test(f.mimeType) && f.qualityLabel && f.audioQuality).map(pick);
-    const audio = all.filter((f) => /^audio\/mp4/.test(f.mimeType)).sort((x, y) => y.bitrate - x.bitrate)[0];
-    const ps = j.playabilityStatus || {};
-    const note = `${ps.status || 'no status'}${ps.reason ? ` (${String(ps.reason).slice(0, 60)})` : ''}, ${all.length}/${every.length} with url`;
-    if (!video.length && !muxed.length) return { note };
-    return { note, streams: { video, muxed, audio: audio ? pick(audio) : null, ua: c.ua, client: c.client.clientName + (anon ? ' anon' : '') } };
-  }
-  async function fetchStreams(info) {
-    if (streamsTriesFor !== info.id) {
-      streamsTriesFor = info.id;
-      streamTries = 0;
-    }
-    if (streamsBusy || streamTries >= 2) return;
-    streamsBusy = true;
-    streamTries++;
-    const diag = [];
-    try {
-      for (const c of YT_CLIENTS) {
-        for (const anon of [false, true]) {
-          const tag = c.client.clientName + (anon ? ' anon' : '');
-          let res;
-          try {
-            res = await askPlayer(c, info, anon);
-          } catch (e) {
-            res = { note: `error ${String(e && e.message).slice(0, 60)}` };
-          }
-          diag.push(`${tag}: ${res.note}`);
-          if (res.streams) {
-            streamsCache = { id: info.id, streams: res.streams };
-            window.postMessage({ __vsniffer: 1, items: [], youtube: { ...info, streams: res.streams, diag } }, '*');
-            return;
-          }
-        }
-      }
-      window.postMessage({ __vsniffer: 1, items: [], youtube: { ...info, diag } }, '*');
-    } finally {
-      streamsBusy = false;
-    }
-  }
 
   document.addEventListener('yt-navigate-finish', () => {
     setTimeout(scanYouTube, 500);
