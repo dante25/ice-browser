@@ -6,7 +6,7 @@ name: Ice repackage
 
 on:
   push:
-    branches: ["claude/vibrant-gauss-9sqpu7"]
+    branches: ["claude/vibrant-gauss-9sqpu7", "claude/nifty-faraday-lctm6l"]
     paths:
       - "core-build/REPACKAGE"   # pokreće se samo kad se ovaj fajl promijeni (namjerno)
   workflow_dispatch:
@@ -30,7 +30,7 @@ defaults:
 env:
   ARCH: x86_64
   ICE_PL_DIR: core-build/.work/portablelinux
-  ICE_DEB_VERSION: 156.0.8078.79-9
+  ICE_DEB_VERSION: 156.0.8078.79-10
   BASE_RUN: ${{ inputs.base_run || '43249192826' }}
 
 jobs:
