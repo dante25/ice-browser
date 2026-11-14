@@ -1,0 +1,26 @@
+name: build-deb
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/nifty-faraday-lctm6l]
+    paths-ignore: ['**.md']
+jobs:
+  deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y fakeroot
+      - name: Motor (ungoogled-chromium)
+        run: node scripts/guardian.mjs --install
+      - name: Paket
+        env:
+          ICE_VERSION: 0.1.${{ github.run_number }}
+        run: bash scripts/build-deb.sh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ice-browser-deb
+          path: dist/*.deb
+          retention-days: 30
