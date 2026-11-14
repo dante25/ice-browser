@@ -4,16 +4,7 @@ The image is the one the site itself publishes for that page (og:image / content
 <root>
 <host id="dreamstime.com">
 <urlpattern>^https?:\/\/(?:[\w-]+\.)?dreamstime\.com\/[^?#]*-image\d+(?:[?#].*)?$</urlpattern>
-<searchpattern><![CDATA[function(pageData, pageUrl) {
-	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
-	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
-	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
-	if (!u) return {imgUrl: null, status: "ABORT"};
-	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
-	if (u.indexOf('//') === 0) u = 'https:' + u;
-	
-	return {imgUrl: u, status: "OK"};
-}]]></searchpattern>
+<searchpattern><![CDATA[REPLACE: '^https?:\/\/(?:[\w-]+\.)?dreamstime\.com\/([^?#]*)-image(\d+)(?:[?#].*)?$','https://thumbs.dreamstime.com/b/$1-$2.jpg?w=992']]></searchpattern>
 </host>
 
 <host id="artstation.com">

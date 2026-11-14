@@ -15,14 +15,19 @@ const detail = (site, i) => site === 'shutterstock' ? `/x/p${900000 + i}z` : sit
 const srv = https.createServer({ key: fs.readFileSync(tmp + '/k.pem'), cert: fs.readFileSync(tmp + '/c.pem') }, (rq, rs) => {
   const h = rq.headers.host.split(':')[0], u = new URL(rq.url, 'https://' + h), p = u.pathname;
   const site = /dreamstime/.test(h) ? 'dreamstime' : /pexels/.test(h) ? 'pexels' : /shutterstock/.test(h) ? 'shutterstock' : '123rf';
+  if (h === 'previews.123rf.com' || h === 'us.123rf.com') { dsHits.rf.push(h + u.pathname); const b = JPG; rs.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': b.length }); return rs.end(b); }
+  if (h === 'fr.123rf.com' && /^\/photo_\d+_/.test(p)) dsHits.rfPage++;
+  if (h === 'thumbs.dreamstime.com') { dsHits.direct.push(u.pathname + u.search); const b = JPG; rs.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': b.length }); return rs.end(b); }
+  if (h === 'www.dreamstime.com' && /-image\d+/.test(p)) dsHits.page++;
   if (p.startsWith('/img/')) { const b = /logo/.test(p) ? JPG.subarray(0, 800) : JPG; rs.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': b.length }); return rs.end(b); }
   rs.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   const pg = Number(u.searchParams.get('pg') || 1);
   if (p === '/gallery') {
-    let b = ''; for (let k = 0; k < PER; k++) b += `<a href="${detail(site, (pg - 1) * PER + k)}">${site === 'shutterstock' ? '<img src="/img/thumb.jpg" width=50>' : 'pic'}</a>`;
+    let b = ''; for (let k = 0; k < PER; k++) b += `<a href="${detail(site, (pg - 1) * PER + k)}">${site === 'shutterstock' ? '<img src="/img/thumb.jpg" width=50>' : site === '123rf' ? `<img src="https://us.123rf.com/450wm/usr/usr1907/usr19070000${(pg - 1) * PER + k}/usr19070000${(pg - 1) * PER + k}-woman-${(pg - 1) * PER + k}.jpg?ver=6">` : 'pic'}</a>`;
     b += '<a href="/x/p999999z">Menu item without a picture</a>';
+    if (site === 'dreamstime') { b += `<a href="/gallery?pg=1">1</a><a href="/gallery?pg=${pg + 1}">${pg + 1}</a><a href="/gallery?pg=${pg + 5}">far</a>`; if (pg >= PAGES) b = b.replace(/<a href="\/gallery\?pg=\d+">(?:\d+|far)<\/a>/g, ''); }
     b += '<a href="/about">About</a><a href="/img/logo-small.jpg">logo</a>';
-    return rs.end(`<!doctype html><title>Gallery</title>${pg < PAGES ? `<link rel="next" href="/gallery?pg=${pg + 1}">` : ''}<body>${b}</body>`);
+    return rs.end(`<!doctype html><title>Gallery</title>${pg < PAGES && site !== 'dreamstime' ? `<link rel="next" href="/gallery?pg=${pg + 1}">` : ''}<body>${b}</body>`);
   }
   if (site === 'shutterstock' && p === '/x/p999999z') { return rs.end('<!doctype html><title>Menu</title>nothing'); }
   const id = (p.match(/(\d+)/g) || []).pop();
@@ -30,7 +35,8 @@ const srv = https.createServer({ key: fs.readFileSync(tmp + '/k.pem'), cert: fs.
   rs.end(`<!doctype html><title>Picture</title><meta property="og:image" content="${og.replace(/&/g, '&amp;')}"><body>picture ${id}</body>`);
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-const hosts = ['www.dreamstime.com', 'www.pexels.com', 'fr.123rf.com', 'www.shutterstock.com'];
+const hosts = ['www.dreamstime.com', 'thumbs.dreamstime.com', 'www.pexels.com', 'fr.123rf.com', 'www.shutterstock.com', 'us.123rf.com', 'previews.123rf.com'];
+const dsHits = { page: 0, direct: [], rfPage: 0, rf: [] };
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 const ctx = await chromium.launchPersistentContext(tmp + '/profile', { headless: false, args: ['--headless=new', '--no-sandbox', `--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`,
   '--ignore-certificate-errors', '--no-proxy-server', `--host-resolver-rules=${hosts.map((x) => `MAP ${x} 127.0.0.1:${srv.address().port}`).join(', ')}`] });
@@ -40,7 +46,7 @@ try {
   const mgr = await ctx.newPage(); await mgr.goto(`chrome-extension://${id}/ui/manager.html`);
   await mgr.evaluate(async () => { const m = await import(chrome.runtime.getURL('background/fsstore.js')); await m.setRoot(await navigator.storage.getDirectory()); await new Promise((r) => chrome.runtime.sendMessage({ t: 'folder:changed' }, r)); });
   await mgr.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ t: 'settings:set', settings: { ihMinKB: 5 } }, r)));
-  for (const host of hosts) {
+  for (const host of hosts.filter((x) => !/^(thumbs|us|previews)\./.test(x))) {
     const page = await ctx.newPage(); await page.goto(`https://${host}/gallery`); await page.waitForTimeout(1200);
     const started = await mgr.evaluate(async (host) => { const t = (await chrome.tabs.query({})).find((t) => t.url && t.url.startsWith('https://' + host + '/')); await chrome.scripting.executeScript({ target: { tabId: t.id }, files: ['content/common.js', 'content/ih.js', 'content/bridge.js'] }); await new Promise((r) => setTimeout(r, 500)); return new Promise((r) => chrome.tabs.sendMessage(t.id, { t: 'start', sel: { photos: true, videos: true, storyreel: true }, speed: 'fast' }, r)); }, host);
     console.log(host, 'start ->', JSON.stringify(started));
@@ -59,6 +65,11 @@ try {
     const n = jpg.filter((f) => f.toLowerCase().includes(needle)).length;
     ok(n === PER * PAGES, `${label}: all ${PER * PAGES} pictures of the ${PAGES}-page gallery saved (not only the first page), got ${n}`);
   }
+  ok(dsHits.page === 0, `Dreamstime: no picture page was fetched (address computed from the link), fetched ${dsHits.page}`);
+  ok(dsHits.direct.length === 12 && dsHits.direct.every((x) => /^\/b\/stock-photo-model-\d+-5\d{7}\.jpg\?w=992$/.test(x)), `Dreamstime: 12 requests to thumbs.dreamstime.com/b/<title>-<id>.jpg?w=992, got ${dsHits.direct.length} e.g. ${dsHits.direct[0]}`);
+  ok(dsHits.rfPage === 0, `123rf: no picture page was fetched, fetched ${dsHits.rfPage}`);
+  const rfPrev = dsHits.rf.filter((x) => x.startsWith('previews.123rf.com'));
+  ok(rfPrev.length === 12 && rfPrev.every((x) => /^previews\.123rf\.com\/images\/usr\/usr1907\/usr19070000\d+\/1000\d{2}-woman-\d+\.jpg$/.test(x)), `123rf: 12 preview urls built as previews.123rf.com/images/<user>/<folder>/<code>/<id>-<title>.jpg, got ${rfPrev.length} e.g. ${rfPrev[0]}`);
   ok(!jpg.some((f) => /logo-small/.test(f)), 'a small direct image link (logo) is skipped as a thumbnail');
   console.log(jpg.filter((f) => !/-5000|pexels-|123rf-/.test(f)).join('\n') || '(only gallery pictures)');
 } finally { await ctx.close(); srv.close(); fs.rmSync(tmp, { recursive: true, force: true }); }

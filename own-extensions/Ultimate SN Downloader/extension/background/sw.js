@@ -394,8 +394,24 @@ async function ihFetch(method, url, headers, body, referer) {
 }
 
 // one link of the page -> {imgUrl, fileName, referer} | {unknown} | {abort} | {error}
+// Picture cards of some sites: the address of a big preview is worked out from the link and the card's own thumbnail, so no picture page is needed
+// (these pages are closed to everything but a real browser session). Each rule below was checked against the live site.
+const CARD_RULES = [
+  { // 123rf: card photo_<id>_<title>.html + thumbnail <host>/450wm/<user>/<folder>/<code>/<code>-<title>.jpg  ->  previews.123rf.com/images/<user>/<folder>/<code>/<id>-<title>.jpg
+    link: /^https?:\/\/(?:[\w-]+\.)?123rf\.com\/(?:photo|stock-photo|free-photo)_(\d+)_([^?#]+?)\.html/i,
+    thumb: /^https?:\/\/(?:[\w-]+\.)?123rf\.com\/\d+wm?a?\/([^/]+\/[^/]+\/[^/]+)\//i,
+    make: (lm, tm) => `https://previews.123rf.com/images/${tm[1]}/${lm[1]}-${lm[2]}.jpg`,
+  },
+];
+function cardUrl(link, thumb) {
+  if (!thumb) return null;
+  for (const r of CARD_RULES) { const lm = link.match(r.link), tm = thumb.match(r.thumb); if (lm && tm) return r.make(lm, tm); }
+  return null;
+}
+
 async function ihResolve(j, link, depth = 0, meta = null) {
   const page = j.page || {};
+  { const c = meta && cardUrl(link, meta.thumb); if (c) return { imgUrl: c, referer: link }; }
   let rule = matchRule(link), generic = false;
   if (!rule && meta && meta.img && sameStock(page.host, link)) { rule = { sp: GENERIC_SP }; generic = true; }
   if (!rule) return isDirectImage(link) ? { imgUrl: link, referer: page.url } : { unknown: true };

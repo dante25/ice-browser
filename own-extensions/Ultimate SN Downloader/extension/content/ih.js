@@ -12,6 +12,14 @@
     return m && !/^https?:\/\/[^/]*facebook\.com\//.test(url) ? m[1] : url;
   }
 
+  // the thumbnail inside a link (a picture card of a gallery): the address the site's own page shows
+  function thumbOf(a) {
+    var i = a.querySelector && a.querySelector('img');
+    if (!i) return '';
+    var u = i.currentSrc || i.getAttribute('data-src') || i.getAttribute('data-lazy-src') || i.src || (i.getAttribute('srcset') || '').split(',')[0].trim().split(/\s+/)[0] || '';
+    try { return u ? new URL(u, a.baseURI || location.href).href : ''; } catch (e) { return ''; }
+  }
+
   function collect() {
     var links = [], seen = {};
     function scan(doc) {
@@ -24,7 +32,7 @@
         url = unanonymize(url);
         if (!/^https?:\/\//i.test(url) || seen[url]) continue;
         seen[url] = 1;
-        links.push({ url: url, img: !!(a.querySelector && a.querySelector('img')) });
+        links.push({ url: url, img: !!(a.querySelector && a.querySelector('img')), thumb: thumbOf(a) });
       }
       var frames = doc.querySelectorAll ? doc.querySelectorAll('iframe, frame') : [];
       for (var f = 0; f < frames.length; f++) { try { if (frames[f].contentDocument) scan(frames[f].contentDocument); } catch (e) { /* cross-origin frame */ } }
@@ -91,11 +99,27 @@
   // spaced requests) and collect the links of every page, so a whole gallery is found from the first page.
   function nextUrl(doc, base) {
     var n = doc.querySelector('link[rel~="next"][href], a[rel~="next"][href]');
-    if (!n) return null;
     try {
-      var u = new URL(n.getAttribute('href'), base);
-      return u.origin === location.origin ? u.href : null;
-    } catch (e) { return null; }
+      if (n) {
+        var u = new URL(n.getAttribute('href'), base);
+        return u.origin === location.origin ? u.href : null;
+      }
+      // no rel="next": a link to the same page with the page number one higher (?pg=2, ?page=2, ?p=2, /page/2/)
+      var cur = new URL(base), num = 1;
+      var cm = cur.search.match(/[?&](?:pg|page|p|pagenum)=(\d+)/i) || cur.pathname.match(/\/page[\/-](\d+)/i);
+      if (cm) num = Number(cm[1]);
+      var as = doc.querySelectorAll('a[href]');
+      for (var i = 0; i < as.length; i++) {
+        var h;
+        try { h = new URL(as[i].getAttribute('href'), base); } catch (e) { continue; }
+        if (h.origin !== cur.origin) continue;
+        var m = h.search.match(/[?&](?:pg|page|p|pagenum)=(\d+)/i) || h.pathname.match(/\/page[\/-](\d+)/i);
+        if (!m || Number(m[1]) !== num + 1) continue;
+        var same = h.pathname.replace(/\/page[\/-]\d+\/?$/i, '') === cur.pathname.replace(/\/page[\/-]\d+\/?$/i, '');
+        if (same) return h.href;
+      }
+    } catch (e) { /* no next page */ }
+    return null;
   }
   async function collectAllPages(ctx) {
     var all = collect(), seen = {}, pages = 1, cur = location.href;
@@ -114,7 +138,7 @@
       for (var i = 0; i < as.length; i++) {
         var url = unanonymize(as[i].href || '');
         if (!/^https?:\/\//i.test(url) || seen[url]) continue;
-        seen[url] = 1; all.push({ url: url, img: !!(as[i].querySelector && as[i].querySelector('img')) });
+        seen[url] = 1; all.push({ url: url, img: !!(as[i].querySelector && as[i].querySelector('img')), thumb: thumbOf(as[i]) });
       }
       pages++;
       cur = next; next = nextUrl(doc, cur);
