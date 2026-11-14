@@ -361,7 +361,10 @@ function ytCard(info) {
   const box = document.createElement('div');
   box.className = 'variants';
   const best = new Map();
-  for (const f of info.formats) {
+  // The player did not report its qualities (Shorts, a page still loading): list what the direct streams offer.
+  const s1 = info.streams;
+  const formats = info.formats?.length ? info.formats : s1 ? [...s1.video, ...s1.muxed].map((x) => ({ itag: x.itag, label: x.label || `${x.height}p`, height: x.height, fps: x.fps, codec: x.codec || '', bitrate: x.bitrate || 0 })) : [];
+  for (const f of formats) {
     const k = `${f.label}|${f.fps}`;
     if (!best.has(k) || best.get(k).bitrate < f.bitrate) best.set(k, f);
   }

@@ -31,12 +31,15 @@ const srv = https.createServer({ key: fs.readFileSync(tmp + '/k.pem'), cert: fs.
       const good = { playabilityStatus: { status: 'OK' }, streamingData: { adaptiveFormats: [
         { itag: 137, qualityLabel: '1080p', height: 1080, fps: 30, mimeType: 'video/mp4; codecs="avc1.640028"', contentLength: '5000', url: 'https://rr1.googlevideo.com/videoplayback?itag=137' },
         { itag: 140, mimeType: 'audio/mp4; codecs="mp4a.40.2"', bitrate: 128000, audioQuality: 'AUDIO_QUALITY_MEDIUM', contentLength: '900', url: 'https://rr1.googlevideo.com/videoplayback?itag=140' }] } };
-      if (j.videoId === 'GOODVIDEO01' && c.clientName === 'VISIONOS') return rs.end(JSON.stringify(good));
+      if ((j.videoId === 'GOODVIDEO01' || j.videoId === 'SHORTVID004') && c.clientName === 'VISIONOS') return rs.end(JSON.stringify(good));
       if (j.videoId === 'SECONDVID02' && c.clientName === 'ANDROID_VR') return rs.end(JSON.stringify(good));
       rs.end(JSON.stringify({ playabilityStatus: { status: 'LOGIN_REQUIRED', reason: 'Sign in to confirm you are not a bot' }, streamingData: { adaptiveFormats: [{ itag: 137, qualityLabel: '1080p', mimeType: 'video/mp4' }] } }));
     }); return;
   }
-  rs.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); rs.end(page(u.searchParams.get('v') || 'x'));
+  rs.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  // a Shorts page: no #movie_player for this video at all (its player is #shorts-player, here not even ready)
+  if (u.pathname.startsWith('/shorts/')) return rs.end('<!doctype html><title>Short clip - YouTube</title><div id="shorts-player"></div><script>window.ytcfg={get:function(k){return {STS:20410}[k]}};</script>');
+  rs.end(page(u.searchParams.get('v') || 'x'));
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
@@ -44,7 +47,7 @@ const ctx = await chromium.launchPersistentContext(tmp + '/profile', { headless:
   '--ignore-certificate-errors', '--no-proxy-server', `--host-resolver-rules=MAP www.youtube.com 127.0.0.1:${srv.address().port}`] });
 try {
   let sw; for (let i = 0; i < 60 && !sw; i++) { sw = ctx.serviceWorkers()[0]; if (!sw) await new Promise((r) => setTimeout(r, 500)); }
-  const yt = async (id) => { const p = await ctx.newPage(); await p.goto('https://www.youtube.com/watch?v=' + id); await p.waitForTimeout(6000);
+  const yt = async (id, shorts) => { const p = await ctx.newPage(); await p.goto('https://www.youtube.com/' + (shorts ? 'shorts/' : 'watch?v=') + id); await p.waitForTimeout(6000);
     const all = await sw.evaluate(() => chrome.storage.session.get(null)); await p.close();
     return Object.entries(all).filter(([k]) => k.startsWith('yt:')).map(([, v]) => v).find((v) => v.id === id); };
   const good = await yt('GOODVIDEO01');
@@ -59,6 +62,9 @@ try {
   ok(second?.streams?.client === 'ANDROID_VR' && second.diag.length === 2, 'VISIONOS refused -> ANDROID_VR answered');
   const b = asked.find((x) => x.v === 'SECONDVID02' && x.name === 'ANDROID_VR') || {};
   ok(b.cn === '28' && b.c?.androidSdkVersion === 32 && b.c?.deviceModel === 'Quest 3' && b.c?.clientFormFactor === 'SMALL_FORM_FACTOR', 'ANDROID_VR context as in VDH');
+  const short = await yt('SHORTVID004', true);
+  console.log('short:', JSON.stringify(short && { title: short.title, formats: short.formats?.length, client: short.streams?.client, video: short.streams?.video?.map((v) => v.label) }));
+  ok(short && short.streams && short.streams.video.length === 1 && short.streams.video[0].label === '1080p', 'Shorts: detected from the address alone (no player data), streams found with their quality labels');
   const bad = await yt('BADVIDEO003');
   console.log('bad:', JSON.stringify(bad && { streams: !!bad.streams, diag: bad.diag }));
   ok(bad && !bad.streams && bad.diag && bad.diag.length === 3 && /LOGIN_REQUIRED/.test(bad.diag[0]), 'nothing found: YouTube\'s answer to each of the 3 clients is recorded for the popup');

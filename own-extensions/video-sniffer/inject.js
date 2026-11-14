@@ -119,14 +119,23 @@
   let lastYoutube = '';
   function scanYouTube() {
     if (!/(^|\.)youtube\.com$/.test(location.hostname)) return;
-    let pr;
-    try {
-      pr = document.getElementById('movie_player')?.getPlayerResponse?.();
-    } catch {}
     const here = new URL(location.href);
     const wanted = here.searchParams.get('v') || here.pathname.match(/^\/shorts\/([\w-]+)/)?.[1];
-    const id = pr?.videoDetails?.videoId;
-    if (!id || id !== wanted) return;
+    if (!wanted) return;
+    // Shorts play in their own player (#shorts-player); take the player that holds THIS video.
+    let pr = null;
+    for (const pid of ['shorts-player', 'movie_player']) {
+      try {
+        const r = document.getElementById(pid)?.getPlayerResponse?.();
+        if (r?.videoDetails?.videoId === wanted) {
+          pr = r;
+          break;
+        }
+      } catch {}
+    }
+    // No player data for this video (yet): the id from the address is enough to ask for the streams, as VDH does.
+    if (!pr) pr = { videoDetails: { videoId: wanted, title: document.title.replace(/ - YouTube$/, '') } };
+    const id = wanted;
     const sd = pr.streamingData || {};
     const formats = [...(sd.adaptiveFormats || []), ...(sd.formats || [])]
       .filter((f) => f.qualityLabel)

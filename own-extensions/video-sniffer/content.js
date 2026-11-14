@@ -89,7 +89,7 @@ async function ytAskPlayer(s, c, info) {
   const sd = j.streamingData || {};
   const every = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
   const all = every.filter((f) => f.url);
-  const pick = (f) => ({ itag: f.itag, height: f.height || 0, fps: f.fps || 0, size: Number(f.contentLength) || 0, url: f.url });
+  const pick = (f) => ({ itag: f.itag, height: f.height || 0, fps: f.fps || 0, size: Number(f.contentLength) || 0, url: f.url, label: f.qualityLabel || '', codec: /codecs="([^".]+)/.exec(f.mimeType || '')?.[1] || '', bitrate: f.bitrate || 0 });
   const video = all.filter((f) => /^video\/mp4/.test(f.mimeType) && f.qualityLabel && !f.audioQuality).map(pick);
   const muxed = all.filter((f) => /^video\/mp4/.test(f.mimeType) && f.qualityLabel && f.audioQuality).map(pick);
   const audio = all.filter((f) => /^audio\/mp4/.test(f.mimeType)).sort((x, y) => y.bitrate - x.bitrate)[0];
