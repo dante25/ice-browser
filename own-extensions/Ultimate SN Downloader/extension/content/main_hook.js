@@ -133,6 +133,7 @@
         Object.keys(vars).forEach(function (k) { if (k.indexOf('__relay_internal') === 0) delete vars[k]; });
         Object.keys(pv).forEach(function (k) { if (k.indexOf('__relay_internal') === 0) vars[k] = !!(pv[k] && pv[k].get && pv[k].get()); });
       } catch (e) {}
+      if (!vars.scale) { try { vars.scale = req('WebPixelRatio').get(); } catch (e) {} }     // ESUIT adds the page's pixel ratio to every query
       var ap = {}; try { ap = req('getAsyncParams')('POST') || {}; } catch (e) {}
       var av = ''; try { av = req('RelayAPIConfig').actorID; } catch (e) {}
       var body = new URLSearchParams(Object.assign({ av: av }, ap, { fb_api_caller_class: 'RelayModern', fb_api_req_friendly_name: name,
