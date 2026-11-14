@@ -1,0 +1,259 @@
+# Ice for Android: ungoogled-chromium-android 156.0.8078.79-1 (Chromium 156.0.8078.79) + the Ice overlay in android/overlay
+# (GN flag is_desktop_android=true = Chromium's own "desktop Android" build, which supports extensions, + Ice patches).
+# Same relay as the upstream hosted build (and as the desktop core build): prep, then up to 8 build parts of ~5 h, the build tree
+# passed on as an artifact; the last part signs and uploads the APK (artifact release-<arch>). Signing: secrets KEYSTORE_B64 +
+# KEYSTORE_PASS if set (needed for an APK that can update itself), else the debug key of the build.
+# Runs only when android/RELEASE changes on the branch (on purpose) or by hand.
+name: Ice Android build
+
+on:
+  push:
+    branches: ["claude/vibrant-gauss-9sqpu7"]
+    paths: ["android/RELEASE"]
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: "architecture"
+        required: true
+        default: "arm64"
+        type: choice
+        options: [arm64, arm]
+      source_run_id:
+        description: "run id of an earlier run to resume from (blank = from the start)"
+        required: false
+        default: ""
+        type: string
+      threads:
+        description: "number of threads (0 = all)"
+        required: false
+        default: 0
+        type: number
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ice-android-build
+  cancel-in-progress: false
+
+env:
+  ARCH: ${{ inputs.architecture || 'arm64' }}
+  CHROMIUM_SOURCE_KIND: github
+
+jobs:
+  prep:
+    if: (inputs.source_run_id || '') == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - name: Checkout Ice overlay
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          path: ice
+          sparse-checkout: android
+      - name: Apply Ice overlay
+        shell: bash
+        run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      - name: Prepare runner
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-prepare.sh
+      - name: Fetch, patch and configure
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+          DEBIAN_FRONTEND: noninteractive
+          CHROMIUM_SOURCE: ${{ true && 'https://github.com/chromium/chromium.git' || 'https://chromium.googlesource.com/chromium/src.git' }}
+          NINJA_JOBS: ${{ inputs.threads || 0 }}
+        run: >
+          .github/scripts/hosted-build.sh --install-deps --prepare-only
+          --arch "${{ env.ARCH }}"
+          --target chrome_modern_target
+      - name: Pack build tree
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save build tree
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 1
+          overwrite: true
+          compression-level: 0
+
+  part-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: prep
+    if: ${{ !cancelled() && (needs.prep.result == 'success' || needs.prep.result == 'skipped') }}
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          source_run_id: ${{ inputs.source_run_id || '' }}
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-01
+    if: needs.part-01.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-03:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-02
+    if: needs.part-02.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-04:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-03
+    if: needs.part-03.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-05:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-04
+    if: needs.part-04.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-06:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-05
+    if: needs.part-05.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-07:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-06
+    if: needs.part-06.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+
+  part-08:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    needs: part-07
+    if: needs.part-07.outputs.status == 'running'
+    outputs:
+      status: ${{ steps.stage.outputs.status }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: ungoogled-software/ungoogled-chromium-android
+          ref: 156.0.8078.79-1
+      - id: stage
+        uses: ./.github/actions/build-stage
+        with:
+          architecture: ${{ env.ARCH }}
+          chromium_source: github
+          threads: ${{ inputs.threads || 0 }}
+          keystore_b64: ${{ secrets.KEYSTORE_B64 }}
+          keystore_pass: ${{ secrets.KEYSTORE_PASS }}
