@@ -44,6 +44,7 @@ function viewMenu() {
       item('history', 'Historija', () => show('history')),
       item('download', 'Preuzimanja', () => show('downloads')),
       item('puzzle', 'Funkcije', () => show('features')),
+      item('download', 'Uvoz iz drugog browsera', () => show('import')),
       el('div', { class: 'grp' }, 'Chromium stranice'),
       item('star', 'Upravljanje bookmarksima', tabUrl('chrome://bookmarks/')),
       item('shield', 'Lozinke', tabUrl('chrome://password-manager/passwords')),
@@ -181,17 +182,73 @@ async function viewFeature(key) {
 }
 
 // ---------- Ice postavke ----------
-function setTheme(mode) {
+function host(msg) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendNativeMessage('ice.host', { theme: mode }, (r) => {
+    chrome.runtime.sendNativeMessage('ice.host', msg, (r) => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-      r?.ok ? resolve() : reject(new Error(r?.error || 'Nije uspjelo.'));
+      r?.ok ? resolve(r) : reject(new Error(r?.error || 'Nije uspjelo.'));
     });
   });
 }
+const setTheme = (mode) => host({ theme: mode });
+function barChips() {
+  const note = el('div', { class: 's', style: 'padding:4px 10px;color:var(--muted)' }, 'Traka s bookmarksima: Ctrl+Shift+B je pali i gasi odmah');
+  const chips = el('div', { class: 'chips' }, ...[[true, 'Prikaži traku'], [false, 'Sakrij traku']].map(([show, t]) =>
+    el('button', { class: 'chip', onclick: async () => {
+      try { await host({ cmd: 'bookmark-bar', show }); note.textContent = `${t}: primjenjuje se pri sljedećem pokretanju Icea (odmah: Ctrl+Shift+B).`; } catch (e) { note.textContent = `Greška: ${e.message}`; }
+    } }, t)));
+  return el('div', { class: 'theme' }, note, chips);
+}
+
+// ---------- Uvoz iz drugog browsera ----------
+const WHAT = { bookmarks: 'Bookmarks', history: 'Historija', passwords: 'Lozinke', settings: 'Dozvole stranica i zoom' };
+async function viewImport() {
+  const back = el('button', { onclick: () => show('settings') }, '← Postavke');
+  let data;
+  try { data = await host({ cmd: 'import-list' }); } catch (e) { return [head('Uvoz', back), el('div', { class: 'body' }, el('div', { class: 'note' }, `Greška: ${e.message}`))]; }
+  const body = el('div', { class: 'body' });
+  const last = data.last;
+  if (last) {
+    body.append(el('div', { class: 'grp' }, `Zadnji uvoz · ${new Date(last.when).toLocaleString()}`));
+    if (last.error) body.append(el('div', { class: 'note' }, `Greška: ${last.error}`));
+    else body.append(el('div', { class: 'note' }, last.label, ...Object.entries(last.report || {}).map(([k, v]) => el('div', {}, `${k}: ${v}`))));
+  }
+  body.append(el('div', { class: 'grp' }, 'Odakle'));
+  if (!data.sources.length) {
+    body.append(el('div', { class: 'note' }, 'Na ovom računaru nije pronađen nijedan drugi browser (Chrome, Chromium, Brave, Edge, Vivaldi, Opera, Firefox).'));
+  } else {
+    let chosen = data.sources[0];
+    const opts = el('div', { class: 'imp-what' });
+    const go = el('button', { class: 'chip on imp-go' }, 'Uvezi i ponovo pokreni Ice');
+    const note = el('div', { class: 'note' }, 'Podaci se dodaju postojećim, ništa se ne briše. Ice se zatvara i ponovo otvara (otvoreni tabovi se zatvaraju); prije uvoza se pravi rezervna kopija profila.');
+    const drawWhat = () => {
+      opts.replaceChildren(...Object.entries(WHAT).map(([k, t]) => {
+        const can = chosen.can.includes(k);
+        return el('label', { class: can ? '' : 'off' }, el('input', { type: 'checkbox', value: k, checked: can ? '' : null, disabled: can ? null : '' }), ` ${t}${can ? '' : ' (nije podržano za ovaj browser)'}`);
+      }));
+    };
+    const list = el('div', { class: 'chips' }, ...data.sources.map((s, i) => el('button', { class: `chip${i ? '' : ' on'}`, onclick: (ev) => {
+      list.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
+      ev.currentTarget.classList.add('on');
+      chosen = s; drawWhat();
+    } }, s.label)));
+    drawWhat();
+    go.addEventListener('click', async () => {
+      const what = [...opts.querySelectorAll('input:checked')].map((i) => i.value);
+      if (!what.length) { note.textContent = 'Odaberi šta se uvozi.'; return; }
+      go.disabled = true; note.textContent = 'Zatvaram Ice i uvozim...';
+      try { await host({ cmd: 'import-start', source: chosen.id, what }); } catch (e) { go.disabled = false; note.textContent = `Greška: ${e.message}`; }
+    });
+    body.append(list, el('div', { class: 'grp' }, 'Šta'), opts, go, note);
+  }
+  body.append(el('div', { class: 'grp' }, 'Iz fajla'),
+    el('button', { class: 'item', onclick: () => chrome.tabs.create({ url: 'chrome://settings/importData' }) }, el('span', { class: 'ico', html: icon('star') }), el('span', { class: 'tt' }, el('span', { class: 't' }, 'Bookmarks iz HTML fajla'))),
+    el('button', { class: 'item', onclick: () => chrome.tabs.create({ url: 'chrome://password-manager/settings' }) }, el('span', { class: 'ico', html: icon('shield') }), el('span', { class: 'tt' }, el('span', { class: 't' }, 'Lozinke iz CSV fajla'), el('span', { class: 's' }, 'npr. iz Firefoxa'))));
+  return [head('Uvoz iz drugog browsera', back), body];
+}
 function themeChips() {
   const note = el('div', { class: 's', style: 'padding:4px 10px;color:var(--muted)' }, 'Odaberi izgled preglednika');
-  const chips = el('div', { class: 'chips' }, ...[['auto', 'Prati sistem'], ['light', 'Svijetla'], ['dark', 'Tamna'], ['default', 'Chromium zadana']].map(([m, t]) =>
+  const chips = el('div', { class: 'chips' }, ...[['auto', 'Prati sistem'], ['light', 'Svijetla'], ['dark', 'Tamna'], ['chromium', 'Chromium zadana']].map(([m, t]) =>
     el('button', { class: 'chip', onclick: async (ev) => {
       chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
       ev.currentTarget.classList.add('on');
@@ -207,6 +264,9 @@ function viewSettings() {
   return [head('Ice postavke'), el('div', { class: 'body' },
     el('div', { class: 'grp' }, 'Izgled'),
     themeChips(),
+    barChips(),
+    el('div', { class: 'grp' }, 'Podaci'),
+    row('download', 'Uvoz iz drugog browsera', 'Bookmarks, historija, lozinke: Chrome, Brave, Edge, Firefox...', () => show('import')),
     el('div', { class: 'grp' }, 'Sigurnost'),
     row('shield', 'Ice Shield', 'Phishing i malware zaštita, HTTPS-first, GPC: uključeno'),
     row('shield', 'Dozvole stranica', 'Kamera, mikrofon, lokacija...', () => chrome.tabs.create({ url: 'chrome://settings/content' })),
@@ -218,7 +278,7 @@ function viewSettings() {
 }
 
 // ---------- Navigacija ----------
-const VIEWS = { menu: viewMenu, bookmarks: viewBookmarks, history: viewHistory, downloads: viewDownloads, features: viewFeatures, settings: viewSettings };
+const VIEWS = { menu: viewMenu, bookmarks: viewBookmarks, history: viewHistory, downloads: viewDownloads, features: viewFeatures, settings: viewSettings, import: viewImport };
 async function show(name) {
   current = name;
   rail.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === name || (name.startsWith('feature:') && b.dataset.v === name)));

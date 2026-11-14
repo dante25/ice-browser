@@ -1,0 +1,52 @@
+# Provjera gotovog .deb-a na čistoj mašini: instalira paket iz zadanog pokretanja i pokreće
+# core-build/test/test-deb.mjs i test-final.mjs. Pokreće se izmjenom core-build/TESTDEB (ID pokretanja).
+name: Ice test .deb
+
+on:
+  push:
+    branches: ["claude/vibrant-gauss-9sqpu7", core-build]
+    paths:
+      - "core-build/TESTDEB"
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read run id
+        run: echo "DEB_RUN=$(head -1 core-build/TESTDEB | tr -dc 0-9)" >> "$GITHUB_ENV"
+      - name: Download .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: ice-browser-deb
+          path: dist
+          run-id: ${{ env.DEB_RUN }}
+          github-token: ${{ github.token }}
+      - name: Install .deb
+        run: |
+          ls -la dist
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/ice-browser_*_amd64.deb
+          dpkg -s ice-browser | grep -E "^(Version|Status)"
+          ls -la /opt/ice-browser/dodaci /opt/ice-browser/uvoz /etc/chromium/native-messaging-hosts
+      - name: Install Playwright (driver only)
+        run: npm install -g playwright
+      - name: Test unpacked package (built-ins, panel, settings)
+        run: NODE_PATH="$(npm root -g)" node core-build/test/test-deb.mjs dist/ice-browser_*_amd64.deb
+      - name: Test installed package (add-on popups, import)
+        if: ${{ !cancelled() }}
+        run: NODE_PATH="$(npm root -g)" node core-build/test/test-final.mjs
+      - name: Video Sniffer in Ice vs stock Chromium (same page)
+        if: ${{ !cancelled() }}
+        run: |
+          npx --yes playwright install chromium >/dev/null 2>&1 || true
+          NODE_PATH="$(npm root -g)" node core-build/test/test-sniffer.mjs

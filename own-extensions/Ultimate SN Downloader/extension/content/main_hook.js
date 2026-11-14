@@ -107,22 +107,7 @@
   }
 
   // GraphQL request built like the site's own code: freshest doc_id first ("<Name>.graphql" module), then the recorded one, then `fallbackDoc`
-  // ESUIT's step that was missing: the "<Name>.graphql" module is only on the page after the site's own code loaded it. If it is not
-  // registered yet, ask the site's Bootloader to fetch it (the same loader the site uses), so the CURRENT doc_id is read instead of a stale one.
-  function hasMod(n) { try { return !!req('__debug').modulesMap[n]; } catch (e) { return false; } }
-  function loadMod(n, ms) {
-    return new Promise(function (res) {
-      if (hasMod(n)) return res(true);
-      var done = false, t = setTimeout(function () { if (!done) { done = true; res(hasMod(n)); } }, ms || 5000);
-      try {
-        req('Bootloader').loadModules([n], function () { if (!done) { done = true; clearTimeout(t); res(hasMod(n)); } });
-      } catch (e) { done = true; clearTimeout(t); res(false); }
-    });
-  }
   function gql(a) {
-    return loadMod(a.name + '.graphql', 5000).then(function () { return gql1(a); }, function () { return gql1(a); });
-  }
-  function gql1(a) {
     try {
       var name = a.name, mod = req(name + '.graphql');
       var docId = (mod && mod.params && mod.params.id) || tplDocId(tpl[name]) || a.docId;
@@ -133,7 +118,6 @@
         Object.keys(vars).forEach(function (k) { if (k.indexOf('__relay_internal') === 0) delete vars[k]; });
         Object.keys(pv).forEach(function (k) { if (k.indexOf('__relay_internal') === 0) vars[k] = !!(pv[k] && pv[k].get && pv[k].get()); });
       } catch (e) {}
-      if (!vars.scale) { try { vars.scale = req('WebPixelRatio').get(); } catch (e) {} }     // ESUIT adds the page's pixel ratio to every query
       var ap = {}; try { ap = req('getAsyncParams')('POST') || {}; } catch (e) {}
       var av = ''; try { av = req('RelayAPIConfig').actorID; } catch (e) {}
       var body = new URLSearchParams(Object.assign({ av: av }, ap, { fb_api_caller_class: 'RelayModern', fb_api_req_friendly_name: name,

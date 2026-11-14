@@ -32,7 +32,7 @@ const parts = (v) => v.replace('-', '.').split('.').map(Number);
 const cmp = (a, b) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
 
 async function getJson(url) {
-  const r = await fetch(url, { headers: { 'user-agent': 'ice-guardian', accept: 'application/vnd.github+json', ...(process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}) } });
+  const r = await fetch(url, { headers: { 'user-agent': 'ice-guardian', accept: 'application/vnd.github+json' } });
   if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
   return r.json();
 }

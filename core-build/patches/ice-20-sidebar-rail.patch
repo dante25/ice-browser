@@ -1,0 +1,648 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -3535,6 +3535,12 @@
+       "views/frame/horizontal_tab_strip_region_view.h",
+       "views/frame/vertical_tab_strip_region_view.cc",
+       "views/frame/vertical_tab_strip_region_view.h",
++
++      # Ice sidebar rail + overlay panel.
++      "views/ice/ice_overlay_panel.cc",
++      "views/ice/ice_overlay_panel.h",
++      "views/ice/ice_rail_view.cc",
++      "views/ice/ice_rail_view.h",
+     ]
+ 
+     sources += get_target_outputs(":webui_name_variants")
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -188,6 +188,7 @@
+ #include "chrome/browser/ui/views/glic/glic_button_interface.h"
+ #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
+ #include "chrome/browser/ui/views/hats/hats_next_web_dialog.h"
++#include "chrome/browser/ui/views/ice/ice_rail_view.h"
+ #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h"
+ #include "chrome/browser/ui/views/infobars/infobar_container_view.h"
+ #include "chrome/browser/ui/views/intent_picker_bubble_view.h"
+@@ -5092,6 +5093,18 @@
+   UpdateWindowControlsOverlayEnabled();
+   UpdateUnframedModeEnabled();
+ 
++  // Ice: the always-visible sidebar rail, only in normal browser windows. It
++  // is placed right above the contents in z-order (below scrims/overlays).
++  views::View* ice_rail = nullptr;
++  if (GetIsNormalType() && toolbar_) {
++    auto rail = std::make_unique<ice::IceRailView>(this);
++    const std::optional<size_t> contents_index =
++        GetIndexOf(multi_contents_view_);
++    ice_rail = contents_index.has_value()
++                   ? AddChildViewAt(std::move(rail), *contents_index + 1)
++                   : AddChildView(std::move(rail));
++  }
++
+   // TODO(crbug.com/40664862): Remove BrowserViewLayout dependence on
+   // Widget and move to the constructor.
+   BrowserViewLayoutViews layout_views;
+@@ -5120,6 +5133,7 @@
+   layout_views.multi_contents_view = multi_contents_view_;
+   layout_views.side_panel = side_panel_;
+   layout_views.top_container_separator = top_container_separator_;
++  layout_views.ice_rail = ice_rail;
+   // LINT.ThenChange(//chrome/browser/ui/views/frame/layout/browser_view_layout.h:BrowserViewLayoutViews)
+ 
+   SetLayoutManager(BrowserViewLayout::CreateLayout(
+--- a/chrome/browser/ui/views/frame/layout/browser_view_layout.h
++++ b/chrome/browser/ui/views/frame/layout/browser_view_layout.h
+@@ -87,6 +87,10 @@
+   // overlaid (i.e. no immersive fullscreen).
+   raw_ptr<views::View> top_container_separator = nullptr;
+ 
++  // Ice: the always-visible sidebar rail (ice::IceRailView). Only set for
++  // normal (tabbed) browser windows.
++  raw_ptr<views::View> ice_rail = nullptr;
++
+   // LINT.ThenChange(//chrome/browser/ui/views/frame/browser_view.cc:BrowserViewLayoutViews)
+ 
+   // These views are dynamically set.
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -1106,6 +1106,25 @@
+     params.SetTop(top_container_layout.bounds.bottom());
+   }
+ 
++  // Ice: lay out the sidebar rail on the leading edge, below the top container
++  // and next to the contents area. The contents area is narrowed by the rail
++  // width (the rail never overlaps the page). Hidden in fullscreen.
++  if (IsParentedTo(views().ice_rail, views().browser_view)) {
++    const bool ice_rail_visible = !is_fullscreen(layout_data_->window_state);
++    gfx::Rect ice_rail_bounds;
++    if (ice_rail_visible) {
++      const int ice_rail_width = std::min(
++          views().ice_rail->GetPreferredSize().width(),
++          std::max(0, params.visual_client_area.width() -
++                          BrowserViewLayout::kContentsContainerMinimumWidth));
++      ice_rail_bounds = gfx::Rect(
++          params.visual_client_area.x(), params.visual_client_area.y(),
++          ice_rail_width, params.visual_client_area.height());
++      params.InsetHorizontal(ice_rail_width, /*leading=*/true);
++    }
++    layout.AddChild(views().ice_rail, ice_rail_bounds, ice_rail_visible);
++  }
++
+   // Lay out infobar container.
+   const bool infobar_visible = delegate().IsInfobarVisible();
+   if (IsParentedTo(views().infobar_container, views().browser_view)) {
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -1979,6 +1979,9 @@
+ }
+ 
+ AppMenuControl* ToolbarView::GetAppMenuControl() {
++  if (views::View* ice_button = ice_app_menu_button_.view()) {
++    return static_cast<AppMenuButton*>(ice_button);
++  }
+   if (features::IsWebUIAppMenuButtonEnabled() && toolbar_webview_) {
+     return toolbar_webview_->GetAppMenuControl();
+   }
+@@ -1986,6 +1989,9 @@
+ }
+ 
+ const AppMenuControl* ToolbarView::GetAppMenuControl() const {
++  if (const views::View* ice_button = ice_app_menu_button_.view()) {
++    return static_cast<const AppMenuButton*>(ice_button);
++  }
+   if (features::IsWebUIAppMenuButtonEnabled() && toolbar_webview_) {
+     return toolbar_webview_->GetAppMenuControl();
+   }
+@@ -2072,7 +2078,26 @@
+       /*prefer_to_show_bubble=*/can_show_bubble, /*from_user_gesture=*/false);
+ }
+ 
++void ToolbarView::SetIceRailButtons(AppMenuButton* app_menu_button,
++                                    AvatarToolbarButton* avatar_button) {
++  ice_app_menu_button_.SetView(app_menu_button);
++  ice_avatar_button_.SetView(avatar_button);
++  if (app_menu_button && app_menu_button_) {
++    app_menu_button_->SetVisible(false);
++  }
++  if (avatar_button && avatar_) {
++    avatar_->SetVisible(false);
++  }
++  if (app_menu_button) {
++    // Push the current update/error badge state to the new app menu control.
++    app_menu_icon_controller_.UpdateDelegate();
++  }
++}
++
+ AvatarToolbarButtonInterface* ToolbarView::GetAvatarToolbarButtonInterface() {
++  if (views::View* ice_avatar = ice_avatar_button_.view()) {
++    return static_cast<AvatarToolbarButton*>(ice_avatar);
++  }
+   if (features::IsWebUIAvatarButtonEnabled()) {
+     return toolbar_webview_
+                ? toolbar_webview_->GetAvatarToolbarButtonInterface()
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -39,6 +39,7 @@
+ #include "ui/views/controls/button/menu_button.h"
+ #include "ui/views/mouse_watcher.h"
+ #include "ui/views/view.h"
++#include "ui/views/view_tracker.h"
+ #include "url/origin.h"
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -47,6 +48,7 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ class ActorTaskListBubble;
++class AppMenuButton;
+ class AvatarToolbarButton;
+ class AvatarToolbarButtonInterface;
+ class BatterySaverButton;
+@@ -205,6 +207,14 @@
+   // TODO(crbug.com/513238408): Remove this once toolbar layout/overflow is
+   // fixed.
+   AvatarToolbarButton* avatar_toolbar_button() { return avatar_; }
++
++  // Ice: the app menu and the avatar live in the Ice sidebar rail. Hides the
++  // toolbar's own app menu (three dots) and avatar buttons (their code paths
++  // stay intact) and makes the rail buttons the app menu control / avatar of
++  // this window, so Alt+F/Alt+E, bubbles anchored to the app menu, the update
++  // badge and the profile menu shortcut use them.
++  void SetIceRailButtons(AppMenuButton* app_menu_button,
++                         AvatarToolbarButton* avatar_button);
+   AppMenuIconController* app_menu_icon_controller() {
+     return &app_menu_icon_controller_;
+   }
+@@ -436,6 +446,10 @@
+   raw_ptr<AvatarToolbarButton> avatar_ = nullptr;
+   raw_ptr<MediaToolbarButton> media_button_ = nullptr;
+   raw_ptr<BrowserAppMenuButton> app_menu_button_ = nullptr;
++  // Ice: the app menu and avatar buttons in the sidebar rail, if any (see
++  // SetIceRailButtons()). Tracked so they are never dangling.
++  views::ViewTracker ice_app_menu_button_;
++  views::ViewTracker ice_avatar_button_;
+ 
+   // The button currently holding the lock to be shown/hidden.
+   raw_ptr<glic::GlicButtonInterface> locked_expansion_button_ = nullptr;
+--- /dev/null
++++ b/chrome/browser/ui/views/ice/ice_overlay_panel.cc
+@@ -0,0 +1,139 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/ice/ice_overlay_panel.h"
++
++#include <algorithm>
++#include <memory>
++#include <string>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/location.h"
++#include "base/task/single_thread_task_runner.h"
++#include "ui/base/mojom/dialog_button.mojom.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/gfx/text_constants.h"
++#include "ui/views/bubble/bubble_border.h"
++#include "ui/views/bubble/bubble_dialog_delegate_view.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/style/typography.h"
++#include "ui/views/view.h"
++
++namespace ice {
++
++namespace {
++
++// Inner padding of the panel.
++constexpr int kPanelMargin = 16;
++
++// A toggle this soon after the panel closed itself is treated as the press
++// that closed it (see IceOverlayPanel::Toggle()).
++constexpr base::TimeDelta kReopenGuard = base::Milliseconds(300);
++
++// TODO(ice): localize; the feature cards come in a later patch.
++constexpr char16_t kPanelTitle[] = u"Funkcije";
++
++}  // namespace
++
++struct IceOverlayPanel::Bubble {
++  Bubble() = default;
++  Bubble(const Bubble&) = delete;
++  Bubble& operator=(const Bubble&) = delete;
++  ~Bubble() {
++    // The widget must be destroyed before its delegate.
++    widget.reset();
++    delegate.reset();
++  }
++
++  std::unique_ptr<views::BubbleDialogDelegate> delegate;
++  std::unique_ptr<views::Widget> widget;
++};
++
++IceOverlayPanel::IceOverlayPanel(views::View* anchor_view)
++    : anchor_view_(anchor_view) {}
++
++IceOverlayPanel::~IceOverlayPanel() = default;
++
++bool IceOverlayPanel::IsShowing() const {
++  return !!bubble_;
++}
++
++void IceOverlayPanel::Toggle() {
++  if (IsShowing()) {
++    Close();
++    return;
++  }
++  if (!last_closed_time_.is_null() &&
++      base::TimeTicks::Now() - last_closed_time_ < kReopenGuard) {
++    return;
++  }
++  Show();
++}
++
++void IceOverlayPanel::Show() {
++  if (IsShowing() || !anchor_view_->GetWidget() ||
++      !anchor_view_->IsDrawn()) {
++    return;
++  }
++
++  auto bubble = std::make_unique<Bubble>();
++  // LEFT_TOP: the panel is placed to the right of the anchor (the rail), with
++  // its top at the rail's top, i.e. directly over the web contents.
++  bubble->delegate = std::make_unique<views::BubbleDialogDelegate>(
++      anchor_view_.get(), views::BubbleBorder::LEFT_TOP);
++  views::BubbleDialogDelegate* const delegate = bubble->delegate.get();
++  delegate->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++  delegate->SetShowTitle(false);
++  delegate->SetShowCloseButton(false);
++  delegate->SetAccessibleTitle(std::u16string(kPanelTitle));
++  delegate->set_margins(gfx::Insets(kPanelMargin));
++  delegate->set_close_on_deactivate(true);
++
++  // Placeholder content: title only. Sized so that the visible panel is
++  // kPanelWidth wide and as tall as the rail.
++  auto contents = std::make_unique<views::View>();
++  auto* layout = contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical));
++  layout->set_cross_axis_alignment(
++      views::BoxLayout::CrossAxisAlignment::kStretch);
++  auto* title = contents->AddChildView(std::make_unique<views::Label>(
++      std::u16string(kPanelTitle), views::style::CONTEXT_DIALOG_TITLE));
++  title->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  contents->SetPreferredSize(
++      gfx::Size(kPanelWidth - 2 * kPanelMargin,
++                std::max(anchor_view_->height() - 2 * kPanelMargin,
++                         title->GetPreferredSize().height())));
++  delegate->SetContentsView(std::move(contents));
++
++  bubble->widget = views::BubbleDialogDelegate::CreateBubble(
++      delegate, base::BindOnce(&IceOverlayPanel::OnBubbleClosing,
++                               weak_factory_.GetWeakPtr()));
++  bubble_ = std::move(bubble);
++  bubble_->widget->Show();
++}
++
++void IceOverlayPanel::Close() {
++  if (IsShowing()) {
++    OnBubbleClosing(views::Widget::ClosedReason::kUnspecified);
++  }
++}
++
++void IceOverlayPanel::OnBubbleClosing(views::Widget::ClosedReason reason) {
++  last_closed_time_ = base::TimeTicks::Now();
++  if (!bubble_) {
++    return;
++  }
++  // This can run from inside the widget's own event/activation handling, so
++  // hide now and delete (widget, then delegate) on a fresh stack. Hiding must
++  // not trigger a second (deactivation) close.
++  bubble_->delegate->set_close_on_deactivate(false);
++  bubble_->widget->Hide();
++  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
++      FROM_HERE, std::move(bubble_));
++}
++
++}  // namespace ice
+--- /dev/null
++++ b/chrome/browser/ui/views/ice/ice_overlay_panel.h
+@@ -0,0 +1,65 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_ICE_ICE_OVERLAY_PANEL_H_
++#define CHROME_BROWSER_UI_VIEWS_ICE_ICE_OVERLAY_PANEL_H_
++
++#include <memory>
++
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "ui/views/widget/widget.h"
++
++namespace views {
++class View;
++}  // namespace views
++
++namespace ice {
++
++// The Ice sidebar panel ("Funkcije"). It is a bubble widget anchored to the
++// Ice rail and opens to the right of it, on top of the web contents: the page
++// is never resized or moved. It closes on Escape, when it loses activation
++// (click anywhere outside it) or when Toggle() is called while it is shown.
++//
++// Content is a placeholder (title only) for now.
++class IceOverlayPanel {
++ public:
++  static constexpr int kPanelWidth = 300;
++
++  // `anchor_view` (the rail) must outlive this object.
++  explicit IceOverlayPanel(views::View* anchor_view);
++  IceOverlayPanel(const IceOverlayPanel&) = delete;
++  IceOverlayPanel& operator=(const IceOverlayPanel&) = delete;
++  ~IceOverlayPanel();
++
++  bool IsShowing() const;
++
++  // Shows the panel if it is hidden, closes it if it is shown. A toggle that
++  // arrives right after the panel closed itself (because the same mouse press
++  // took activation away from it) only closes and does not reopen it.
++  void Toggle();
++
++  void Show();
++  void Close();
++
++ private:
++  // The bubble delegate and its (client owned) widget. The delegate must
++  // outlive the widget; both are deleted together.
++  struct Bubble;
++
++  // Called synchronously whenever the bubble widget is asked to close
++  // (Escape, deactivation, Close()).
++  void OnBubbleClosing(views::Widget::ClosedReason reason);
++
++  const raw_ptr<views::View> anchor_view_;
++  std::unique_ptr<Bubble> bubble_;
++  base::TimeTicks last_closed_time_;
++
++  base::WeakPtrFactory<IceOverlayPanel> weak_factory_{this};
++};
++
++}  // namespace ice
++
++#endif  // CHROME_BROWSER_UI_VIEWS_ICE_ICE_OVERLAY_PANEL_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/ice/ice_rail_view.cc
+@@ -0,0 +1,178 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/views/ice/ice_rail_view.h"
++
++#include <memory>
++#include <string>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/color/chrome_color_id.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/ice/ice_overlay_panel.h"
++#include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
++#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
++#include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_button.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "chrome/grit/generated_resources.h"
++#include "components/vector_icons/vector_icons.h"
++#include "ui/base/l10n/l10n_util.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/background.h"
++#include "ui/views/border.h"
++#include "ui/views/controls/button/button_controller.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/vector_icons.h"
++
++namespace ice {
++
++namespace {
++
++// Vertical padding at the top and bottom of the rail, and between buttons.
++constexpr int kRailVerticalPadding = 8;
++constexpr int kRailButtonSpacing = 4;
++
++// The browser's app menu (the same menu as the toolbar's three-dot button),
++// shown with a hamburger icon and anchored to the rail.
++class IceRailAppMenuButton : public BrowserAppMenuButton {
++  METADATA_HEADER(IceRailAppMenuButton, BrowserAppMenuButton)
++
++ public:
++  explicit IceRailAppMenuButton(ToolbarView* toolbar_view)
++      : BrowserAppMenuButton(toolbar_view) {}
++  IceRailAppMenuButton(const IceRailAppMenuButton&) = delete;
++  IceRailAppMenuButton& operator=(const IceRailAppMenuButton&) = delete;
++  ~IceRailAppMenuButton() override = default;
++
++  // BrowserAppMenuButton:
++  void UpdateIcon() override {
++    UpdateIconsWithStandardColors(views::kMenuOpenIcon);
++  }
++
++  // AppMenuButton:
++  // The toolbar asks the app menu to extend to the window edge (Fitts' law)
++  // when maximized; that only makes sense in the toolbar, not in the rail.
++  void SetIsMaximizedOrFullscreen(bool maximized_or_fullscreen) override {}
++};
++
++BEGIN_METADATA(IceRailAppMenuButton)
++END_METADATA
++
++}  // namespace
++
++IceRailView::IceRailView(BrowserView* browser_view)
++    : browser_view_(browser_view) {
++  SetBackground(views::CreateSolidBackground(kColorToolbar));
++  SetBorder(views::CreateSolidSidedBorder(gfx::Insets::TLBR(0, 0, 0, 1),
++                                          kColorToolbarContentAreaSeparator));
++
++  auto* const layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical,
++      gfx::Insets::VH(kRailVerticalPadding, 0), kRailButtonSpacing));
++  layout->set_cross_axis_alignment(
++      views::BoxLayout::CrossAxisAlignment::kCenter);
++
++  // 1. Hamburger: Chromium's app menu.
++  auto app_menu =
++      std::make_unique<IceRailAppMenuButton>(browser_view_->toolbar());
++  app_menu->GetViewAccessibility().SetName(
++      l10n_util::GetStringUTF16(IDS_ACCNAME_APP));
++  app_menu->SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP));
++  app_menu_button_ = AddChildView(std::move(app_menu));
++
++  // 2.-4. Existing pages via existing browser commands.
++  // TODO(ice): localize the rail strings.
++  AddCommandButton(kStarIcon, u"Oznake", IDC_SHOW_BOOKMARK_MANAGER);
++  AddCommandButton(vector_icons::kHistoryIcon, u"Historija", IDC_SHOW_HISTORY);
++  AddCommandButton(vector_icons::kDownloadIcon, u"Preuzimanja",
++                   IDC_SHOW_DOWNLOADS);
++
++  // 5. "Funkcije": the Ice overlay panel. Notifies on press so a press that
++  // also deactivates (and so closes) an open panel does not reopen it.
++  auto features_button = std::make_unique<ToolbarButton>(base::BindRepeating(
++      &IceRailView::ToggleFeaturesPanel, base::Unretained(this)));
++  features_button->SetVectorIcon(vector_icons::kChromeExtensionIcon);
++  features_button->SetTooltipText(u"Funkcije");
++  features_button->GetViewAccessibility().SetName(u"Funkcije");
++  features_button->button_controller()->set_notify_action(
++      views::ButtonController::NotifyAction::kOnPress);
++  AddChildView(std::move(features_button));
++
++  // 6. Settings.
++  AddCommandButton(vector_icons::kSettingsIcon, u"Postavke", IDC_OPTIONS);
++
++  // Pushes the avatar to the bottom of the rail.
++  layout->SetFlexForView(AddChildView(std::make_unique<views::View>()), 1);
++
++  // 7. Profile avatar: opens the existing profile menu bubble (the bubble is
++  // anchored to the visible avatar button, i.e. this one).
++  if (AvatarToolbarButtonInterface::CanShowForProfile(
++          browser_view_->GetProfile())) {
++    avatar_button_ = AddChildView(
++        std::make_unique<AvatarToolbarButton>(browser_view_->browser()));
++  }
++
++  panel_ = std::make_unique<IceOverlayPanel>(this);
++}
++
++IceRailView::~IceRailView() = default;
++
++gfx::Size IceRailView::CalculatePreferredSize(
++    const views::SizeBounds& available_size) const {
++  // Only the width is used; the height is the height of the contents area.
++  return gfx::Size(kRailWidth, 0);
++}
++
++void IceRailView::AddedToWidget() {
++  views::View::AddedToWidget();
++  // Done here (not in the constructor) because the app menu button needs a
++  // color provider when the toolbar pushes the badge state to it.
++  if (!toolbar_hooked_ && browser_view_->toolbar()) {
++    toolbar_hooked_ = true;
++    browser_view_->toolbar()->SetIceRailButtons(app_menu_button_,
++                                                avatar_button_);
++  }
++}
++
++void IceRailView::VisibilityChanged(views::View* starting_from,
++                                    bool is_visible) {
++  views::View::VisibilityChanged(starting_from, is_visible);
++  // E.g. entering fullscreen hides the rail: close the panel with it.
++  if (!is_visible && panel_) {
++    panel_->Close();
++  }
++}
++
++void IceRailView::AddCommandButton(const gfx::VectorIcon& icon,
++                                   const std::u16string& name,
++                                   int command_id) {
++  auto button = std::make_unique<ToolbarButton>(
++      base::BindRepeating(&IceRailView::ExecuteBrowserCommand,
++                          base::Unretained(this), command_id));
++  button->SetVectorIcon(icon);
++  button->SetTooltipText(name);
++  button->GetViewAccessibility().SetName(name);
++  AddChildView(std::move(button));
++}
++
++void IceRailView::ExecuteBrowserCommand(int command_id) {
++  panel_->Close();
++  chrome::ExecuteCommand(browser_view_->browser(), command_id);
++}
++
++void IceRailView::ToggleFeaturesPanel() {
++  panel_->Toggle();
++}
++
++BEGIN_METADATA(IceRailView)
++END_METADATA
++
++}  // namespace ice
+--- /dev/null
++++ b/chrome/browser/ui/views/ice/ice_rail_view.h
+@@ -0,0 +1,68 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_ICE_ICE_RAIL_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_ICE_ICE_RAIL_VIEW_H_
++
++#include <memory>
++#include <string>
++
++#include "base/memory/raw_ptr.h"
++#include "ui/base/metadata/metadata_header_macros.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/views/view.h"
++
++class AppMenuButton;
++class AvatarToolbarButton;
++class BrowserView;
++
++namespace gfx {
++struct VectorIcon;
++}  // namespace gfx
++
++namespace ice {
++
++class IceOverlayPanel;
++
++// The Ice sidebar rail: a narrow, always-visible column of icon buttons on the
++// leading edge of every normal browser window, below the toolbar and next to
++// the web contents (laid out by BrowserViewTabbedLayoutImpl, hidden in
++// fullscreen). Top to bottom: app menu (hamburger), bookmarks, history,
++// downloads, "Funkcije" (overlay panel), settings; the profile avatar is at
++// the bottom.
++class IceRailView : public views::View {
++  METADATA_HEADER(IceRailView, views::View)
++
++ public:
++  static constexpr int kRailWidth = 56;
++
++  explicit IceRailView(BrowserView* browser_view);
++  IceRailView(const IceRailView&) = delete;
++  IceRailView& operator=(const IceRailView&) = delete;
++  ~IceRailView() override;
++
++  // views::View:
++  gfx::Size CalculatePreferredSize(
++      const views::SizeBounds& available_size) const override;
++  void AddedToWidget() override;
++  void VisibilityChanged(views::View* starting_from, bool is_visible) override;
++
++ private:
++  void AddCommandButton(const gfx::VectorIcon& icon,
++                        const std::u16string& name,
++                        int command_id);
++  void ExecuteBrowserCommand(int command_id);
++  void ToggleFeaturesPanel();
++
++  const raw_ptr<BrowserView> browser_view_;
++  raw_ptr<AppMenuButton> app_menu_button_ = nullptr;
++  raw_ptr<AvatarToolbarButton> avatar_button_ = nullptr;
++  bool toolbar_hooked_ = false;
++
++  std::unique_ptr<IceOverlayPanel> panel_;
++};
++
++}  // namespace ice
++
++#endif  // CHROME_BROWSER_UI_VIEWS_ICE_ICE_RAIL_VIEW_H_

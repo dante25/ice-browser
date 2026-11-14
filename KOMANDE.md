@@ -19,7 +19,24 @@ ice --theme dark       # Ice tamna
 ice --theme chromium   # Chromiumova zadana (bez Ice teme)
 ```
 
-## Prenos iz Google Chromea (Ice mora biti zatvoren)
+## Uvoz iz drugog browsera
+U Iceu: Ice panel, Ice postavke, **Uvoz iz drugog browsera** (ili Meni, Uvoz iz drugog browsera). Odabereš browser i
+šta se uvozi; Ice se sam zatvori, uveze i ponovo otvori. Podaci se dodaju postojećim, ništa se ne briše.
+Podržano: Chrome, Chromium, Brave, Edge, Vivaldi, Opera (bookmarks, historija, lozinke, dozvole stranica i zoom; svi profili)
+i Firefox (bookmarks, historija; lozinke preko CSV fajla u chrome://password-manager/settings).
+
+Iz terminala (Ice mora biti zatvoren):
+```bash
+ice --import-list                        # pronađeni browseri i profili
+ice --import 1                           # uvezi sve iz browsera broj 1
+ice --import 1 --only bookmarks,history  # samo odabrano (bookmarks, history, passwords, settings)
+```
+
+## Traka s bookmarksima
+`Ctrl+Shift+B` je pali i gasi odmah. Isto u Ice panelu (Ice postavke, Izgled) i u chrome://settings/appearance.
+
+## Zamjena Ice profila Chromeovim (Ice mora biti zatvoren)
+Za razliku od uvoza, ovo ZAMJENJUJE Iceove bookmarkse i historiju Chromeovim.
 ```bash
 ice --import-chrome                   # sve, uključujući lozinke
 ice --import-chrome --skip-passwords  # sve osim lozinki

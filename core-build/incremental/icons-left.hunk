@@ -1,0 +1,26 @@
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -518,10 +518,23 @@
+     extensions_container_ = AddChildView(std::move(extensions_container));
+     extensions_toolbar_coordinator_ =
+         std::make_unique<ExtensionsToolbarCoordinator>(extensions_container_);
++    // Ice: extension icons (Tab Counter, grabbers) sit LEFT of the address bar.
++    if (location_bar_view_) {
++      if (auto index = GetIndexOf(location_bar_view_)) {
++        ReorderChildView(extensions_container_, *index);
++      }
++    }
+   }
+ 
+   if (toolbar_divider) {
+     toolbar_divider_ = AddChildView(std::move(toolbar_divider));
++    // Ice: keep the divider next to the extensions container (left of the
++    // address bar).
++    if (extensions_container_ && location_bar_view_) {
++      if (auto index = GetIndexOf(location_bar_view_)) {
++        ReorderChildView(toolbar_divider_, *index);
++      }
++    }
+   }
+ 
+   if (!features::IsWebUIPinnedToolbarActionsEnabled()) {

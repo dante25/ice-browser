@@ -1,0 +1,67 @@
+# Ice repackage: novi .deb BEZ kompajliranja. Uzima gotov (kompajliran) build iz ranijeg "Ice core build"
+# pokretanja (artefakt build-cache-x86_64) i ponovo ga pakuje s trenutnim dodacima iz repoa
+# (own-extensions/, dodaci/). Traje minute umjesto ~10 h. Zakrpe jezgre (core-build/patches) se NE primjenjuju:
+# za njih treba puni build (core-build.yml).
+name: Ice repackage
+
+on:
+  push:
+    branches: ["claude/vibrant-gauss-9sqpu7"]
+    paths:
+      - "core-build/REPACKAGE"   # pokreće se samo kad se ovaj fajl promijeni (namjerno)
+  workflow_dispatch:
+    inputs:
+      base_run:
+        description: "ID pokretanja 'Ice core build' čiji se kompajlirani build pakuje"
+        default: "43249192826"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ice-repackage
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH: x86_64
+  ICE_PL_DIR: core-build/.work/portablelinux
+  ICE_DEB_VERSION: 156.0.8078.79-9
+  BASE_RUN: ${{ inputs.base_run || '43249192826' }}
+
+jobs:
+  package:
+    name: Package .deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone portablelinux (cache scripts, version files)
+        run: bash core-build/build.sh setup
+
+      - name: Download build cache of the compiled build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-cache-${{ env.ARCH }}
+          path: ${{ env.ICE_PL_DIR }}/.github/cache/
+          run-id: ${{ env.BASE_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Import build cache
+        run: bash "$ICE_PL_DIR/.github/scripts/import-cache.sh"
+
+      - name: Build .deb
+        run: bash core-build/package-deb.sh --dest dist
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ice-browser-deb
+          path: dist/ice-browser_*_amd64.deb
+          if-no-files-found: error
+          compression-level: 0

@@ -1,0 +1,62 @@
+--- a/extensions/common/ice_builtin_ids.h
++++ b/extensions/common/ice_builtin_ids.h
+@@ -23,6 +23,21 @@
+     "hchkphbcnnbhopaimgcgfkgjejephmcn",
+ };
+ 
++// Built-ins whose toolbar icon stays visible (pinned, standard toolbar position):
++// the Tab Counter, whose whole purpose is to show the tab count.
++inline bool IsIceToolbarBuiltinId(std::string_view id) {
++  return id == "fhnegjjodccfaliddboelcleikbmapik";
++}
++
++// Toolbar icons that stay pinned (right of the address bar): the Tab Counter
++// (built-in) and the two add-ons whose popups work on the current page (their
++// IDs come from their install path /opt/ice-browser/dodaci/<dir>).
++inline bool IsIcePinnedActionId(std::string_view id) {
++  return IsIceToolbarBuiltinId(id) ||
++         id == "mphpcefjdbdemmjpplkpaidolnacnlgb" ||  // sn-downloader
++         id == "bpgjpdfphkgemklhkdiemkjbmamdmcgd";    // video-sniffer
++}
++
+ // True for Ice built-ins. They are loaded as component extensions but must
+ // keep the privileges of a normal Chrome Web Store install.
+ inline bool IsIceBuiltinId(std::string_view id) {
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model.cc
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model.cc
+@@ -353,7 +353,8 @@
+   // Ice: built-in features are not extensions for the user: they are reached
+   // from the Ice panel, never from the toolbar or the extensions menu.
+   if (extensions::Manifest::IsComponentLocation(extension->location()) &&
+-      ice::IsIceBuiltinId(extension->id())) {
++      ice::IsIceBuiltinId(extension->id()) &&
++      !ice::IsIceToolbarBuiltinId(extension->id())) {
+     return false;
+   }
+ 
+@@ -488,7 +489,8 @@
+ bool ToolbarActionsModel::IsActionForcePinned(const ActionId& action_id) const {
+   auto* management =
+       extensions::ExtensionManagementFactory::GetForBrowserContext(profile_);
+-  return management->GetForcePinnedList().contains(action_id);
++  return management->GetForcePinnedList().contains(action_id) ||
++         ice::IsIcePinnedActionId(action_id);
+ }
+ 
+ void ToolbarActionsModel::MovePinnedAction(const ActionId& action_id,
+@@ -736,6 +738,15 @@
+                          return !std::ranges::contains(pinned, id);
+                        });
+ 
++  // Ice: Tab Counter, SN Downloader and Video Sniffer are always pinned.
++  for (const char* ice_id : {"fhnegjjodccfaliddboelcleikbmapik",
++                             "mphpcefjdbdemmjpplkpaidolnacnlgb",
++                             "bpgjpdfphkgemklhkdiemkjbmamdmcgd"}) {
++    if (!std::ranges::contains(pinned, std::string(ice_id))) {
++      pinned.push_back(ice_id);
++    }
++  }
++
+   // TODO(pbos): Make sure that the pinned IDs are pruned from ExtensionPrefs on
+   // startup so that we don't keep saving stale IDs.
+   std::vector<ActionId> filtered_action_ids;

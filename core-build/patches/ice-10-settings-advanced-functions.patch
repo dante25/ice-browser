@@ -1,0 +1,308 @@
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
+@@ -4541,4 +4541,30 @@
+   <message name="IDS_SETTINGS_DICTATION_SHORTCUT_CLEAR_LABEL" translateable="false" desc="Accessibility label for the clear keyboard shortcut button icon.">
+     Clear keyboard shortcut
+   </message>
++
++  <!-- Ice: Napredne funkcije page -->
++  <message name="IDS_SETTINGS_ICE_ADVANCED_PAGE_TITLE" translateable="false" desc="Title of the Ice advanced functions settings page.">
++    Napredne funkcije
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_SN_DOWNLOADER_LABEL" translateable="false" desc="Label of the Ultimate SN Downloader on/off toggle.">
++    Ultimate SN Downloader
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_SN_DOWNLOADER_SUBLABEL" translateable="false" desc="Sub-label of the Ultimate SN Downloader on/off toggle.">
++    Preuzimanje videa i slika sa društvenih mreža.
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_VIDEO_SNIFFER_LABEL" translateable="false" desc="Label of the Video Sniffer on/off toggle.">
++    Video Sniffer
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_VIDEO_SNIFFER_SUBLABEL" translateable="false" desc="Sub-label of the Video Sniffer on/off toggle.">
++    Pronalazi video zapise na stranici i nudi preuzimanje.
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_MULTISELECT_LABEL" translateable="false" desc="Label of the Multiselect for YouTube on/off toggle.">
++    Multiselect for YouTube
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_MULTISELECT_SUBLABEL" translateable="false" desc="Sub-label of the Multiselect for YouTube on/off toggle.">
++    Označavanje više videa odjednom na YouTubeu.
++  </message>
++  <message name="IDS_SETTINGS_ICE_ADVANCED_RESTART_NOTE" translateable="false" desc="Note that changes on the Ice advanced functions page take effect after restarting the browser.">
++    Promjene se primjenjuju nakon ponovnog pokretanja Ice-a.
++  </message>
+ </grit-part>
+--- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
++++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+@@ -1400,6 +1400,14 @@
+   // Dictation / Voice typing prefs
+   (*s_allowlist)[prefs::kVoiceTypingHotkey] = settings_api::PrefType::kString;
+ 
++  // Ice: "Napredne funkcije" settings page switches.
++  (*s_allowlist)["ice.addons.sn_downloader_enabled"] =
++      settings_api::PrefType::kBoolean;
++  (*s_allowlist)["ice.addons.video_sniffer_enabled"] =
++      settings_api::PrefType::kBoolean;
++  (*s_allowlist)["ice.builtins.multiselect_youtube_enabled"] =
++      settings_api::PrefType::kBoolean;
++
+   return *s_allowlist;
+ }
+ 
+--- a/chrome/browser/resources/settings/BUILD.gn
++++ b/chrome/browser/resources/settings/BUILD.gn
+@@ -292,6 +292,8 @@
+     "glic_page/glic_subpage.ts",
+     "global_scroll_target_mixin.ts",
+     "i18n_setup.ts",
++    "ice_advanced_page/ice_advanced_page.html.ts",
++    "ice_advanced_page/ice_advanced_page.ts",
+     "icons.html.ts",
+     "lazy_load.ts",
+     "metrics_browser_proxy.ts",
+--- /dev/null
++++ b/chrome/browser/resources/settings/ice_advanced_page/ice_advanced_page.html.ts
+@@ -0,0 +1,55 @@
++// Copyright 2026 The Ice Browser Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++import {html} from '//resources/lit/v3_0/lit.rollup.js';
++
++import {RestartType} from '../relaunch_mixin_lit.js';
++
++import type {SettingsIceAdvancedPageElement} from './ice_advanced_page.js';
++
++export function getHtml(this: SettingsIceAdvancedPageElement) {
++  // clang-format off
++  return html`<!--_html_template_start_-->
++<settings-section page-title="$i18n{iceAdvancedPageTitle}"
++    class="cr-centered-card-container">
++  <settings-toggle-button id="snDownloader"
++      pref-key="ice.addons.sn_downloader_enabled"
++      label="$i18n{iceAdvancedSnDownloaderLabel}"
++      sub-label="$i18n{iceAdvancedSnDownloaderSubLabel}"
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
++  </settings-toggle-button>
++  <div class="hr"></div>
++  <settings-toggle-button id="videoSniffer"
++      pref-key="ice.addons.video_sniffer_enabled"
++      label="$i18n{iceAdvancedVideoSnifferLabel}"
++      sub-label="$i18n{iceAdvancedVideoSnifferSubLabel}"
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
++  </settings-toggle-button>
++  <div class="hr"></div>
++  <settings-toggle-button id="multiselectYoutube"
++      pref-key="ice.builtins.multiselect_youtube_enabled"
++      label="$i18n{iceAdvancedMultiselectLabel}"
++      sub-label="$i18n{iceAdvancedMultiselectSubLabel}"
++      @settings-boolean-control-change="${this.onSettingsBooleanControlChange_}">
++  </settings-toggle-button>
++  <div class="cr-row">
++    <div id="restartNote" class="flex cr-padded-text cr-secondary-text">
++      $i18n{iceAdvancedRestartNote}
++    </div>
++    ${this.showRestartButton_ ? html`
++      <cr-button id="restartButton" @click="${this.onRestartClick_}">
++        $i18n{restart}
++      </cr-button>
++    ` : ''}
++  </div>
++
++  ${this.shouldShowRelaunchDialog ? html`
++    <relaunch-confirmation-dialog .restartType="${RestartType.RESTART}"
++        @close="${this.onRelaunchDialogClose}">
++    </relaunch-confirmation-dialog>
++  ` : ''}
++</settings-section>
++<!--_html_template_end_-->`;
++  // clang-format on
++}
+--- /dev/null
++++ b/chrome/browser/resources/settings/ice_advanced_page/ice_advanced_page.ts
+@@ -0,0 +1,75 @@
++// Copyright 2026 The Ice Browser Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++/**
++ * @fileoverview
++ * 'settings-ice-advanced-page' ("Napredne funkcije") holds the on/off
++ * switches for Ice add-ons and built-in features. The prefs are read once at
++ * browser startup, so changes are applied after a restart.
++ */
++import 'chrome://resources/cr_elements/cr_button/cr_button.js';
++import '../controls/settings_toggle_button.js';
++import '../relaunch_confirmation_dialog.js';
++import '../settings_page/settings_section.js';
++
++import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
++
++import {RelaunchMixinLit, RestartType} from '../relaunch_mixin_lit.js';
++import {getSearchManager} from '../search_settings.js';
++import type {SettingsPlugin} from '../settings_main/settings_plugin.js';
++import {getCss as getSettingsSharedCss} from '../settings_shared_lit.css.js';
++
++import {getHtml} from './ice_advanced_page.html.js';
++
++const SettingsIceAdvancedPageElementBase = RelaunchMixinLit(CrLitElement);
++
++export class SettingsIceAdvancedPageElement extends
++    SettingsIceAdvancedPageElementBase implements SettingsPlugin {
++  static get is() {
++    return 'settings-ice-advanced-page';
++  }
++
++  static override get styles() {
++    return [
++      getSettingsSharedCss(),
++    ];
++  }
++
++  override render() {
++    return getHtml.bind(this)();
++  }
++
++  static override get properties() {
++    return {
++      showRestartButton_: {type: Boolean},
++    };
++  }
++
++  protected accessor showRestartButton_: boolean = false;
++
++  protected onSettingsBooleanControlChange_() {
++    // Any change made by the user only takes effect after a restart.
++    this.showRestartButton_ = true;
++  }
++
++  protected onRestartClick_(e: Event) {
++    e.stopPropagation();
++    this.performRestart(RestartType.RESTART);
++  }
++
++  // SettingsPlugin implementation
++  async searchContents(query: string) {
++    const searchRequest = await getSearchManager().search(query, this);
++    return searchRequest.getSearchResult();
++  }
++}
++
++declare global {
++  interface HTMLElementTagNameMap {
++    'settings-ice-advanced-page': SettingsIceAdvancedPageElement;
++  }
++}
++
++customElements.define(
++    SettingsIceAdvancedPageElement.is, SettingsIceAdvancedPageElement);
+--- a/chrome/browser/resources/settings/lazy_load.ts
++++ b/chrome/browser/resources/settings/lazy_load.ts
+@@ -106,6 +106,7 @@
+ // Sections
+ import './a11y_page/a11y_page_index.js';
+ import './downloads_page/downloads_page.js';
++import './ice_advanced_page/ice_advanced_page.js';
+ // <if expr="is_chromeos">
+ import './languages_page/languages_page_index_cros.js';
+ // </if>
+@@ -224,6 +225,7 @@
+ export type {DownloadsBrowserProxy} from './downloads_page/downloads_browser_proxy.js';
+ export {SettingsDownloadsPageElement} from './downloads_page/downloads_page.js';
+ export {SettingsGlicLoginPermissionsPageElement} from './glic_page/glic_login_permissions_page.js';
++export {SettingsIceAdvancedPageElement} from './ice_advanced_page/ice_advanced_page.js';
+ // <if expr="not is_chromeos">
+ export {SettingsAddLanguagesDialogElement} from './languages_page/add_languages_dialog.js';
+ // <if expr="not is_macosx">
+--- a/chrome/browser/resources/settings/route.ts
++++ b/chrome/browser/resources/settings/route.ts
+@@ -303,6 +303,11 @@
+     r.TRIGGERED_RESET_DIALOG.isNavigableDialog = true;
+   }
+ 
++  // Ice: "Napredne funkcije" (on/off switches for Ice add-ons/built-ins).
++  r.ICE_ADVANCED = r.ADVANCED.createSection(
++      '/iceAdvanced', 'iceAdvanced',
++      loadTimeData.getString('iceAdvancedPageTitle'));
++
+   if (visibility.performance !== false) {
+     r.PERFORMANCE = r.BASIC.createSection(
+         '/performance', 'performance',
+--- a/chrome/browser/resources/settings/router.ts
++++ b/chrome/browser/resources/settings/router.ts
+@@ -39,6 +39,7 @@
+   GEMINI_ENTERPRISE: Route;
+   GLIC_SECTION: Route;
+   HISTORY_SEARCH: Route;
++  ICE_ADVANCED: Route;
+   IDENTITY_DOCS: Route;
+   INLINE_CUE_MENU: Route;
+   LANGUAGES: Route;
+--- a/chrome/browser/resources/settings/settings_main/settings_main.html
++++ b/chrome/browser/resources/settings/settings_main/settings_main.html
+@@ -197,6 +197,13 @@
+     </div>
+   </template>
+ 
++  <div slot="view" id="iceAdvanced">
++    <template is="dom-if" if="[[renderPlugin_(
++        routes_.ICE_ADVANCED, lastRoute_, inSearchMode_)]]">
++      <settings-ice-advanced-page></settings-ice-advanced-page>
++    </template>
++  </div>
++
+   <div slot="view" id="about">
+     <template is="dom-if" if="[[renderPlugin_(
+         routes_.ABOUT, lastRoute_, inSearchMode_)]]">
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.html
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.html
+@@ -191,6 +191,12 @@
+           <span class="menu-label">$i18n{resetPageTitle}</span>
+           <cr-ripple></cr-ripple>
+         </a>
++        <a role="menuitem" id="iceAdvanced" href="/iceAdvanced"
++            class="cr-nav-menu-item">
++          <cr-icon icon="settings20:apps"></cr-icon>
++          <span class="menu-label">$i18n{iceAdvancedPageTitle}</span>
++          <cr-ripple></cr-ripple>
++        </a>
+         <div hidden="[[hideBottomMenuSeparator_(pageVisibility_)]]"
+             class="menu-separator"></div>
+         <a role="menuitem" id="extensionsLink" class="cr-nav-menu-item"
+--- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
++++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
+@@ -4629,6 +4629,27 @@
+   html_source->AddLocalizedStrings(kShortcutInputStrings);
+ }
+ 
++// Ice: strings for the "Napredne funkcije" page.
++void AddIceAdvancedStrings(content::WebUIDataSource* html_source) {
++  static constexpr webui::LocalizedString kLocalizedStrings[] = {
++      {"iceAdvancedPageTitle", IDS_SETTINGS_ICE_ADVANCED_PAGE_TITLE},
++      {"iceAdvancedSnDownloaderLabel",
++       IDS_SETTINGS_ICE_ADVANCED_SN_DOWNLOADER_LABEL},
++      {"iceAdvancedSnDownloaderSubLabel",
++       IDS_SETTINGS_ICE_ADVANCED_SN_DOWNLOADER_SUBLABEL},
++      {"iceAdvancedVideoSnifferLabel",
++       IDS_SETTINGS_ICE_ADVANCED_VIDEO_SNIFFER_LABEL},
++      {"iceAdvancedVideoSnifferSubLabel",
++       IDS_SETTINGS_ICE_ADVANCED_VIDEO_SNIFFER_SUBLABEL},
++      {"iceAdvancedMultiselectLabel",
++       IDS_SETTINGS_ICE_ADVANCED_MULTISELECT_LABEL},
++      {"iceAdvancedMultiselectSubLabel",
++       IDS_SETTINGS_ICE_ADVANCED_MULTISELECT_SUBLABEL},
++      {"iceAdvancedRestartNote", IDS_SETTINGS_ICE_ADVANCED_RESTART_NOTE},
++  };
++  html_source->AddLocalizedStrings(kLocalizedStrings);
++}
++
+ }  // namespace
+ 
+ extern void AddPrivacySandboxStrings(content::WebUIDataSource* html_source,
+@@ -4671,6 +4692,7 @@
+   AddSiteSettingsStrings(html_source, profile);
+   AddSiteDataPageStrings(html_source, profile);
+   AddStorageAccessStrings(html_source);
++  AddIceAdvancedStrings(html_source);
+ 
+ #if !BUILDFLAG(IS_CHROMEOS)
+   AddDefaultBrowserStrings(html_source);

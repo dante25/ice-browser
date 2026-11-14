@@ -13,9 +13,10 @@ zaštite i čuvar. Komande: [KOMANDE.md](KOMANDE.md). Plan ugrađenih funkcija: 
 | Pregled slika na Google Images | `ice-features/google-images-viewer` |
 | Originalne ekstenzije (ugrađene) | `chrome-extensions/`, `own-extensions/` |
 | Popravke grešaka ekstenzija (preživljavaju updatee) | `src/ext-patches.js` |
-| Prenos iz Google Chromea | `src/import-chrome.js` |
+| Uvoz iz drugog browsera (Chrome, Brave, Edge, Firefox...) | `src/import-browser.js` |
+| Zamjena profila Chromeovim | `src/import-chrome.js` |
 | Čuvar motora | `scripts/guardian.mjs` |
-| Testovi | `test/smoke.mjs`, `test/gimages.mjs` |
+| Testovi | `test/smoke.mjs`, `test/gimages.mjs`, `test/import.mjs` |
 | Stari Electron pokušaj (samo za referencu) | `legacy/electron/` |
 
 ## Zaštite
