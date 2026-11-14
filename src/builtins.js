@@ -17,6 +17,14 @@ const BUILTINS = [
   { key: 'ice-sidebar', name: 'Ice panel', dir: 'ice-features/ice-sidebar', group: 'always', ice: true },
   { key: 'ice-shield', name: 'Ice Shield (phishing, malware, GPC)', dir: 'ice-features/ice-shield', group: 'always' },
   { key: 'google-images-viewer', name: 'Pregled slika na Google Images', dir: 'ice-features/google-images-viewer', group: 'always' },
+  // ESUIT (originali iz arhive, nepromijenjeni)
+  { key: 'esuit-comments', name: 'ESUIT Comments Exporter for Facebook', dir: 'esuit-extensions/esuit-comments-exporter-for-facebook', group: 'always' },
+  { key: 'esuit-likes', name: 'ESUIT Export User Likes for Facebook', dir: 'esuit-extensions/esuit-export-user-likes-for-facebook', group: 'always' },
+  { key: 'esuit-fb-photos', name: 'ESUIT Photos Downloader for Facebook', dir: 'esuit-extensions/esuit-photos-downloader-for-facebook', group: 'always' },
+  { key: 'esuit-ig-photos', name: 'ESUIT Photos Downloader for Instagram', dir: 'esuit-extensions/esuit-photos-downloader-for-instagram', group: 'always' },
+  { key: 'esuit-posts', name: 'ESUIT Posts Exporter for Facebook', dir: 'esuit-extensions/esuit-posts-exporter-for-facebook', group: 'always' },
+  { key: 'esuit-unseen', name: 'ESUIT Un Seen for Facebook', dir: 'esuit-extensions/esuit-un-seen-for-facebook', group: 'always' },
+  { key: 'esuit-fb-video', name: 'ESUIT Video Downloader for Facebook', dir: 'esuit-extensions/esuit-video-downloader-for-facebook', group: 'always' },
   // S prekidačem
   { key: 'sn-downloader', name: 'Ultimate SN Downloader', dir: 'own-extensions/Ultimate SN Downloader/extension', group: 'toggle' },
   { key: 'video-sniffer', name: 'Video Sniffer', dir: 'own-extensions/video-sniffer', group: 'toggle' },
