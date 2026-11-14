@@ -162,6 +162,32 @@
   }
 
 
+  // Vimeo: the player keeps its configuration in window.playerConfig; the HLS / DASH manifests and the plain mp4 files are
+  // listed there before anything is played (the method Video DownloadHelper uses).
+  let vimeoDone = '';
+  function scanVimeo(tries = 0) {
+    if (!/(^|\.)vimeo\.com$/.test(location.hostname) || !/(?<![a-z0-9])\d{5,}/i.test(location.href)) return;
+    let cfg;
+    try {
+      cfg = window.playerConfig;
+    } catch {}
+    const files = cfg?.request?.files;
+    if (!files) {
+      if (tries < 8) setTimeout(() => scanVimeo(tries + 1), 1000 * (tries + 1));
+      return;
+    }
+    const sig = String(cfg.video?.id || location.href);
+    if (sig === vimeoDone) return;
+    vimeoDone = sig;
+    for (const k of ['hls', 'dash']) {
+      const f = files[k];
+      const u = f?.cdns?.[f.default_cdn]?.url || Object.values(f?.cdns || {})[0]?.url;
+      if (u) report(u, 'site', true);
+    }
+    for (const pf of files.progressive || []) if (pf?.url) report(pf.url, 'site', true);
+  }
+  scanVimeo();
+
   document.addEventListener('yt-navigate-finish', () => {
     setTimeout(scanYouTube, 500);
     setTimeout(scanYouTube, 2500);

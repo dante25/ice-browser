@@ -79,7 +79,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       .catch(console.error);
   }
   for (const it of msg.items || []) {
-    const kind = classify(it.url) || (it.force ? 'file' : null);
+    const kind = (['hls', 'dash', 'file'].includes(it.kind) && it.kind) || classify(it.url) || (it.force ? 'file' : null);
     if (kind) add(sender.tab.id, { url: it.url, kind, source: it.source });
   }
 });
