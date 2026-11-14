@@ -210,7 +210,7 @@ async function downloadFile() {
 }
 
 // YouTube: separate video and audio mp4 streams, fetched in ranges and merged into one file.
-// googlevideo expects the client the URLs were issued for (visionOS, as in inject.js).
+// googlevideo expects the client the URLs were issued for: inject.js passes that client's User-Agent (ua); visionOS is the default.
 const YT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 const CHUNK = 9.5e6;
 const IDLE_MS = 20000;
@@ -232,7 +232,7 @@ async function downloadMerge() {
       {
         id: 3,
         priority: 3,
-        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'User-Agent', operation: 'set', value: YT_UA }] },
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'User-Agent', operation: 'set', value: params.get('ua') || YT_UA }] },
         condition: { requestDomains: ['googlevideo.com'], resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
       },
     ],

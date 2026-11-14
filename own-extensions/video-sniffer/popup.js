@@ -328,6 +328,7 @@ function openMerge(info, video, audio, quality) {
     as: audio?.size || '',
     page: tab.url,
     name: `${title} [${quality}]`,
+    ua: info.streams?.ua || '',
     mode: 'merge',
   });
   chrome.tabs.create({ url: chrome.runtime.getURL('downloader.html') + '?' + q });
@@ -354,8 +355,8 @@ function ytCard(info) {
   const s0 = info.streams;
   const version = chrome.runtime.getManifest?.().version || '?';
   meta.textContent = s0
-    ? `v${version} · direct streams: ${s0.video.length} video, ${s0.muxed.length} muxed, audio ${s0.audio ? 'ok' : 'MISSING'} · Download saves video + audio as one mp4. Other qualities: yt-dlp.`
-    : `v${version} · no direct streams found yet (reload the page and reopen this popup). yt-dlp works for any quality.`;
+    ? `v${version} · direct streams${s0.client ? ` (${s0.client})` : ''}: ${s0.video.length} video, ${s0.muxed.length} muxed, audio ${s0.audio ? 'ok' : 'MISSING'} · Download saves video + audio as one mp4. Other qualities: yt-dlp.`
+    : `v${version} · no direct streams found${info.diag ? ` - YouTube answered: ${info.diag.join(' | ')}` : ' yet (reload the page and reopen this popup)'}. yt-dlp works for any quality.`;
 
   const box = document.createElement('div');
   box.className = 'variants';

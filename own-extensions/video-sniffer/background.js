@@ -73,6 +73,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       .then(async () => {
         const old = (await chrome.storage.session.get(ytKey))[ytKey];
         if (!msg.youtube.streams && old?.id === msg.youtube.id && old.streams) msg.youtube.streams = old.streams;
+        if (!msg.youtube.diag && old?.id === msg.youtube.id && old.diag) msg.youtube.diag = old.diag;
         await chrome.storage.session.set({ [ytKey]: msg.youtube });
       })
       .catch(console.error);
