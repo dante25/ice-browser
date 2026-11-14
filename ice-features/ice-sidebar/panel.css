@@ -42,5 +42,7 @@ body{display:flex;flex-direction:row-reverse;overflow:hidden} /* panel je desno:
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px}
 .chip{padding:6px 12px;border-radius:8px;background:var(--base);border:1px solid var(--line)}
 .chip.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
-body.tab{justify-content:center}
-body.tab .view{max-width:560px;flex:none;width:560px}
+/* Otvoreno kao tab: traka s ikonama uz lijevi rub, sadržaj u sredini */
+body.tab{flex-direction:row;justify-content:flex-start}
+body.tab .rail{border-left:0;border-right:1px solid var(--line)}
+body.tab .view{max-width:560px;flex:none;width:560px;margin:0 auto}
