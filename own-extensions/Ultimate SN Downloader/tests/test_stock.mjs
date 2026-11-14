@@ -11,24 +11,26 @@ const mf = JSON.parse(fs.readFileSync(EXT + '/manifest.json', 'utf8')); mf.host_
 execSync(`openssl req -x509 -newkey rsa:2048 -nodes -keyout ${tmp}/k.pem -out ${tmp}/c.pem -days 2 -subj /CN=mock 2>/dev/null`);
 const JPG = Buffer.concat([Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64'), Buffer.alloc(30000, 7)]);
 const PER = 4, PAGES = 3;                                                  // 12 pictures in 3 pages
-const detail = (site, i) => site === 'dreamstime' ? `/stock-photo-model-${i}-image${50000000 + i}` : site === 'pexels' ? `/photo/shot-${3000 + i}/` : `/photo_${100000 + i}_woman-${i}.html`;
+const detail = (site, i) => site === 'shutterstock' ? `/x/p${900000 + i}z` : site === 'dreamstime' ? `/stock-photo-model-${i}-image${50000000 + i}` : site === 'pexels' ? `/photo/shot-${3000 + i}/` : `/photo_${100000 + i}_woman-${i}.html`;
 const srv = https.createServer({ key: fs.readFileSync(tmp + '/k.pem'), cert: fs.readFileSync(tmp + '/c.pem') }, (rq, rs) => {
   const h = rq.headers.host.split(':')[0], u = new URL(rq.url, 'https://' + h), p = u.pathname;
-  const site = /dreamstime/.test(h) ? 'dreamstime' : /pexels/.test(h) ? 'pexels' : '123rf';
+  const site = /dreamstime/.test(h) ? 'dreamstime' : /pexels/.test(h) ? 'pexels' : /shutterstock/.test(h) ? 'shutterstock' : '123rf';
   if (p.startsWith('/img/')) { const b = /logo/.test(p) ? JPG.subarray(0, 800) : JPG; rs.writeHead(200, { 'content-type': 'image/jpeg', 'content-length': b.length }); return rs.end(b); }
   rs.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   const pg = Number(u.searchParams.get('pg') || 1);
   if (p === '/gallery') {
-    let b = ''; for (let k = 0; k < PER; k++) b += `<a href="${detail(site, (pg - 1) * PER + k)}">pic</a>`;
+    let b = ''; for (let k = 0; k < PER; k++) b += `<a href="${detail(site, (pg - 1) * PER + k)}">${site === 'shutterstock' ? '<img src="/img/thumb.jpg" width=50>' : 'pic'}</a>`;
+    b += '<a href="/x/p999999z">Menu item without a picture</a>';
     b += '<a href="/about">About</a><a href="/img/logo-small.jpg">logo</a>';
     return rs.end(`<!doctype html><title>Gallery</title>${pg < PAGES ? `<link rel="next" href="/gallery?pg=${pg + 1}">` : ''}<body>${b}</body>`);
   }
+  if (site === 'shutterstock' && p === '/x/p999999z') { return rs.end('<!doctype html><title>Menu</title>nothing'); }
   const id = (p.match(/(\d+)/g) || []).pop();
   const og = site === 'pexels' ? `https://${h}/img/pexels-${id}.jpeg?auto=compress&cs=tinysrgb&w=1200&h=630` : `https://${h}/img/${site}-${id}.jpg?s=preview`;
   rs.end(`<!doctype html><title>Picture</title><meta property="og:image" content="${og.replace(/&/g, '&amp;')}"><body>picture ${id}</body>`);
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-const hosts = ['www.dreamstime.com', 'www.pexels.com', 'fr.123rf.com'];
+const hosts = ['www.dreamstime.com', 'www.pexels.com', 'fr.123rf.com', 'www.shutterstock.com'];
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fail++; };
 const ctx = await chromium.launchPersistentContext(tmp + '/profile', { headless: false, args: ['--headless=new', '--no-sandbox', `--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`,
   '--ignore-certificate-errors', '--no-proxy-server', `--host-resolver-rules=${hosts.map((x) => `MAP ${x} 127.0.0.1:${srv.address().port}`).join(', ')}`] });
@@ -53,7 +55,7 @@ try {
   }
   const all = await mgr.evaluate(async () => { const out = []; async function walk(d, p) { for await (const [n, h] of d.entries()) { if (h.kind === 'directory') await walk(h, p + n + '/'); else out.push(p + n); } } await walk(await navigator.storage.getDirectory(), ''); return out; });
   const jpg = all.filter((f) => /\.jpe?g$/i.test(f));
-  for (const [needle, label] of [['dreamstime', 'Dreamstime'], ['pexels', 'Pexels'], ['123rf', '123rf (fr.)']]) {
+  for (const [needle, label] of [['dreamstime', 'Dreamstime'], ['pexels', 'Pexels'], ['123rf', '123rf (fr.)'], ['shutterstock', 'Shutterstock (addresses no rule knows, picture cards found by their thumbnail)']]) {
     const n = jpg.filter((f) => f.toLowerCase().includes(needle)).length;
     ok(n === PER * PAGES, `${label}: all ${PER * PAGES} pictures of the ${PAGES}-page gallery saved (not only the first page), got ${n}`);
   }

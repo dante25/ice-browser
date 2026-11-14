@@ -338,7 +338,21 @@ async function ihEnsure() {
 // hostf.xml does not remove them) and checked BEFORE it, so a custom rule also overrides a host-file rule.
 const ihCustom = async () => (await chrome.storage.local.get('ihCustom')).ihCustom || [];
 // Rules for stock / art / 3D sites (ihg/stock.xml), shipped with the extension so an update of the extension updates them.
-const ihStock = async () => { try { return parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); } catch (e) { return []; } };
+let stockIds = [];
+const ihStock = async () => { try { const h = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); stockIds = h.map(x => x.id); return h; } catch (e) { return []; } };
+// On a stock site a link that wraps a thumbnail is a picture card, whatever its address looks like: the picture page it leads to is read like the
+// ones with a rule (the image that page publishes).
+const GENERIC_SP = `function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\\b[^>]*\\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\\s*:\\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) { var ln = pageData.match(/<link\\b[^>]*\\brel=["']image_src["'][^>]*\\bhref=["']([^"']+)["']/i); u = ln && ln[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\\\u002F/gi, '/').replace(/\\\\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	return {imgUrl: u, status: "OK"};
+}`;
+const sameStock = (pageHost, link) => { try { const h = new URL(link).hostname; return stockIds.some(id => h.endsWith(id) && String(pageHost || '').endsWith(id)); } catch (e) { return false; } };
 async function ihReapply() {
   const hosts = (await chrome.storage.local.get('ihHosts')).ihHosts || [];
   setHosts([...(await ihCustom()), ...(await ihStock()), ...hosts]); S.ihCount = hostCount(); ihLoaded = Promise.resolve();
@@ -380,12 +394,19 @@ async function ihFetch(method, url, headers, body, referer) {
 }
 
 // one link of the page -> {imgUrl, fileName, referer} | {unknown} | {abort} | {error}
-async function ihResolve(j, link, depth = 0) {
-  const page = j.page || {}, rule = matchRule(link);
+async function ihResolve(j, link, depth = 0, meta = null) {
+  const page = j.page || {};
+  let rule = matchRule(link), generic = false;
+  if (!rule && meta && meta.img && sameStock(page.host, link)) { rule = { sp: GENERIC_SP }; generic = true; }
   if (!rule) return isDirectImage(link) ? { imgUrl: link, referer: page.url } : { unknown: true };
   let text = '', pageUrl = link;
   if (isFunctionRule(rule.sp) || needsPage(rule.sp)) {
-    const r = rule.post ? await ihFetch('POST', link, { 'Content-Type': 'application/x-www-form-urlencoded' }, rule.post, page.url) : await ihFetch('GET', link, {}, null, page.url);
+    let r = null;
+    if (!rule.post && j.tabId && page.url) {       // same site as the tab: ask the tab (its cookies / headers pass bot protection that refuses the extension's own requests)
+      try { if (new URL(link).origin === new URL(page.url).origin) r = await chrome.tabs.sendMessage(j.tabId, { t: 'ih:pagefetch', url: link }); } catch (e) { r = null; }
+      if (r && r.error) r = null;
+    }
+    if (!r) r = rule.post ? await ihFetch('POST', link, { 'Content-Type': 'application/x-www-form-urlencoded' }, rule.post, page.url) : await ihFetch('GET', link, {}, null, page.url);
     if (r.error) return { error: r.error };
     if (r.status !== 200) return { error: 'HTTP ' + r.status };
     text = r.text; pageUrl = r.finalUrl || link;
@@ -417,7 +438,7 @@ async function runIh(j, links) {
       if (rule && (isFunctionRule(rule.sp) || needsPage(rule.sp))) { const g = await gate(j, 'api'); if (g.cancel) break; }       // only requests to other sites are paced
       let r;
       for (let attempt = 1; attempt <= 3; attempt++) {
-        try { r = await ihResolve(j, l.url); } catch (e) { r = { error: e.message }; }
+        try { r = await ihResolve(j, l.url, 0, l); } catch (e) { r = { error: e.message }; }
         if (!r.error || attempt === 3) break;
         await sleep(800 * attempt);
       }
@@ -426,8 +447,17 @@ async function runIh(j, links) {
         const name = r.fileName || baseName(r.imgUrl) || 'image';
         accept(j, [{ site: 'ih', key: r.imgUrl, kind: 'photo', url: r.imgUrl, owner: page.host || 'page', postId: '', code: name, ptype: page.folder || 'images', index: l.index,
           takenAt: 0, caption: '', fileName: name, referer: r.referer || page.url || '', w: 0, h: 0 }], 'images');
-      } else if (r.unknown) { try { const h = new URL(l.url).hostname, own = String(page.host || ''); if (h.replace(/^www\./, '') !== own && !h.endsWith('.' + own)) j.unknown[h] = (j.unknown[h] || 0) + 1; } catch (e) { /* not a url */ } }
-      else { unresolved++; jobLog(j, 'no image from ' + l.url.slice(0, 120) + (r.error ? ' (' + r.error + ')' : '')); }
+      } else if (r.unknown) {
+        try {
+          const h = new URL(l.url).hostname, own = String(page.host || '');
+          if (h.replace(/^www\./, '') !== own && !h.endsWith('.' + own)) j.unknown[h] = (j.unknown[h] || 0) + 1;
+          else { j.ownUnknown = (j.ownUnknown || 0) + 1; if ((j.ownSamples = j.ownSamples || []).length < 3 && /\/[^/]*\d{4,}/.test(l.url)) j.ownSamples.push(l.url.slice(0, 140)); }
+        } catch (e) { /* not a url */ }
+      } else {
+        unresolved++; jobLog(j, 'no image from ' + l.url.slice(0, 120) + (r.error ? ' (' + r.error + ')' : ''));
+        const why = r.error ? String(r.error).slice(0, 40) : 'no image on the page'; (j.reasons = j.reasons || {})[why] = (j.reasons[why] || 0) + 1;
+        if ((j.failSamples = j.failSamples || []).length < 2) j.failSamples.push(l.url.slice(0, 140));
+      }
       touch(j);
     }
   };
@@ -435,7 +465,10 @@ async function runIh(j, links) {
   j.resolving--;
   const unk = Object.entries(j.unknown).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([h, n]) => h + ' (' + n + ')');
   if (unk.length) j.warn = 'No rule for: ' + unk.join(', ') + ' - add them to the host file.';
-  if (unresolved) j.note = unresolved + ' link(s) gave no image (the host page did not show one).';
+  const notes = [];
+  if (unresolved) notes.push(unresolved + ' picture page(s) gave no image: ' + Object.entries(j.reasons || {}).map(([w, n]) => n + ' x ' + w).join(', ') + (j.failSamples && j.failSamples.length ? ' - e.g. ' + j.failSamples.join(' , ') : ''));
+  if (j.ownUnknown && !j.total_found_hint) notes.push(j.ownUnknown + ' link(s) of this site have no rule' + (j.ownSamples && j.ownSamples.length ? ' - e.g. ' + j.ownSamples.join(' , ') : ''));
+  if (notes.length) j.note = notes.join(' | ');
   touch(j); finishIfDone(j);
 }
 

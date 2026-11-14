@@ -24,7 +24,7 @@
         url = unanonymize(url);
         if (!/^https?:\/\//i.test(url) || seen[url]) continue;
         seen[url] = 1;
-        links.push({ url: url });
+        links.push({ url: url, img: !!(a.querySelector && a.querySelector('img')) });
       }
       var frames = doc.querySelectorAll ? doc.querySelectorAll('iframe, frame') : [];
       for (var f = 0; f < frames.length; f++) { try { if (frames[f].contentDocument) scan(frames[f].contentDocument); } catch (e) { /* cross-origin frame */ } }
@@ -114,7 +114,7 @@
       for (var i = 0; i < as.length; i++) {
         var url = unanonymize(as[i].href || '');
         if (!/^https?:\/\//i.test(url) || seen[url]) continue;
-        seen[url] = 1; all.push({ url: url });
+        seen[url] = 1; all.push({ url: url, img: !!(as[i].querySelector && as[i].querySelector('img')) });
       }
       pages++;
       cur = next; next = nextUrl(doc, cur);

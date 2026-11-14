@@ -121,6 +121,13 @@
       return true;
     }
     if (msg.t === 'job:cancel') { cancelled[msg.jobId] = true; respond({ ok: true }); return; }
+    if (msg.t === 'ih:pagefetch') {          // a picture page of the site this tab is on: fetched from the page itself (many sites refuse the extension's own requests)
+      try {
+        if (new URL(msg.url).origin !== location.origin) return respond({ error: 'other origin' });
+        fetch(msg.url, { credentials: 'include' }).then(function (r) { return r.text().then(function (t) { respond({ status: r.status, text: t, finalUrl: r.url }); }); }).catch(function (e) { respond({ error: String(e && e.message || e) }); });
+      } catch (e) { respond({ error: String(e && e.message || e) }); }
+      return true;
+    }
   });
 
   // after Facebook navigated this tab to the next section the job continues here
