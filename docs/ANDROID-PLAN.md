@@ -19,6 +19,19 @@
 - `.github/workflows/android-build.yml`: kopija upstream releja, u pripremi dodaje Ice sloj (`android/overlay/apply.sh`: GN opcije iz `flags.ice.gn`, zakrpe iz `overlay/patches/*.patch` se dodaju na kraj `patches/series`). Pokreće se samo promjenom `android/RELEASE` ili ručno.
 - **Faza 0 (prva gradnja):** nepromijenjeni upstream + prazan Ice sloj. Dokazuje lanac u ovom repou i daje APK na kojem se na telefonu provjerava šta od ekstenzija radi.
 
+## Tema (odluka korisnika 2026-11-14)
+Isti izgled kao desktop Ice (iste boje), **uz podršku za Androidove vlastite teme i boje**. Tri načina, kao `ice --theme` na desktopu, uz svijetlo/tamno/sistem:
+1. **Ice** (zadano): tačne boje desktop Icea (`android/overlay/theme/ice-palette.json`, izvučeno iz `ice.css` i tema `ice-theme-light/dark`).
+2. **Boje sistema** (Material You): dinamičke boje iz pozadine, Android 12+. Chromium 156 na v31+ već koristi `Theme.Material3Expressive.DynamicColors.DayNight`.
+3. **Vlastita boja**: korisnik bira boju, a paleta se izvodi iz nje (Material `DynamicColorsOptions.setContentBasedSource`).
+Svijetla/tamna tema prati sistem ili se bira ručno.
+
+Stanje: **paleta i generator gotovi i provjereni na izvornom kodu Chromiuma 156**:
+- `android/overlay/theme/gen-android-colors.py` pravi `ice_colors.xml` (zamjena 18 statičkih semantičkih boja iz `ui/android`, plus Material 3 `ThemeOverlay.Ice.Light/Dark`) i zakrpu `ice-30-android-theme.patch` koja ga uključuje u cilj `java_overlay_resources` u `chrome/android/BUILD.gn` (to je Chromiumov mehanizam za zamjenu resursa iz `ui/android`).
+- `--check <src>` provjerava da svako ime stvarno postoji u Chromiumu (pogrešno ime ne ruši gradnju, samo ne radi ništa): 18 od 18 postoji. Zakrpa se čisto primjenjuje na `chrome/android/BUILD.gn` iz 156.0.8078.79. Material Components je 1.14.0, pa atributi (`colorSurfaceContainer*`) postoje.
+- `apply.sh` je dodaje u gradnju (u sljedećoj gradnji, ne u Fazi 0).
+- **Još nije napravljeno:** Java dio koji bira način (Ice / sistem / vlastita boja) i primjenjuje `ThemeOverlay.Ice.*` na aktivnosti, i stranica postavki za izbor. Mapiranje boja na Material uloge je prva procjena i treba ga pogledati na uređaju.
+
 ## Sljedeće faze
 1. **Brendiranje**: ime Ice, paket `org.ice.browser` (instalira se uz Chrome/ungoogled), ikona, tema (iz `core-build/branding`).
 2. **Ugrađene funkcije** kao komponentne ekstenzije (prilagoditi desktop zakrpe ice-01/02/05: putanja resursa u APK-u umjesto `DIR_RESOURCES`), Ice Shield.

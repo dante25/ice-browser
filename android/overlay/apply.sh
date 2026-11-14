@@ -11,8 +11,13 @@ cd "$UP"
 grep -v '^[[:space:]]*#' "$HERE/flags.ice.gn" | grep -v '^[[:space:]]*$' > /tmp/ice-flags.gn || true
 if [ -s /tmp/ice-flags.gn ]; then { echo; echo "# --- Ice"; cat /tmp/ice-flags.gn; } >> android_flags.gn; fi
 
-# 2) Ice patches: patches/Ice/*.patch, applied after all upstream patches, in file name order
-n=0
+# 2a) generated patches: the Ice theme (colours from ice-palette.json, same as the desktop)
+mkdir -p patches/Ice
+python3 "$HERE/theme/gen-android-colors.py" --patch patches/Ice/ice-30-android-theme.patch
+printf 'Ice/ice-30-android-theme.patch\n' >> patches/series
+
+# 2b) Ice patches: patches/Ice/*.patch, applied after all upstream patches, in file name order
+n=1
 if compgen -G "$HERE/patches/*.patch" > /dev/null; then
   mkdir -p patches/Ice
   for p in $(ls "$HERE"/patches/*.patch | sort); do

@@ -1,0 +1,7 @@
+{
+  "_comment": "Ice palette = the colours of the desktop Ice (ice-features/ice-sidebar/ice.css, ice-theme-light/dark manifests, core-build ice_color_mixer). Single source for the Android colours.",
+  "light": { "base": "#E3FDFF", "panel": "#D1F7FF", "card": "#EEFEFF", "accent": "#94F7FF", "deep": "#49E8FF",
+            "text": "#0B3A4A", "muted": "#4C7A86", "link": "#0B6E85", "on_accent": "#0B3A4A", "frame": "#E3FDFF", "toolbar": "#D1F7FF", "ntp": "#E3FDFF" },
+  "dark":  { "base": "#2C2C2C", "panel": "#383838", "card": "#333333", "accent": "#94F7FF", "deep": "#49E8FF",
+            "text": "#F2F2F2", "muted": "#A9B4B8", "link": "#94F7FF", "on_accent": "#0B3A4A", "frame": "#2C2C2C", "toolbar": "#383838", "ntp": "#232323" }
+}
