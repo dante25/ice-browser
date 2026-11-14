@@ -54,3 +54,8 @@ Data requests are paced with random delays (Safe / Normal / Fast), bursts follow
 
 ## Tests
 `tests/` drives real Chromium with this extension against a local mock of both sites (Playwright): `test_ig.py`, `test_kinds_fb.py`, `test_block.py`, `test_ih.py`, `test_button.py`, `test_x.py`, `test_flickr.py`, `test_da.py`, `test_video.py` (real DASH streams made with ffmpeg; the merged file is checked with ffprobe for video + audio).
+
+## Stock / art / 3D galleries (0.12.0)
+`extension/ihg/stock.xml` holds rules for the picture pages of dreamstime, artstation, shutterstock, adobe stock, istock, depositphotos, 123rf (every language subdomain, e.g. fr.123rf.com), freepik, envato elements, vecteezy, getty, alamy, bigstock, pond5, stocksy, yayimages, rawpixel, unsplash, pexels, pixabay, behance, cgtrader, turbosquid, sketchfab, cubebrush, gumroad, creative market, pixiv, cara, polycount, the rookies. Open a gallery / search / profile page, click the extension, Start: every link to a picture page is followed and the image the site publishes for that page (og:image / contentUrl) is saved. A gallery that goes on over several pages (`rel="next"`) is read page by page.
+The rules take what the site itself serves for the page: preview size and watermark of the paid sites stay as the site serves them. Unsplash and Pexels (free licence) are taken at original size.
+Not covered yet (no reliable picture-page address known): cgsociety, renderhub, daz3d. `tests/test_stock.mjs` runs the extension against mock galleries.

@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Stock / art / 3D sites: a gallery page is a page full of links to picture pages; each picture page is turned into its image here.
+The image is the one the site itself publishes for that page (og:image / contentUrl). Nothing here removes a watermark or reaches a paid original. -->
+<root>
+<host id="dreamstime.com">
+<urlpattern>^https?:\/\/(?:[\w-]+\.)?dreamstime\.com\/[^?#]*-image\d+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="artstation.com">
+<urlpattern>^https?:\/\/(?:www\.)?artstation\.com\/artwork\/[\w-]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="shutterstock.com">
+<urlpattern>^https?:\/\/(?:www\.)?shutterstock\.com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:image-(?:photo|vector|illustration)|editorial|image)\/[^?#]*\d{5,}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="stock.adobe.com">
+<urlpattern>^https?:\/\/stock\.adobe\.com\/(?:[a-z]{2}\/)?(?:images|stock-photo|photos|templates|vector)\/[^?#]*\/\d{5,}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="istockphoto.com">
+<urlpattern>^https?:\/\/(?:www\.)?istockphoto\.com\/(?:[a-z]{2}\/)?(?:photo|vector|illustration|video)\/[^?#]*-(?:gm|id)\d+(?:-\d+)?(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="depositphotos.com">
+<urlpattern>^https?:\/\/(?:[\w-]+\.)?depositphotos\.com\/(?:\w+\/)?\d+\/stock-[^?#]+\.html(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="123rf.com">
+<urlpattern>^https?:\/\/(?:[a-z]{2,3}\.)?123rf\.com\/(?:photo|stock-photo|free-photo|free-vector|vector)_\d+[^?#]*\.html(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="freepik.com">
+<urlpattern>^https?:\/\/(?:[a-z]{2}\.)?freepik\.com\/(?:free|premium)-(?:photo|vector|psd|icon|ai-image|ai-generated-image)s?\/[^?#]*_\d+\.htm(?:l)?(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="elements.envato.com">
+<urlpattern>^https?:\/\/elements\.envato\.com\/(?:[a-z]{2}\/)?(?!collections|stock-photos|graphics|video)[^/?#]+-[A-Z0-9]{6,}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="vecteezy.com">
+<urlpattern>^https?:\/\/(?:www\.)?vecteezy\.com\/(?:free-)?(?:photo|vector-art|png|video)s?\/\d+[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="gettyimages.com">
+<urlpattern>^https?:\/\/(?:www\.)?gettyimages\.[a-z.]+\/detail\/[^?#]*\/\d{5,}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="alamy.com">
+<urlpattern>^https?:\/\/(?:www\.)?alamy\.com\/[^?#]*-image\d+\.html(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="bigstockphoto.com">
+<urlpattern>^https?:\/\/(?:www\.)?bigstockphoto\.com\/(?:[a-z]{2}\/)?image-\d+\/stock-[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="pond5.com">
+<urlpattern>^https?:\/\/(?:www\.)?pond5\.com\/(?:[a-z]{2}\/)?(?:photo|stock-footage|item)[^?#]*\/\d{5,}[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="stocksy.com">
+<urlpattern>^https?:\/\/(?:www\.)?stocksy\.com\/(?:[a-z]{2}\/)?(?:[^/?#]+\/)*\d{5,}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="yayimages.com">
+<urlpattern>^https?:\/\/(?:www\.)?yayimages\.com\/(?:photo|image)\/[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="rawpixel.com">
+<urlpattern>^https?:\/\/(?:www\.)?rawpixel\.com\/image\/\d+[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="unsplash.com">
+<urlpattern>^https?:\/\/(?:www\.)?unsplash\.com\/photos\/[\w-]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	u = u.split('?')[0] + '?fm=jpg&q=100';
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="pexels.com">
+<urlpattern>^https?:\/\/(?:www\.)?pexels\.com\/(?:[a-z-]+\/)?photo\/[^?#]*\d+\/?(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	u = u.split('?')[0];
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="pixabay.com">
+<urlpattern>^https?:\/\/(?:www\.)?pixabay\.com\/(?:[a-z]{2}\/)?(?:photos|illustrations|vectors)\/[^?#]*\d+\/?(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="behance.net">
+<urlpattern>^https?:\/\/(?:www\.)?behance\.net\/gallery\/\d+\/[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="cgtrader.com">
+<urlpattern>^https?:\/\/(?:www\.)?cgtrader\.com\/(?:free-)?3d-models\/[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="turbosquid.com">
+<urlpattern>^https?:\/\/(?:www\.)?turbosquid\.com\/3d-models\/[^?#]+-\d+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="sketchfab.com">
+<urlpattern>^https?:\/\/(?:www\.)?sketchfab\.com\/3d-models\/[^?#]+-[0-9a-f]{32}(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="cubebrush.co">
+<urlpattern>^https?:\/\/(?:www\.)?cubebrush\.co\/[^?#]+\/products\/[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="gumroad.com">
+<urlpattern>^https?:\/\/(?:[\w-]+\.)?gumroad\.com\/l\/[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="creativemarket.com">
+<urlpattern>^https?:\/\/(?:www\.)?creativemarket\.com\/[^/?#]+\/\d+-[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="pixiv.net">
+<urlpattern>^https?:\/\/(?:www\.)?pixiv\.net\/(?:[a-z]{2}\/)?artworks\/\d+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="cara.app">
+<urlpattern>^https?:\/\/(?:www\.)?cara\.app\/(?:post|[^/?#]+\/post)\/[^?#]+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="polycount.com">
+<urlpattern>^https?:\/\/(?:www\.)?polycount\.com\/discussion\/\d+[^?#]*(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+<host id="therookies.co">
+<urlpattern>^https?:\/\/(?:www\.)?therookies\.co\/(?:entries|projects)\/\d+(?:[?#].*)?$</urlpattern>
+<searchpattern><![CDATA[function(pageData, pageUrl) {
+	var tag = pageData.match(/<meta\b[^>]*\b(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*>/i);
+	var u = tag && (tag[0].match(/\bcontent=["']([^"']+)["']/i) || [])[1];
+	if (!u) { var ld = pageData.match(/"contentUrl"\s*:\s*"([^"]+)"/); u = ld && ld[1]; }
+	if (!u) return {imgUrl: null, status: "ABORT"};
+	u = u.replace(/&amp;/g, '&').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+	if (u.indexOf('//') === 0) u = 'https:' + u;
+	
+	return {imgUrl: u, status: "OK"};
+}]]></searchpattern>
+</host>
+
+</root>

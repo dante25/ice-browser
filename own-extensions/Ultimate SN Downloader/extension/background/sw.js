@@ -328,7 +328,7 @@ async function ihEnsure() {
   if (!ihLoaded) ihLoaded = (async () => {
     let hosts = (await chrome.storage.local.get('ihHosts')).ihHosts;
     if (!hosts || !hosts.length) { hosts = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/hostf.xml'))).text()); chrome.storage.local.set({ ihHosts: hosts }); }
-    setHosts([...(await ihCustom()), ...hosts]);
+    setHosts([...(await ihCustom()), ...(await ihStock()), ...hosts]);
   })();
   await ihLoaded;
   S.ihCount = hostCount();
@@ -337,9 +337,11 @@ async function ihEnsure() {
 // Custom host rules, added by hand in the progress window (⚙). Kept apart from the host file (an import of a new
 // hostf.xml does not remove them) and checked BEFORE it, so a custom rule also overrides a host-file rule.
 const ihCustom = async () => (await chrome.storage.local.get('ihCustom')).ihCustom || [];
+// Rules for stock / art / 3D sites (ihg/stock.xml), shipped with the extension so an update of the extension updates them.
+const ihStock = async () => { try { return parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); } catch (e) { return []; } };
 async function ihReapply() {
   const hosts = (await chrome.storage.local.get('ihHosts')).ihHosts || [];
-  setHosts([...(await ihCustom()), ...hosts]); S.ihCount = hostCount(); ihLoaded = Promise.resolve();
+  setHosts([...(await ihCustom()), ...(await ihStock()), ...hosts]); S.ihCount = hostCount(); ihLoaded = Promise.resolve();
 }
 function ihCheckRule(r) {
   const id = String((r && r.id) || '').trim(), url = String((r && r.url) || '').trim(), sp = String((r && r.sp) || '').trim(), test = String((r && r.test) || '').trim();

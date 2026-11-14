@@ -87,6 +87,41 @@
     return out;
   }
 
+  // A gallery that goes on over several pages announces the next one with rel="next" (<link> in the head or an <a>). Follow it (same site only,
+  // spaced requests) and collect the links of every page, so a whole gallery is found from the first page.
+  function nextUrl(doc, base) {
+    var n = doc.querySelector('link[rel~="next"][href], a[rel~="next"][href]');
+    if (!n) return null;
+    try {
+      var u = new URL(n.getAttribute('href'), base);
+      return u.origin === location.origin ? u.href : null;
+    } catch (e) { return null; }
+  }
+  async function collectAllPages(ctx) {
+    var all = collect(), seen = {}, pages = 1, cur = location.href;
+    all.forEach(function (l) { seen[l.url] = 1; });
+    var next = nextUrl(document, cur), visited = {};
+    visited[cur] = 1;
+    while (next && !visited[next] && pages < 150) {
+      ctx.checkCancel();
+      visited[next] = 1;
+      ctx.status('Reading gallery page ' + (pages + 1) + ' (' + all.length + ' links)');
+      await new Promise(function (r) { setTimeout(r, 700 + Math.random() * 700); });
+      var res = await fetch(next, { credentials: 'include' });
+      if (!res.ok) { ctx.warn && ctx.warn('Gallery page ' + (pages + 1) + ' answered ' + res.status + ' - the pages before it are used.'); break; }
+      var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      var as = doc.links || [];
+      for (var i = 0; i < as.length; i++) {
+        var url = unanonymize(as[i].href || '');
+        if (!/^https?:\/\//i.test(url) || seen[url]) continue;
+        seen[url] = 1; all.push({ url: url });
+      }
+      pages++;
+      cur = next; next = nextUrl(doc, cur);
+    }
+    return all;
+  }
+
   IH.describe = function () {
     var gid = imagefapGallery();
     return { site: 'ih', type: 'page', id: location.hostname, label: document.title || location.hostname, links: collect().length,
@@ -96,7 +131,7 @@
   IH.scan = async function (ctx) {
     ctx.status('Collecting links');
     var gid = imagefapGallery();
-    var links = gid ? await imagefapResolve(await imagefapLinks(gid, ctx), ctx) : collect();
+    var links = gid ? await imagefapResolve(await imagefapLinks(gid, ctx), ctx) : await collectAllPages(ctx);
     if (!links.length) throw USD.Err('notfound', 'This page has no links to follow.');
     ctx.total(links.length);
     await ctx.send({ t: 'ih:links', links: links, page: { url: location.href, title: document.title } });
