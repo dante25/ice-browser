@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Stock / art / 3D sites: a gallery page is a page full of links to picture pages; each picture page is turned into its image here.
 The image is the one the site itself publishes for that page (og:image / contentUrl). Nothing here removes a watermark or reaches a paid original. -->
+<!-- Format: the one of ImageHostGrabber's host file, plus the CARD rule. Rules are tried in file order for a link; the first that gives an image wins.
+  one rule = a host element with the id of the site, a urlpattern (regex of the link of a picture page) and a searchpattern (how to get the image).
+  searchpattern:  function(pageData, pageUrl){...}  |  REPLACE: 'regex','replacement' (works on the link itself)  |  CARD: {"thumb":"regex","make":"https://cdn/{t1}/{l1}.jpg"}
+  CARD works from the link and the thumbnail of the card in the gallery ({l1}.. groups of urlpattern, {t1}.. groups of thumb): no picture page is fetched.
+  The extension on desktop and the Android app download this file again every few hours, so a new site only needs a new rule here. -->
 <root>
 <host id="dreamstime.com">
 <urlpattern>^https?:\/\/(?:[\w-]+\.)?dreamstime\.com\/[^?#]*-image\d+(?:[?#].*)?$</urlpattern>
@@ -75,6 +80,11 @@ The image is the one the site itself publishes for that page (og:image / content
 	
 	return {imgUrl: u, status: "OK"};
 }]]></searchpattern>
+</host>
+
+<host id="123rf.com">
+<urlpattern>^https?:\/\/(?:[\w-]+\.)?123rf\.com\/(?:photo|stock-photo|free-photo)_(\d+)_([^?#]+?)\.html</urlpattern>
+<searchpattern><![CDATA[CARD: {"thumb": "^https?:\\/\\/(?:[\\w-]+\\.)?123rf\\.com\\/\\d+wm?a?\\/([^/]+\\/[^/]+\\/[^/]+)\\/", "make": "https://previews.123rf.com/images/{t1}/{l1}-{l2}.jpg"}]]></searchpattern>
 </host>
 
 <host id="123rf.com">

@@ -34,6 +34,25 @@ export function matchRule(link) {
   for (const h of compiled) if (h.re.test(link)) return h;
   return null;
 }
+// every rule that matches, in file order: the first that gives an image wins (a site can have a short rule first and a fallback after it)
+export function matchRules(link) {
+  if (!compiled) return [];
+  return compiled.filter(h => h.re.test(link));
+}
+
+// CARD rule: the big image is worked out from the picture link and the thumbnail of the card in the gallery (no picture page is fetched).
+//   <searchpattern>CARD: {"thumb": "<regex of the thumbnail url>", "make": "https://cdn.example/{t1}/{l1}-{l2}.jpg"}</searchpattern>
+// {l1}.. are the groups of the rule's urlpattern (matched against the link), {t1}.. the groups of "thumb". Same text works on desktop and Android.
+export const isCardRule = sp => /^CARD:/.test(sp.trim());
+export function runCardRule(sp, link, urlRe, thumb) {
+  if (!thumb) return null;
+  let spec; try { spec = JSON.parse(sp.trim().replace(/^CARD:\s*/, '')); } catch (e) { return null; }
+  let tm; try { tm = thumb.match(new RegExp(spec.thumb, 'i')); } catch (e) { return null; }
+  const lm = link.match(urlRe);
+  if (!tm || !lm || typeof spec.make !== 'string') return null;
+  const out = spec.make.replace(/\{([lt])(\d+)\}/g, (all, k, n) => (k === 'l' ? lm : tm)[Number(n)] || '');
+  return /^https?:\/\//.test(out) ? out : null;
+}
 
 const IMG_EXT = /^https?:\/\/[^/]+\/[^?#]+\.(?:bmp|dib|gif|ico|jp(?:eg|[eg])|png|tiff?|webp|avif)(?:[?#].*)?$/i;
 export const isDirectImage = u => IMG_EXT.test(u);
@@ -71,6 +90,6 @@ export function runStringRule(sp, link, pageText, pageUrl) {
   else u = fromRegex(pageText, pat);
   return u ? absolute(u, pageUrl) : null;
 }
-export const needsPage = sp => { const pat = sp.replace(/^"(.*)"$/, '$1'); return !/^(?:Embedded Image|LINK2FILE|REPLACE: )/.test(pat); };
+export const needsPage = sp => { const pat = sp.replace(/^"(.*)"$/, '$1'); return !/^(?:Embedded Image|LINK2FILE|REPLACE: |CARD:)/.test(pat); };
 export const isFunctionRule = sp => /^function/.test(sp.trim());
 export const baseName = u => { try { return decodeURIComponent(new URL(u).pathname.split('/').pop() || ''); } catch (e) { return ''; } };

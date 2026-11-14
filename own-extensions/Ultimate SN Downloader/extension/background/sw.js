@@ -1,9 +1,9 @@
 /* Ultimate SN Downloader — service worker: job registry, pacing (anti-ban), cooldown, download queue, progress window. */
 import { PROFILES, FB_PROFILES, nextDelay, cooldownFor } from './throttle.js';
 import { getRoot, permission, writeFile } from './fsstore.js';
-import { parseHostFile, setHosts, hostCount, matchRule, isDirectImage, runStringRule, needsPage, isFunctionRule, baseName } from './ih.js';
+import { parseHostFile, setHosts, hostCount, matchRule, matchRules, isCardRule, runCardRule, isDirectImage, runStringRule, needsPage, isFunctionRule, baseName } from './ih.js';
 
-const DEFAULTS = { ihMinKB: 20, speed: 'normal', subfolder: '', layout: '{site}/{owner}/{type}', template: '{owner}_{date}_{code}_{index}', photos: true, videos: true, storyreel: true };
+const DEFAULTS = { ihMinKB: 20, ihUpdateUrl: '', ihUpdateHours: 6, speed: 'normal', subfolder: '', layout: '{site}/{owner}/{type}', template: '{owner}_{date}_{code}_{index}', photos: true, videos: true, storyreel: true };
 const SITE_NAME = { ig: 'Instagram', fb: 'Facebook', x: 'X', da: 'DeviantArt', fl: 'Flickr', ih: 'Images' };
 const SITE_TABS = { ig: ['https://www.instagram.com/*'], fb: ['https://www.facebook.com/*', 'https://web.facebook.com/*'], x: ['https://x.com/*', 'https://twitter.com/*'],
   da: ['https://www.deviantart.com/*'], fl: ['https://www.flickr.com/*'], ih: ['http://*/*', 'https://*/*'] };
@@ -338,8 +338,40 @@ async function ihEnsure() {
 // hostf.xml does not remove them) and checked BEFORE it, so a custom rule also overrides a host-file rule.
 const ihCustom = async () => (await chrome.storage.local.get('ihCustom')).ihCustom || [];
 // Rules for stock / art / 3D sites (ihg/stock.xml), shipped with the extension so an update of the extension updates them.
+// The site rules (ihg/stock.xml) come in two copies: the one shipped inside the extension and a newer one downloaded from `ihUpdateUrl` (the same file
+// the Android app reads), kept in storage. The downloaded copy wins when it is valid; an update of the rules needs no new install.
+const IH_UPDATE_URL = 'https://raw.githubusercontent.com/dante25/ice-browser/claude/vibrant-gauss-9sqpu7/own-extensions/Ultimate%20SN%20Downloader/extension/ihg/stock.xml';
 let stockIds = [];
-const ihStock = async () => { try { const h = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); stockIds = h.map(x => x.id); return h; } catch (e) { return []; } };
+const ihStock = async () => {
+  let hosts = [];
+  try { const rem = (await chrome.storage.local.get('ihRemote')).ihRemote; if (rem && rem.text) hosts = parseHostFile(rem.text); } catch (e) { hosts = []; }
+  if (!hosts.length) { try { hosts = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); } catch (e) { hosts = []; } }
+  stockIds = hosts.map(x => x.id); return hosts;
+};
+// Download the rules now (force) or when the saved copy is older than `ihUpdateHours`. Returns {ok, hosts, note}. Never throws, never replaces a
+// good copy with a broken one.
+async function ihUpdateRules(force = false) {
+  const url = (S.settings.ihUpdateUrl || IH_UPDATE_URL).trim(), hours = Number(S.settings.ihUpdateHours);
+  if (!url) return { ok: false, note: 'no update address' };
+  const cur = (await chrome.storage.local.get('ihRemote')).ihRemote || {};
+  const maxAge = (hours >= 0 ? hours : 6) * 3600e3;
+  if (!force && cur.fetchedAt && Date.now() - cur.fetchedAt < maxAge && cur.url === url) return { ok: true, hosts: cur.count || 0, note: 'up to date' };
+  try {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 20000);
+    const r = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Math.floor(Date.now() / 60000), { cache: 'no-store', signal: ac.signal }).finally(() => clearTimeout(t));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    if (text.length > 3e6) throw new Error('file too large');
+    const hosts = parseHostFile(text);
+    if (!hosts.length) throw new Error('no <host> entries in the file');
+    await chrome.storage.local.set({ ihRemote: { text, url, fetchedAt: Date.now(), count: hosts.length } });
+    await ihReapply();
+    return { ok: true, hosts: hosts.length, note: 'updated' };
+  } catch (e) {
+    await chrome.storage.local.set({ ihRemote: { ...cur, text: cur.text, url: cur.url, fetchedAt: cur.fetchedAt || 0, lastError: String((e && e.message) || e).slice(0, 120), lastTry: Date.now() } }).catch(() => {});
+    return { ok: false, note: String((e && e.message) || e).slice(0, 120) };
+  }
+}
 // On a stock site a link that wraps a thumbnail is a picture card, whatever its address looks like: the picture page it leads to is read like the
 // ones with a rule (the image that page publishes).
 const GENERIC_SP = `function(pageData, pageUrl) {
@@ -394,27 +426,28 @@ async function ihFetch(method, url, headers, body, referer) {
 }
 
 // one link of the page -> {imgUrl, fileName, referer} | {unknown} | {abort} | {error}
-// Picture cards of some sites: the address of a big preview is worked out from the link and the card's own thumbnail, so no picture page is needed
-// (these pages are closed to everything but a real browser session). Each rule below was checked against the live site.
-const CARD_RULES = [
-  { // 123rf: card photo_<id>_<title>.html + thumbnail <host>/450wm/<user>/<folder>/<code>/<code>-<title>.jpg  ->  previews.123rf.com/images/<user>/<folder>/<code>/<id>-<title>.jpg
-    link: /^https?:\/\/(?:[\w-]+\.)?123rf\.com\/(?:photo|stock-photo|free-photo)_(\d+)_([^?#]+?)\.html/i,
-    thumb: /^https?:\/\/(?:[\w-]+\.)?123rf\.com\/\d+wm?a?\/([^/]+\/[^/]+\/[^/]+)\//i,
-    make: (lm, tm) => `https://previews.123rf.com/images/${tm[1]}/${lm[1]}-${lm[2]}.jpg`,
-  },
-];
-function cardUrl(link, thumb) {
-  if (!thumb) return null;
-  for (const r of CARD_RULES) { const lm = link.match(r.link), tm = thumb.match(r.thumb); if (lm && tm) return r.make(lm, tm); }
-  return null;
-}
-
+// Every rule of the host file that matches the link is tried in file order; the first that gives an image wins (a short CARD rule first,
+// a rule that reads the picture page after it).
 async function ihResolve(j, link, depth = 0, meta = null) {
   const page = j.page || {};
-  { const c = meta && cardUrl(link, meta.thumb); if (c) return { imgUrl: c, referer: link }; }
-  let rule = matchRule(link), generic = false;
-  if (!rule && meta && meta.img && sameStock(page.host, link)) { rule = { sp: GENERIC_SP }; generic = true; }
-  if (!rule) return isDirectImage(link) ? { imgUrl: link, referer: page.url } : { unknown: true };
+  let rules = matchRules(link);
+  if (!rules.length && meta && meta.img && sameStock(page.host, link)) rules = [{ sp: GENERIC_SP }];
+  if (!rules.length) return isDirectImage(link) ? { imgUrl: link, referer: page.url } : { unknown: true };
+  let last = { abort: true };
+  for (const rule of rules) {
+    const r = await ihRunRule(j, link, rule, depth, meta);
+    if (r.imgUrl) return r;
+    last = r;
+  }
+  return last;
+}
+
+async function ihRunRule(j, link, rule, depth, meta) {
+  const page = j.page || {};
+  if (isCardRule(rule.sp)) {                       // worked out from the link and the card's thumbnail: no picture page is fetched
+    const u = runCardRule(rule.sp, link, rule.re, meta && meta.thumb);
+    return u ? { imgUrl: u, referer: link } : { abort: true };
+  }
   let text = '', pageUrl = link;
   if (isFunctionRule(rule.sp) || needsPage(rule.sp)) {
     let r = null;
@@ -445,6 +478,7 @@ async function ihResolve(j, link, depth = 0, meta = null) {
 
 async function runIh(j, links) {
   await ihEnsure();
+  await Promise.race([ihUpdateRules(false), sleep(6000)]);
   j.resolving++; j.total = Math.max(j.total, links.length); touch(j);
   const queue = links.map((l, i) => ({ ...l, index: i })), page = j.page || {};
   let unresolved = 0;
@@ -588,6 +622,8 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
       }
       case 'ih:net': return respond(await ihFetch(msg.method, msg.url, msg.headers, msg.body));
       case 'ih:import': { const hosts = parseHostFile(String(msg.text || '')); if (!hosts.length) return respond({ error: 'No <host> entries found in that file.' }); await chrome.storage.local.set({ ihHosts: hosts }); await ihReapply(); broadcastSoon(); return respond({ count: hosts.length }); }
+      case 'ih:update': return respond(await ihUpdateRules(true));
+      case 'ih:status': { const rem = (await chrome.storage.local.get('ihRemote')).ihRemote || {}; return respond({ hosts: hostCount(), remoteHosts: rem.count || 0, fetchedAt: rem.fetchedAt || 0, url: rem.url || '', lastError: rem.lastError || '' }); }
       case 'ih:custom:list': return respond({ rules: await ihCustom() });
       case 'ih:custom:add': { const c = ihCheckRule(msg.rule); if (c.error) return respond(c); const rules = [c.rule, ...(await ihCustom()).filter(x => x.id !== c.rule.id)]; await chrome.storage.local.set({ ihCustom: rules }); await ihReapply(); broadcastSoon(); return respond({ ok: true, rules }); }
       case 'ih:custom:del': { const rules = (await ihCustom()).filter(x => x.id !== String(msg.id)); await chrome.storage.local.set({ ihCustom: rules }); await ihReapply(); broadcastSoon(); return respond({ ok: true, rules }); }
