@@ -107,7 +107,22 @@
   }
 
   // GraphQL request built like the site's own code: freshest doc_id first ("<Name>.graphql" module), then the recorded one, then `fallbackDoc`
+  // ESUIT's step that was missing: the "<Name>.graphql" module is only on the page after the site's own code loaded it. If it is not
+  // registered yet, ask the site's Bootloader to fetch it (the same loader the site uses), so the CURRENT doc_id is read instead of a stale one.
+  function hasMod(n) { try { return !!req('__debug').modulesMap[n]; } catch (e) { return false; } }
+  function loadMod(n, ms) {
+    return new Promise(function (res) {
+      if (hasMod(n)) return res(true);
+      var done = false, t = setTimeout(function () { if (!done) { done = true; res(hasMod(n)); } }, ms || 5000);
+      try {
+        req('Bootloader').loadModules([n], function () { if (!done) { done = true; clearTimeout(t); res(hasMod(n)); } });
+      } catch (e) { done = true; clearTimeout(t); res(false); }
+    });
+  }
   function gql(a) {
+    return loadMod(a.name + '.graphql', 5000).then(function () { return gql1(a); }, function () { return gql1(a); });
+  }
+  function gql1(a) {
     try {
       var name = a.name, mod = req(name + '.graphql');
       var docId = (mod && mod.params && mod.params.id) || tplDocId(tpl[name]) || a.docId;
