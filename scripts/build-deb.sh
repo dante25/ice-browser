@@ -18,7 +18,7 @@ mkdir -p "$P/opt/ice" "$P/usr/bin" "$P/usr/share/applications" "$P/DEBIAN"
 
 # Program (bez node_modules, starog Electron koda, git-a i rezervnih kopija)
 tar -C "$ICE" --exclude=node_modules --exclude=legacy --exclude=.git --exclude=dist --exclude=ice-features/ice-sidebar/features.json \
-  -cf - bin src ice-features chrome-extensions own-extensions esuit-extensions assets scripts test package.json README.md KOMANDE.md PLAN-SUCELJE.md | tar -C "$P/opt/ice" -xf -
+  -cf - bin src ice-features chrome-extensions own-extensions assets scripts test package.json README.md KOMANDE.md PLAN-SUCELJE.md | tar -C "$P/opt/ice" -xf -
 cp -a "$CHROMIUM/." "$P/opt/ice/chromium/" 2>/dev/null || { mkdir -p "$P/opt/ice/chromium"; cp -a "$CHROMIUM/." "$P/opt/ice/chromium/"; }
 install -m 755 "$NODE" "$P/opt/ice/node"
 

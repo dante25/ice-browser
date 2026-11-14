@@ -1,1 +1,0 @@
-import{p as n}from"./const-DewCs8rR.js";function t(e,a){chrome.runtime.onMessage.addListener((o,s)=>{o.from===e&&window.postMessage({from:o.from,payload:o.payload,callbackId:o.callbackId},"*")})}t(n);chrome.runtime.onMessage.addListener(e=>{e?.type==="esuitContextMenuDownload"&&window.dispatchEvent(new CustomEvent("esuitContextMenuDownload"))});
