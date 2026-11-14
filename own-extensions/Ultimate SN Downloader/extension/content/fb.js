@@ -12,6 +12,38 @@
       __relay_internal__pv__CometUFICommentAvatarStickerAnimatedImagerelayprovider: false, __relay_internal__pv__IsWorkUserrelayprovider: false,
       __relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider: false, __relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider: false } }
   };
+  // ESUIT's way of paging (no scrolling): the pagination query is sent by NAME with the id of the collection and the cursor that the page's
+  // own data already holds. Names, variables and the place of the connection are the ones of "ESUIT Photos Downloader for Facebook" 4.10.2.
+  var DIRECT = {
+    pageItems: { name: 'ProfileCometAppCollectionPhotosRendererPaginationQuery', vars: { count: 8 } },            // profile: photos / photos_by / photos_of
+    grid_media: { name: 'ProfileCometLegacyAlbumGridViewPaginationQuery', vars: { count: 14 } },                  // album (grid view)
+    media: { name: 'CometAlbumPhotoCollagePaginationQuery', vars: { count: 14, renderLocation: 'permalink' } },   // album (collage)
+    group_mediaset: { name: 'GroupsCometMediaPhotosTabGridQuery', vars: { count: 8 } }                            // group: media / photos
+  };
+  function isConn(c) { return c && typeof c === 'object' && Array.isArray(c.edges) && c.page_info && typeof c.page_info === 'object'; }
+  // the collection the page shows: { name, vars, id, cursor, hasNext, n } - the object that owns the edges/page_info connection gives the id
+  function findDirect(root) {
+    var best = null, stack = [root], guard = 0;
+    function offer(key, owner, conn) {
+      var id = owner && (typeof owner.id === 'string' || typeof owner.id === 'number') ? String(owner.id) : '';
+      if (!id || !isConn(conn)) return;
+      var n = USD.fbWalk(conn.edges, '', 'photo').length;
+      if (!n || (best && best.n >= n)) return;
+      best = { name: DIRECT[key].name, vars: DIRECT[key].vars, id: id, cursor: conn.page_info.end_cursor || '', hasNext: conn.page_info.has_next_page === true, n: n };
+    }
+    while (stack.length && guard++ < 400000) {
+      var o = stack.pop();
+      if (!o || typeof o !== 'object') continue;
+      if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) if (o[i] && typeof o[i] === 'object') stack.push(o[i]); continue; }
+      if (isConn(o.pageItems)) offer('pageItems', o, o.pageItems);
+      if (isConn(o.grid_media)) offer('grid_media', o, o.grid_media);
+      if (o.group_mediaset && isConn(o.group_mediaset.media)) offer('group_mediaset', o, o.group_mediaset.media);
+      else if (isConn(o.media)) offer('media', o, o.media);
+      for (var k in o) if (o[k] && typeof o[k] === 'object') stack.push(o[k]);
+    }
+    return best;
+  }
+
   var ALLOWED = /(Photo|Album|Media|Video|Reel)/, FORBIDDEN = /(Mutation|Delete|Create|Edit|Save|Like|Comment|Reaction|Notification|Story|Feed|Chat)/;
   var BLOCK_PAGE = ['temporarily blocked', "you're temporarily blocked", 'you’re temporarily blocked', 'we limit how often', 'try again later', 'this feature is temporarily'];
 
@@ -101,8 +133,21 @@
 
   async function collect(ctx, step, found) {
     var seenCaps = 0, idle = 0, cycles = 0, lastH = 0, triedCursor = false, tplName = null;
-    var cursor = null, hasNext = false;
+    var cursor = null, hasNext = false, direct = null, triedDirect = false;
+    var canDirect = step.ptype === 'photo' && ctx.job.speed !== 'quiet';
+    async function tryDirect() {
+      if (!canDirect || triedDirect) return false;
+      var ck = 'fb:' + step.part;
+      if (!direct || !(direct.cursor && direct.hasNext) && !ctx.resume[ck]) return false;
+      triedDirect = true;
+      var d = direct;
+      ctx.log('paging ' + d.name + ' directly (id ' + d.id + ')');
+      return cursorScan(ctx, step, found, function (c) {
+        return USD.rpc('gql', { name: d.name, vars: Object.assign({}, d.vars, { cursor: c, id: d.id }) });
+      }, d.cursor, d.hasNext, true);
+    }
     function takeDoc(doc, text) {
+      if (canDirect && !triedDirect) { var fd = findDirect(doc); if (fd && (!direct || fd.n >= direct.n)) direct = fd; }
       var before = Object.keys(found).length;
       USD.fbWalk(doc, step.owner, step.ptype === 'reel' ? 'reel' : step.ptype === 'video' ? 'video' : 'photo', found);
       var c = USD.fbConnection(doc);
@@ -130,6 +175,7 @@
     seenCaps = 0;
     await pageText(ctx); await dump(); drain();
     ctx.scanned(Object.keys(found).length);
+    if (await tryDirect()) return;                          // everything came through the pagination query: nothing to scroll for
     var maxIdle = 4;
     while (idle < maxIdle) {
       ctx.checkCancel();
@@ -144,22 +190,27 @@
       cycles++;
       var gained = Object.keys(found).length - before;
       ctx.scanned(Object.keys(found).length);
+      if (await tryDirect()) return;                        // the collection only showed up after the page loaded more
       if (!triedCursor && cycles >= 1 && ctx.job.speed !== 'quiet') {
         tplName = fbTemplate(await USD.rpc('tpls'));
-        if (tplName && cursor) { triedCursor = true; if (await cursorScan(ctx, step, found, tplName, cursor, hasNext)) return; }
+        if (tplName && cursor) {
+          triedCursor = true;
+          var tn = tplName;
+          if (await cursorScan(ctx, step, found, function (c) { return USD.rpc('replay', { needle: tn, set: { $cursor: c } }); }, cursor, hasNext)) return;
+        }
       }
       if (gained === 0 && h === lastH) idle += 1; else if (gained === 0) idle += 0.5; else idle = 0;
       lastH = h;
     }
   }
 
-  async function cursorScan(ctx, step, found, tplName, cursor, hasNext) {
-    var errors = 0, ck = 'fb:' + step.part;
+  async function cursorScan(ctx, step, found, send, cursor, hasNext, strict) {
+    var errors = 0, ck = 'fb:' + step.part, pages = 0;
     if (ctx.resume[ck]) { cursor = ctx.resume[ck]; hasNext = true; ctx.log('continuing from the saved cursor'); }
     while (hasNext && cursor) {
       ctx.checkCancel();
       await ctx.gate('api');
-      var r = await USD.rpc('replay', { needle: tplName, set: { $cursor: cursor } });
+      var r = await send(cursor);
       var short = (r.text || '').length < 3000 ? r.text : '';
       if (USD.looksBlocked(r.status, short)) { await ctx.blocked('page query ' + r.status + ' ' + String(short).slice(0, 120)); continue; }
       if (r.status !== 200) { if (++errors >= 2) return false; continue; }
@@ -168,6 +219,8 @@
         USD.fbWalk(d, step.owner, step.ptype === 'reel' ? 'reel' : step.ptype === 'video' ? 'video' : 'photo', found);
         var c = USD.fbConnection(d); if (c && (!nxt || c[2] > nxt[2])) nxt = c;
       });
+      if (strict && !pages && !nxt && Object.keys(found).length === before) { ctx.log('direct paging gave nothing: ' + String(r.text || '').slice(0, 160)); return false; }
+      pages++;
       ctx.scanned(Object.keys(found).length);
       ctx.state.worked = true;
       if (!nxt) return true;

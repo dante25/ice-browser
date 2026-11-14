@@ -238,6 +238,8 @@ var USD = (function () {
     U.walk(doc, function (c) {
       var tn = c.__typename, nid = c.id || c.fbid || c.photo_id || c.video_id;
       var hasVid = VIDEO_KEYS.some(function (k) { return c[k]; });
+      // profile photo grid (pageItems): the picture is on the item, the Photo id one level below (ESUIT: idPath "node.node.id", "node.image.uri")
+      if (!tn && !nid && c.node && typeof c.node === 'object' && c.node.__typename === 'Photo' && c.node.id && photoUri(c)) { tn = 'Photo'; nid = c.node.id; }
       if (tn === 'Photo' || tn === 'Video' || (nid && hasVid) || (nid && photoUri(c))) {
         var m = fbNode(c, nid ? String(nid) : '', tn, ownerHint, ptype);
         if (m) {
