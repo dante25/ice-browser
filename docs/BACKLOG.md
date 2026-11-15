@@ -20,3 +20,10 @@ Zabilježeno 2026-11-15 (po zahtjevu korisnika). Sljedeći veći posao nakon tre
 - Engine uzima samo ono što sajt prikazuje u pregledniku. Ne zaobilazi captchu, prijavu niti plaćene originale.
 
 **Otvoreno:** koji sajt je prvi za test (istock ili Alamy, gdje galerija radi).
+
+## Pregled pronađenih slika (UI za engine iznad)
+- Ne popup preglednika, nego **panel na stranici** (ubacuje ga content skripta, u zasebnom shadow DOM-u da ne miješa stil sajta). Zatvara se klikom izvan njega.
+- Svaka pronađena slika: minijatura, izvor (link stranice slike), dimenzije, i gumb **Uvezi pravilo**.
+- Pravilo se piše za **obrazac stranica slika** izveden iz skeniranih kartica (npr. `/photo/<broj>`), a ne za cijelu domenu. Tako pravilo na cijelom sajtu hvata samo stranice slika, ne banere ni sličice.
+- Uvoz pravila: upisuje se u postavke ekstenzije (kao ručni uvoz), ne u repo.
+- Jedan gumb "Odbaci" po slici, da se obrazac može suziti ako pogodi i nešto što nije slika.
