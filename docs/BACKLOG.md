@@ -49,3 +49,8 @@ Ograničenje: Chromium odbacivanje je jedan put do nestanka tab-a. Drugi je Andr
 Plan: (1) patch za meni i flag po tab-u, (2) patch za pravilo odbacivanja, (3) test na telefonu: otvoriti 10 tabova, stavi "Keep alive" na dva, čekati, provjeriti koji su se ponovo učitali.
 
 Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Zaštita se uključuje samo za tabove koje korisnik ručno označi opcijom "Keep alive" u meniju tab-a, a isključuje se istom opcijom. Ostali tabovi se ponašaju kao i inače.
+
+## Redoslijed rada na Androidu (2026-11-15)
+1. Kompajl (part-03 do part-08) se dovrši bez promjena u kodu.
+2. Dok kompajl traje, sučelje se ne piše. Korisnik prikuplja izmjene za sučelje i pozadinsko ponašanje (osnovno je isto kao desktop, plus sitnice).
+3. Tek kad korisnik pošalje popis, počinje rad na sučelju.
