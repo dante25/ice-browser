@@ -1,0 +1,20 @@
+# Backlog
+
+## SN Downloader: automatski engine za pravila sajtova
+Zabilježeno 2026-11-15 (po zahtjevu korisnika). Sljedeći veći posao nakon trenutnih gradnji.
+
+**Cilj:** zaseban modul unutar ekstenzije koji, kad korisnik otvori sajt s galerijom, sam prepozna kako sajt prikazuje slike i predloži pravilo za host fajl.
+
+**Faza 1 (predložak, bez upisa):**
+1. Prepoznavanje kartica: linkovi koji sadrže sličicu i čija adresa prati isti obrazac (npr. `/photo/<broj>`).
+2. Prepoznavanje stranice slike: dohvat jedne kartice iz pravog preglednika, traženje `og:image`, `twitter:image`, `contentUrl`, `image_src`.
+3. Provjera kandidata: preuzimanje nekoliko slika; mora biti stvarna slika, različita za svaku karticu (logo se odbacuje) i veća od sličice.
+4. Izlaz: prijedlog pravila (domena, obrazac, metoda, rezultat provjere). Korisnik odobrava.
+
+**Faza 2:** pravilo `CARD` (izvođenje velike slike iz sličice) predlaže se samo kao kandidat, uz ručnu potvrdu, jer obrazac nije generički.
+
+**Pravila koja vrijede:**
+- Ništa se ne upisuje u `ihg/stock.xml` automatski. Fajl se dijeli na sve uređaje.
+- Engine uzima samo ono što sajt prikazuje u pregledniku. Ne zaobilazi captchu, prijavu niti plaćene originale.
+
+**Otvoreno:** koji sajt je prvi za test (istock ili Alamy, gdje galerija radi).
