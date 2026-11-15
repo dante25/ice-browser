@@ -56,9 +56,11 @@ try {
   const mgr = await ctx.newPage(); await mgr.goto(`chrome-extension://${id}/ui/manager.html`);
   await mgr.evaluate(async () => { const m = await import(chrome.runtime.getURL('background/fsstore.js')); await m.setRoot(await navigator.storage.getDirectory()); await new Promise((r) => chrome.runtime.sendMessage({ t: 'folder:changed' }, r)); });
   await mgr.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ t: 'settings:set', settings: { ihMinKB: 5 } }, r)));
-  // the rules file: point the extension at the mock address and download it (as it does by itself every few hours)
+  // the rules file: no automatic download. Nothing may fetch the address before the user presses "Update rules now" (ih:update).
+  ok(newHits.hostfile === 0, 'no automatic download of the rules before the user asks');
   await mgr.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ t: 'settings:set', settings: { ihUpdateUrl: 'https://hostfile.example/stock.xml' } }, r)));
   const upd = await mgr.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ t: 'ih:update' }, r)));
+  ok(newHits.hostfile === 1, 'the address is called once, when the user presses "Update rules now"');
   const stat = await mgr.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ t: 'ih:status' }, r)));
   console.log('update ->', JSON.stringify(upd), '| status', JSON.stringify(stat));
   ok(upd.ok && upd.hosts === 33, `rules downloaded from the update address (32 shipped + 1 new = 33), got ${upd.hosts}`);

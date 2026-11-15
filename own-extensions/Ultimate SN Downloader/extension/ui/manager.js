@@ -92,10 +92,18 @@ let filled = false;
 function fillSettings(force) {
   if (filled && !force) return;
   const s = state.settings || {}; if (!s.speed) return; filled = true;
-  $('s_ihmin').value = s.ihMinKB === undefined ? 20 : s.ihMinKB; $('ih_count').textContent = (state.ihCount || 0) + ' hosts';
+  $('s_ihmin').value = s.ihMinKB === undefined ? 20 : s.ihMinKB; $('ih_url').value = s.ihUpdateUrl || ''; $('ih_count').textContent = (state.ihCount || 0) + ' hosts';
   $('s_speed').value = s.speed; $('s_folder').value = s.subfolder; $('s_cool').value = s.cooldownMin || 35; $('s_tpl').value = s.template; $('s_layout').value = s.layout;
 }
 $('ih_import').onclick = () => $('ih_file').click();
+$('ih_update').onclick = async () => {
+  $('ih_msg').textContent = 'Downloading…';
+  const url = $('ih_url').value.trim();
+  if (url) await sw({ t: 'settings:set', settings: { ihUpdateUrl: url } });
+  const r = await sw({ t: 'ih:update' });
+  $('ih_msg').textContent = r && r.ok ? 'Rules updated (' + r.hosts + ' rules).' : 'Update failed: ' + ((r && r.note) || 'no answer');
+  refresh();
+};
 $('ih_file').onchange = async () => {
   const f = $('ih_file').files[0]; if (!f) return;
   const r = await sw({ t: 'ih:import', text: await f.text() });

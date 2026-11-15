@@ -3,7 +3,7 @@ import { PROFILES, FB_PROFILES, nextDelay, cooldownFor } from './throttle.js';
 import { getRoot, permission, writeFile } from './fsstore.js';
 import { parseHostFile, setHosts, hostCount, matchRule, matchRules, isCardRule, runCardRule, isDirectImage, runStringRule, needsPage, isFunctionRule, baseName } from './ih.js';
 
-const DEFAULTS = { ihMinKB: 20, ihUpdateUrl: '', ihUpdateHours: 6, speed: 'normal', subfolder: '', layout: '{site}/{owner}/{type}', template: '{owner}_{date}_{code}_{index}', photos: true, videos: true, storyreel: true };
+const DEFAULTS = { ihMinKB: 20, speed: 'normal', subfolder: '', layout: '{site}/{owner}/{type}', template: '{owner}_{date}_{code}_{index}', photos: true, videos: true, storyreel: true };
 const SITE_NAME = { ig: 'Instagram', fb: 'Facebook', x: 'X', da: 'DeviantArt', fl: 'Flickr', ih: 'Images' };
 const SITE_TABS = { ig: ['https://www.instagram.com/*'], fb: ['https://www.facebook.com/*', 'https://web.facebook.com/*'], x: ['https://x.com/*', 'https://twitter.com/*'],
   da: ['https://www.deviantart.com/*'], fl: ['https://www.flickr.com/*'], ih: ['http://*/*', 'https://*/*'] };
@@ -343,6 +343,7 @@ const ihCustom = async () => (await chrome.storage.local.get('ihCustom')).ihCust
 const IH_UPDATE_URL = 'https://raw.githubusercontent.com/dante25/ice-browser/claude/vibrant-gauss-9sqpu7/own-extensions/Ultimate%20SN%20Downloader/extension/ihg/stock.xml';
 let stockIds = [];
 const ihStock = async () => {
+  // the copy the user last downloaded with "Update rules now" (kept in storage) wins; without one, the copy inside the extension
   let hosts = [];
   try { const rem = (await chrome.storage.local.get('ihRemote')).ihRemote; if (rem && rem.text) hosts = parseHostFile(rem.text); } catch (e) { hosts = []; }
   if (!hosts.length) { try { hosts = parseHostFile(await (await fetch(chrome.runtime.getURL('ihg/stock.xml'))).text()); } catch (e) { hosts = []; } }
@@ -478,7 +479,6 @@ async function ihRunRule(j, link, rule, depth, meta) {
 
 async function runIh(j, links) {
   await ihEnsure();
-  await Promise.race([ihUpdateRules(false), sleep(6000)]);
   j.resolving++; j.total = Math.max(j.total, links.length); touch(j);
   const queue = links.map((l, i) => ({ ...l, index: i })), page = j.page || {};
   let unresolved = 0;
