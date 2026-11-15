@@ -9,7 +9,9 @@ Zabilježeno 2026-11-15 (po zahtjevu korisnika). Sljedeći veći posao nakon tre
 1. Prepoznavanje kartica: linkovi koji sadrže sličicu i čija adresa prati isti obrazac (npr. `/photo/<broj>`).
 2. Prepoznavanje stranice slike: dohvat jedne kartice iz pravog preglednika, traženje `og:image`, `twitter:image`, `contentUrl`, `image_src`.
 3. Provjera kandidata: preuzimanje nekoliko slika; mora biti stvarna slika, različita za svaku karticu (logo se odbacuje) i veća od sličice.
-4. Izlaz: prijedlog pravila (domena, obrazac, metoda, rezultat provjere). Korisnik odobrava.
+4. Pregled: engine prikaže nekoliko pronađenih slika (dimenzije, veličina, izvor) i korisnik potvrđuje jesu li to stvarno velike slike, a ne sličice ili baneri.
+5. Uvoz: tek nakon potvrde engine ponudi pravilo za host fajl. Bez potvrde ništa ne upisuje.
+   Napomena: engine može provjeriti samo ono što sajt javlja (dimenzije, veličina, razlika među karticama). Ne može znati ima li slika vodeni žig koji je stavio sam sajt.
 
 **Faza 2:** pravilo `CARD` (izvođenje velike slike iz sličice) predlaže se samo kao kandidat, uz ručnu potvrdu, jer obrazac nije generički.
 
