@@ -27,3 +27,12 @@ Zabilježeno 2026-11-15 (po zahtjevu korisnika). Sljedeći veći posao nakon tre
 - Pravilo se piše za **obrazac stranica slika** izveden iz skeniranih kartica (npr. `/photo/<broj>`), a ne za cijelu domenu. Tako pravilo na cijelom sajtu hvata samo stranice slika, ne banere ni sličice.
 - Uvoz pravila: upisuje se u postavke ekstenzije (kao ručni uvoz), ne u repo.
 - Jedan gumb "Odbaci" po slici, da se obrazac može suziti ako pogodi i nešto što nije slika.
+
+## Filter: samo fotografije, bez banera, reklama i logoa
+Engine kandidate odbacuje ako:
+- je manja od praga (npr. 400 px na dužoj strani) ili je ikona;
+- je SVG ili GIF bez sadržaja, ili je format logoa (PNG s prozirnošću, vrlo mali omjer);
+- se nalazi u `header`, `nav`, `footer` ili u elementu s oznakom reklame (`ad`, `banner`, `sponsor`, iframe reklamnih mreža);
+- je ista slika na većini kartica (logo ili zajednički baner), jer prava fotografija je različita za svaku karticu;
+- ima omjer stranica koji odgovara banerima (vrlo širok ili vrlo uzak).
+Prag i pravila su postavke engine-a, ne nagađanje: provjeravaju se na tri-četiri sajta prije uvoza.
