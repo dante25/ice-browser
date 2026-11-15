@@ -47,3 +47,5 @@ Nalaz iz izvora Chromiuma 156:
 Ograničenje: Chromium odbacivanje je jedan put do nestanka tab-a. Drugi je Android sam: pod memorijskim pritiskom OS ubija pozadinske renderere, a tab se tada ponovo učita kad se otvori. To Chromium ne može potpuno spriječiti, samo smanjiti vjerojatnost (`content/browser/android/child_process_importance.cc`). Zato se ne smije obećati da tab "nikad" ne nestane, nego provjeriti na uređaju koliko dugo ostaje živ.
 
 Plan: (1) patch za meni i flag po tab-u, (2) patch za pravilo odbacivanja, (3) test na telefonu: otvoriti 10 tabova, stavi "Keep alive" na dva, čekati, provjeriti koji su se ponovo učitali.
+
+Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Zaštita se uključuje samo za tabove koje korisnik ručno označi opcijom "Keep alive" u meniju tab-a, a isključuje se istom opcijom. Ostali tabovi se ponašaju kao i inače.
