@@ -26,4 +26,13 @@ if compgen -G "$HERE/patches/*.patch" > /dev/null; then
     n=$((n + 1))
   done
 fi
+# 3) Ice files and the build hook: copied into src/ and the strings rebranded after all patches
+REPO="$(cd "$HERE/../.." && pwd)"
+rm -rf ice-files ice-android; mkdir -p ice-files ice-android
+[ -d "$HERE/files" ] && cp -a "$HERE/files/." ice-files/
+cp "$HERE/hook.sh" "$REPO/core-build/ice-rebrand.py" ice-android/
+grep -q '^  psa_dat=' build.sh || { echo "build.sh: psa_dat= marker missing, cannot insert the Ice hook" >&2; exit 1; }
+sed -i 's|^  psa_dat=|  bash ice-android/hook.sh\n&|' build.sh
+grep -q '^  bash ice-android/hook.sh$' build.sh || { echo "build.sh: Ice hook not inserted" >&2; exit 1; }
+
 echo "Ice overlay applied: $n patch(es), $(wc -l < /tmp/ice-flags.gn) GN arg line(s)"
