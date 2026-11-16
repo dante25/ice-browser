@@ -1,6 +1,21 @@
 --- a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadSnackbarController.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadSnackbarController.java
-@@ -19,7 +19,8 @@
+@@ -11,15 +11,23 @@
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.app.ChromeActivity;
+ import org.chromium.chrome.browser.profiles.OtrProfileId;
+ import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
+ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
++import org.chromium.components.messages.MessageBannerProperties;
++import org.chromium.components.messages.MessageDispatcher;
++import org.chromium.components.messages.MessageDispatcherProvider;
++import org.chromium.components.messages.MessageIdentifier;
++import org.chromium.components.messages.PrimaryActionClickBehavior;
++import org.chromium.ui.modelutil.PropertyModel;
+ 
+ /** Class for displaying a snackbar when a download completes. */
  @NullMarked
  public class DownloadSnackbarController implements SnackbarManager.SnackbarController {
      public static final int INVALID_NOTIFICATION_ID = -1;
@@ -10,6 +25,74 @@
  
      @Override
      public void onAction(@Nullable Object actionData) {
+@@ -41,6 +49,7 @@
+     public void onDownloadFailed(
+             String errorMessage, boolean showAllDownloads, @Nullable OtrProfileId otrProfileId) {
+         if (isShowingDownloadInfoBar(otrProfileId)) return;
++        if (showIceMessage(errorMessage, showAllDownloads)) return;
+         if (getSnackbarManager() == null) return;
+         // TODO(qinmin): Coalesce snackbars if multiple downloads finish at the same time.
+         Snackbar snackbar =
+@@ -64,6 +73,12 @@
+      * missing SD card was detected.
+      */
+     void onDownloadDirectoryNotFound() {
++        if (showIceMessage(
++                ContextUtils.getApplicationContext()
++                        .getString(R.string.download_location_no_sd_card_snackbar),
++                false)) {
++            return;
++        }
+         if (getSnackbarManager() == null) return;
+ 
+         Snackbar snackbar =
+@@ -78,6 +93,46 @@
+         getSnackbarManager().showSnackbar(snackbar);
+     }
+ 
++    /**
++     * Ice: shows the text as a message banner at the top (2 s, like the other download banners)
++     * instead of a snackbar at the bottom. Returns false if there is no message UI.
++     */
++    private boolean showIceMessage(String text, boolean showAllDownloads) {
++        Activity activity = getActivity();
++        if (!(activity instanceof ChromeActivity<?> chromeActivity)) return false;
++        MessageDispatcher dispatcher =
++                MessageDispatcherProvider.from(chromeActivity.getWindowAndroid());
++        if (dispatcher == null) return false;
++        PropertyModel model =
++                new PropertyModel.Builder(MessageBannerProperties.ALL_KEYS)
++                        .with(
++                                MessageBannerProperties.MESSAGE_IDENTIFIER,
++                                MessageIdentifier.DOWNLOAD_PROGRESS)
++                        .with(MessageBannerProperties.TITLE, text)
++                        .with(
++                                MessageBannerProperties.ICON_RESOURCE_ID,
++                                R.drawable.ic_file_download_24dp)
++                        .with(MessageBannerProperties.ON_DISMISSED, reason -> {})
++                        .build();
++        if (showAllDownloads) {
++            model.set(
++                    MessageBannerProperties.PRIMARY_BUTTON_TEXT,
++                    activity.getString(R.string.open_downloaded_label));
++            model.set(
++                    MessageBannerProperties.ON_PRIMARY_ACTION,
++                    () -> {
++                        onAction(null);
++                        return PrimaryActionClickBehavior.DISMISS_IMMEDIATELY;
++                    });
++        } else {
++            model.set(
++                    MessageBannerProperties.ON_PRIMARY_ACTION,
++                    () -> PrimaryActionClickBehavior.DISMISS_IMMEDIATELY);
++        }
++        dispatcher.enqueueWindowScopedMessage(model, /* highPriority= */ false);
++        return true;
++    }
++
+     private @Nullable Activity getActivity() {
+         if (ApplicationStatus.hasVisibleActivities()) {
+             return ApplicationStatus.getLastTrackedFocusedActivity();
 --- a/chrome/android/java/src/org/chromium/chrome/browser/messages/ChromeMessageAutodismissDurationProvider.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/messages/ChromeMessageAutodismissDurationProvider.java
 @@ -22,6 +22,7 @@
