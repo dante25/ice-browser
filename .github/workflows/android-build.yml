@@ -109,6 +109,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -140,6 +145,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -170,6 +180,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -200,6 +215,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -230,6 +250,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -260,6 +285,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -290,6 +320,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
@@ -320,6 +355,11 @@ jobs:
       - name: Apply Ice overlay
         shell: bash
         run: bash ice/android/overlay/apply.sh "$GITHUB_WORKSPACE"
+      # The build copies the workspace over the unpacked build tree: refresh the Ice files in src/
+      # (extension assets, generated lists) from this commit; ninja rebuilds only what changed.
+      - name: Refresh Ice files in the build tree
+        shell: bash
+        run: mkdir -p src && cp -a ice-files/. src/
       - id: stage
         uses: ./.github/actions/build-stage
         with:
