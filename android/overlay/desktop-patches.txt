@@ -1,0 +1,13 @@
+# Desktop Ice patches (core-build/patches) applied unchanged on Android too, before the Android ones.
+# Same Chromium version, checked with android/tools/srcprep.py. Not listed: the desktop UI
+# (views: rail, panel, theme mixers) and the WebUI settings page; Android gets its own.
+ice-01-component-loader.patch
+ice-02-dnr-component-static-rulesets.patch
+ice-04-settings-pref.patch
+ice-05-builtins-normal-privileges.patch
+ice-06-addons-loader.patch
+ice-07-ice-shield-out-of-core.patch
+ice-08-dnr-readonly-addons.patch
+ice-11-builtins-hidden-no-welcome.patch
+ice-32-newtab-builtin.patch
+ice-40-tab-counter-left.patch
