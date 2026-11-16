@@ -1,0 +1,180 @@
+--- a/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadSnackbarController.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/download/DownloadSnackbarController.java
+@@ -19,7 +19,8 @@
+ @NullMarked
+ public class DownloadSnackbarController implements SnackbarManager.SnackbarController {
+     public static final int INVALID_NOTIFICATION_ID = -1;
+-    private static final int SNACKBAR_DURATION_MS = 7000;
++    // Ice: 2 s instead of 7 s.
++    private static final int SNACKBAR_DURATION_MS = 2000;
+ 
+     @Override
+     public void onAction(@Nullable Object actionData) {
+--- a/chrome/android/java/src/org/chromium/chrome/browser/messages/ChromeMessageAutodismissDurationProvider.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/messages/ChromeMessageAutodismissDurationProvider.java
+@@ -22,6 +22,7 @@
+ @NullMarked
+ public class ChromeMessageAutodismissDurationProvider
+         implements MessageAutodismissDurationProvider {
++    private static final long ICE_SHORT_DURATION_MS = 2000;
+     private long mAutodismissDurationMs;
+     private long mAutodismissDurationWithA11yMs;
+ 
+@@ -32,6 +33,12 @@
+ 
+     @Override
+     public long get(@MessageIdentifier int messageIdentifier, long customDuration) {
++        // Ice: the download banners and the "Dodano u oznake" banner (TEST_MESSAGE, see
++        // BookmarkUtils) disappear after 2 s.
++        if (messageIdentifier == MessageIdentifier.DOWNLOAD_PROGRESS
++                || messageIdentifier == MessageIdentifier.TEST_MESSAGE) {
++            return ICE_SHORT_DURATION_MS;
++        }
+         long nonA11yDuration = Math.max(mAutodismissDurationMs, customDuration);
+         long minDuration =
+                 AccessibilityState.isPerformGesturesEnabled()
+--- a/chrome/browser/bookmarks/android/BUILD.gn
++++ b/chrome/browser/bookmarks/android/BUILD.gn
+@@ -45,6 +45,7 @@
+     "java/res/drawable/bookmark_promo_desktop_background.xml",
+     "java/res/layout/bookmark_popup.xml",
+     "java/res/values/dimens.xml",
++    "java/res/values/ice_bookmark_strings.xml",
+     "java/res/values/ids.xml",
+     "java/res/values/styles.xml",
+   ]
+@@ -193,6 +194,7 @@
+     "//chrome/browser/ui/android/toolbar:java",
+     "//chrome/browser/ui/android/toolbar:optional_button_java",
+     "//chrome/browser/ui/messages/android:java",
++    "//components/messages/android:java",
+     "//chrome/browser/ui/side_ui/public:java",
+     "//chrome/browser/url_constants/android:java",
+     "//chrome/browser/user_education:java",
+--- /dev/null
++++ b/chrome/browser/bookmarks/android/java/res/values/ice_bookmark_strings.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Ice: short banner at the top when a bookmark is added -->
++<resources>
++    <string name="ice_bookmark_saved" translatable="false">Dodano u oznake</string>
++    <string name="ice_bookmark_edit" translatable="false">Uredi</string>
++</resources>
+--- a/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkSaveFlowCoordinator.java
++++ b/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkSaveFlowCoordinator.java
+@@ -49,7 +49,8 @@
+ /** Coordinates the bottom-sheet saveflow. */
+ @NullMarked
+ public class BookmarkSaveFlowCoordinator implements ActivityStateListener {
+-    private static final int AUTO_DISMISS_TIME_MS = 10000;
++    // Ice: 2 s instead of 10 s.
++    private static final int AUTO_DISMISS_TIME_MS = 2000;
+ 
+     private final Activity mActivity;
+     private final PropertyModel mPropertyModel;
+--- a/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkUtils.java
++++ b/chrome/browser/bookmarks/android/java/src/org/chromium/chrome/browser/bookmarks/BookmarkUtils.java
+@@ -48,7 +48,13 @@
+ import org.chromium.components.commerce.core.ShoppingService;
+ import org.chromium.components.embedder_support.util.UrlUtilities;
+ import org.chromium.components.feature_engagement.EventConstants;
++import org.chromium.components.messages.MessageBannerProperties;
++import org.chromium.components.messages.MessageDispatcher;
++import org.chromium.components.messages.MessageDispatcherProvider;
++import org.chromium.components.messages.MessageIdentifier;
++import org.chromium.components.messages.PrimaryActionClickBehavior;
+ import org.chromium.components.signin.identitymanager.IdentityManager;
++import org.chromium.ui.modelutil.PropertyModel;
+ import org.chromium.url.GURL;
+ 
+ import java.text.DateFormat;
+@@ -186,19 +192,67 @@
+                         parent,
+                         bookmarkType,
+                         isBookmarkBarVisible);
+-        showSaveFlow(
+-                activity,
+-                bottomSheetController,
+-                tab.getProfile(),
+-                newBookmarkId,
+-                fromExplicitTrackUi,
+-                /* wasBookmarkMoved= */ false,
+-                /* isNewBookmark= */ true,
+-                bookmarkManagerOpener,
+-                priceDropNotificationManager);
++        // Ice: a short banner at the top (2 s, see ChromeMessageAutodismissDurationProvider)
++        // instead of the bottom sheet; the sheet stays as the fallback.
++        if (newBookmarkId == null
++                || !showIceBookmarkSavedMessage(
++                        activity, tab, newBookmarkId, bookmarkManagerOpener)) {
++            showSaveFlow(
++                    activity,
++                    bottomSheetController,
++                    tab.getProfile(),
++                    newBookmarkId,
++                    fromExplicitTrackUi,
++                    /* wasBookmarkMoved= */ false,
++                    /* isNewBookmark= */ true,
++                    bookmarkManagerOpener,
++                    priceDropNotificationManager);
++        }
+         callback.onResult(Collections.singletonList(newBookmarkId));
+     }
+ 
++    /**
++     * Ice: "Dodano u oznake" with an "Uredi" button as a message banner at the top of the window.
++     * Uses MessageIdentifier.TEST_MESSAGE, which the browser itself never shows, so that only this
++     * banner gets the short duration. Returns false if the window has no message UI.
++     */
++    private static boolean showIceBookmarkSavedMessage(
++            Activity activity,
++            Tab tab,
++            BookmarkId bookmarkId,
++            BookmarkManagerOpener bookmarkManagerOpener) {
++        MessageDispatcher dispatcher = MessageDispatcherProvider.from(tab.getWindowAndroid());
++        if (dispatcher == null) return false;
++        Profile profile = tab.getProfile();
++        PropertyModel model =
++                new PropertyModel.Builder(MessageBannerProperties.ALL_KEYS)
++                        .with(
++                                MessageBannerProperties.MESSAGE_IDENTIFIER,
++                                MessageIdentifier.TEST_MESSAGE)
++                        .with(
++                                MessageBannerProperties.TITLE,
++                                activity.getString(R.string.ice_bookmark_saved))
++                        .with(
++                                MessageBannerProperties.PRIMARY_BUTTON_TEXT,
++                                activity.getString(R.string.ice_bookmark_edit))
++                        .with(
++                                MessageBannerProperties.ICON_RESOURCE_ID,
++                                R.drawable.ic_star_filled_24dp)
++                        .with(
++                                MessageBannerProperties.ON_PRIMARY_ACTION,
++                                () -> {
++                                    bookmarkManagerOpener.startEditActivity(
++                                            activity, profile, bookmarkId);
++                                    return PrimaryActionClickBehavior.DISMISS_IMMEDIATELY;
++                                })
++                        .with(
++                                MessageBannerProperties.ON_DISMISSED,
++                                reason -> {})
++                        .build();
++        dispatcher.enqueueWindowScopedMessage(model, /* highPriority= */ false);
++        return true;
++    }
++
+     private static void addOrEditMultipleBookmarks(
+             BookmarkModel bookmarkModel,
+             List<Tab> tabs,
+--- a/chrome/browser/download/internal/android/java/src/org/chromium/chrome/browser/download/DownloadMessageUiControllerImpl.java
++++ b/chrome/browser/download/internal/android/java/src/org/chromium/chrome/browser/download/DownloadMessageUiControllerImpl.java
+@@ -68,7 +68,8 @@
+ /** Message UI specific implementation of {@link DownloadMessageUiController}. */
+ @NullMarked
+ public class DownloadMessageUiControllerImpl implements DownloadMessageUiController {
+-    private static final long DURATION_SHOW_RESULT_IN_MS = 6000;
++    // Ice: 2 s instead of 6 s.
++    private static final long DURATION_SHOW_RESULT_IN_MS = 2000;
+ 
+     // The description can be an extremely long data url, whose length can cause a low memory
+     // error when applied to a text view. https://crbug.com/40197985
