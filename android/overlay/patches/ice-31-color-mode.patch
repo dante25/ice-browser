@@ -59,13 +59,13 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<!-- Ice: Settings > Theme > Colours -->
 +<resources>
-+    <string name="ice_colors_title" translatable="false">Colours</string>
-+    <string name="ice_custom_color_title" translatable="false">Custom colour</string>
-+    <string name="ice_custom_color_dialog" translatable="false">Colour as #RRGGBB, for example #0B6E85</string>
++    <string name="ice_colors_title" translatable="false">Boje</string>
++    <string name="ice_custom_color_title" translatable="false">Vlastita boja</string>
++    <string name="ice_custom_color_dialog" translatable="false">Boja kao #RRGGBB, npr. #0B6E85</string>
 +    <string-array name="ice_color_mode_entries" translatable="false">
 +        <item>Ice</item>
-+        <item>System colours (Material You)</item>
-+        <item>Custom colour</item>
++        <item>Sistemske boje (Material You)</item>
++        <item>Vlastita boja</item>
 +    </string-array>
 +    <string-array name="ice_color_mode_values" translatable="false">
 +        <item>ice</item>

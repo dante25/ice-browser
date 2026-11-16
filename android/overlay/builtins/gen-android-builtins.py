@@ -11,6 +11,7 @@ Writes
 Asset names are numbers so that no file name (spaces, _locales, non-ASCII) can be mangled or dropped by the APK tools;
 the files themselves are copied byte for byte."""
 import hashlib, importlib.util, json, os, shutil, subprocess, sys
+sys.dont_write_bytecode = True
 
 repo, out = sys.argv[1], sys.argv[2]
 spec = importlib.util.spec_from_file_location('gen', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'))

@@ -1,0 +1,149 @@
+--- a/chrome/android/chrome_java_resources.gni
++++ b/chrome/android/chrome_java_resources.gni
+@@ -649,6 +649,7 @@
+   "java/res/values-w412dp/bools.xml",
+   "java/res/values-w600dp/dimens.xml",
+   "java/res/values-w800dp/dimens.xml",
++  "java/res/values/ice_strings.xml",
+   "java/res/values/attrs.xml",
+   "java/res/values/bools.xml",
+   "java/res/values/colors.xml",
+@@ -670,6 +671,7 @@
+   "java/res/xml/do_not_track_preferences.xml",
+   "java/res/xml/google_services_preferences.xml",
+   "java/res/xml/homepage_preferences.xml",
++  "java/res/xml/ice_advanced_preferences.xml",
+   "java/res/xml/legal_information_preferences.xml",
+   "java/res/xml/main_preferences.xml",
+   "java/res/xml/personalize_google_services_preferences.xml",
+--- a/chrome/android/chrome_java_sources.gni
++++ b/chrome/android/chrome_java_sources.gni
+@@ -1093,6 +1093,7 @@
+ 
+   # LINT.IfChange(MainSettingsBuildRule)
+   "java/src/org/chromium/chrome/browser/settings/MainSettings.java",
++  "java/src/org/chromium/chrome/browser/settings/IceAdvancedSettings.java",
+ 
+   # LINT.ThenChange(//components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search/SettingsIndexData.java:MainSettingsClassName)
+   "java/src/org/chromium/chrome/browser/settings/MultiColumnSettings.java",
+--- /dev/null
++++ b/chrome/android/java/res/values/ice_strings.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Ice: Settings > Napredne funkcije, same texts as the desktop page (core-build/patches/ice-10) -->
++<resources>
++    <string name="ice_advanced_title" translatable="false">Napredne funkcije</string>
++    <string name="ice_advanced_sn_downloader" translatable="false">Ultimate SN Downloader</string>
++    <string name="ice_advanced_sn_downloader_summary" translatable="false">Preuzimanje videa i slika sa društvenih mreža.</string>
++    <string name="ice_advanced_video_sniffer" translatable="false">Video Sniffer</string>
++    <string name="ice_advanced_video_sniffer_summary" translatable="false">Pronalazi video zapise na stranici i nudi preuzimanje.</string>
++    <string name="ice_advanced_multiselect" translatable="false">Multiselect for YouTube</string>
++    <string name="ice_advanced_multiselect_summary" translatable="false">Označavanje više videa odjednom na YouTubeu.</string>
++    <string name="ice_advanced_restart_note" translatable="false">Promjene se primjenjuju nakon ponovnog pokretanja Ice-a.</string>
++</resources>
+--- /dev/null
++++ b/chrome/android/java/res/xml/ice_advanced_preferences.xml
+@@ -0,0 +1,22 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Ice: Settings > Napredne funkcije. Profile prefs registered in chrome/browser/prefs/browser_prefs.cc (ice-04/ice-06). -->
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="ice_sn_downloader"
++        android:persistent="false"
++        android:title="@string/ice_advanced_sn_downloader"
++        android:summary="@string/ice_advanced_sn_downloader_summary" />
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="ice_video_sniffer"
++        android:persistent="false"
++        android:title="@string/ice_advanced_video_sniffer"
++        android:summary="@string/ice_advanced_video_sniffer_summary" />
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="ice_multiselect"
++        android:persistent="false"
++        android:title="@string/ice_advanced_multiselect"
++        android:summary="@string/ice_advanced_multiselect_summary" />
++    <org.chromium.components.browser_ui.settings.TextMessagePreference
++        android:key="ice_restart_note"
++        android:summary="@string/ice_advanced_restart_note" />
++</PreferenceScreen>
+--- a/chrome/android/java/res/xml/main_preferences.xml
++++ b/chrome/android/java/res/xml/main_preferences.xml
+@@ -107,6 +107,12 @@
+         android:key="appearance"
+         android:order="23"
+         android:title="@string/appearance_settings" />
++    <!-- Ice: Napredne funkcije, after Appearance -->
++    <org.chromium.components.browser_ui.settings.ChromeBasePreference
++        android:fragment="org.chromium.chrome.browser.settings.IceAdvancedSettings"
++        android:key="ice_advanced"
++        android:order="24"
++        android:title="@string/ice_advanced_title"/>
+     <org.chromium.components.browser_ui.settings.ChromeBasePreference
+         android:fragment="org.chromium.chrome.browser.glic.GlicSettings"
+         android:key="glic"
+--- /dev/null
++++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/IceAdvancedSettings.java
+@@ -0,0 +1,63 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++package org.chromium.chrome.browser.settings;
++
++import android.os.Bundle;
++
++import org.chromium.base.supplier.MonotonicObservableSupplier;
++import org.chromium.base.supplier.ObservableSuppliers;
++import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
++import org.chromium.build.annotations.NullMarked;
++import org.chromium.build.annotations.Nullable;
++import org.chromium.chrome.R;
++import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
++import org.chromium.components.browser_ui.settings.SettingsUtils;
++import org.chromium.components.prefs.PrefService;
++import org.chromium.components.user_prefs.UserPrefs;
++
++/**
++ * Ice: Settings > Napredne funkcije, the Android version of the desktop page. Each switch is a
++ * profile pref read by the built-ins / add-ons loader at startup, so a change takes effect after
++ * a restart.
++ */
++@NullMarked
++public class IceAdvancedSettings extends ChromeBaseSettingsFragment {
++    // {preference key, profile pref}; the prefs are in chrome/browser/extensions/ice_builtins.h.
++    private static final String[][] SWITCHES = {
++        {"ice_sn_downloader", "ice.addons.sn_downloader_enabled"},
++        {"ice_video_sniffer", "ice.addons.video_sniffer_enabled"},
++        {"ice_multiselect", "ice.builtins.multiselect_youtube_enabled"},
++    };
++
++    private final SettableMonotonicObservableSupplier<String> mPageTitle =
++            ObservableSuppliers.createMonotonic();
++
++    @Override
++    public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
++        SettingsUtils.addPreferencesFromResource(this, R.xml.ice_advanced_preferences);
++        mPageTitle.set(getString(R.string.ice_advanced_title));
++        PrefService prefs = UserPrefs.get(getProfile());
++        for (String[] entry : SWITCHES) {
++            String pref = entry[1];
++            ChromeSwitchPreference preference = (ChromeSwitchPreference) findPreference(entry[0]);
++            preference.setChecked(prefs.getBoolean(pref));
++            preference.setOnPreferenceChangeListener(
++                    (p, newValue) -> {
++                        prefs.setBoolean(pref, (boolean) newValue);
++                        return true;
++                    });
++        }
++    }
++
++    @Override
++    public MonotonicObservableSupplier<String> getPageTitle() {
++        return mPageTitle;
++    }
++
++    @Override
++    public @AnimationType int getAnimationType() {
++        return AnimationType.PROPERTY;
++    }
++}
