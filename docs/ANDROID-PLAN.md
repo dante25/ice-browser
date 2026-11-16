@@ -56,3 +56,9 @@ Svaka zakrpa je provjerena na izvornom kodu 156.0.8078.79 tačno onako kako ga g
 ## Iz starog plana (zadržano)
 - Kod ugrađenih funkcija, dodataka i Ice Shielda (JavaScript) je isti kao na desktopu.
 - GUI se ne prenosi s desktopa: Android interfejs je Java, piše se poseban dizajn za mali ekran. Prije aplikacije napraviti HTML ljusku veličine telefona (iste teme/boje kao desktop) da se vidi raspored (sidebar/funkcije, hamburger meni, avatar, tabovi, kartice funkcija na dodir).
+
+## Ispravke preko `overlay/files` (2026-11-16)
+`android/overlay/files/` se kopira u `src/` poslije svih zakrpa (hook u prep fazi, korak "Refresh Ice files" u svakom part poslu). Dvije Java ispravke su tu kao cijeli fajlovi umjesto u zakrpama, da se build nastavi od sačuvanog stabla (zakrpe ulaze u njegov otisak):
+- `DownloadSnackbarController.java`: `ChromeActivity` u 156 nije generička klasa (`instanceof ChromeActivity<?>` nije kompajlirao).
+- `IceColorMode.java`: `getMode()` bez vraćanja vrijednosti koja može biti null (NullAway).
+Pri sljedećoj gradnji od nule prebaciti ih u `ice-31`/`ice-37` i obrisati odavde.
