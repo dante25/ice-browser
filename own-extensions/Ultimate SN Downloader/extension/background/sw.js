@@ -514,7 +514,8 @@ async function runIh(j, links) {
   await Promise.all([worker(), worker(), worker()]);
   j.resolving--;
   const unk = Object.entries(j.unknown).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([h, n]) => h + ' (' + n + ')');
-  if (unk.length) j.warn = 'No rule for: ' + unk.join(', ') + ' - add them to the host file.';
+  // Only when nothing was found: otherwise these are just the page's other links (ads, menus, social buttons), not missing rules.
+  if (unk.length && !j.found) j.warn = 'No rule for: ' + unk.join(', ') + ' - add them to the host file.';
   const notes = [];
   if (unresolved) notes.push(unresolved + ' picture page(s) gave no image: ' + Object.entries(j.reasons || {}).map(([w, n]) => n + ' x ' + w).join(', ') + (j.failSamples && j.failSamples.length ? ' - e.g. ' + j.failSamples.join(' , ') : ''));
   if (j.ownUnknown && !j.total_found_hint) notes.push(j.ownUnknown + ' link(s) of this site have no rule' + (j.ownSamples && j.ownSamples.length ? ' - e.g. ' + j.ownSamples.join(' , ') : ''));
