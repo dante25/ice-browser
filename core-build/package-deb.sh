@@ -216,6 +216,10 @@ while IFS=: read -r dir src; do
     diff -r -x tests -x README.md "$ICE/$src" "$O/dodaci/$dir" >/dev/null \
         || { diff -r -x tests -x README.md "$ICE/$src" "$O/dodaci/$dir" | head -20 >&2; die "copy of $src differs from source"; }
 done <<< "$ADDONS"
+# Add-ons load as unpacked extensions, which refuse any file or folder whose name starts with "_"
+# (reserved, e.g. a leftover _metadata/ from Chrome); only _locales is allowed.
+bad_us="$(find "$O/dodaci" -name '_*' ! -name '_locales' | sed "s|$O/||")"
+[ -z "$bad_us" ] || die "reserved '_' names in add-ons (Chromium will not load them):"$'\n'"$bad_us"
 find "$O/dodaci" -type d -exec chmod 755 {} +
 find "$O/dodaci" -type f -exec chmod 644 {} +
 [ -z "$(find "$O/dodaci" ! -type f ! -type d)" ] || die "symlinks/special files in dodaci"

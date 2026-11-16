@@ -33,6 +33,9 @@ entries = []   # (destination under <app data>/ice, source file)
 def walk(kind, name, src, skip_top=()):
     root = os.path.join(repo, src)
     if not os.path.isfile(os.path.join(root, 'manifest.json')): sys.exit('missing manifest: ' + root)
+    if kind == 'dodaci':   # unpacked extensions: Chromium refuses names starting with "_" except _locales
+        bad = [os.path.join(dp, n) for dp, dns, fns in os.walk(root) for n in dns + fns if n.startswith('_') and n != '_locales']
+        if bad: sys.exit('reserved "_" names in add-on ' + name + ': ' + ', '.join(bad))
     for dp, dns, fns in os.walk(root):
         if dp == root: dns[:] = [d for d in dns if d not in skip_top]
         dns.sort()
