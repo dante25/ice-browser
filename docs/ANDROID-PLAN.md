@@ -32,6 +32,14 @@ Stanje: **paleta i generator gotovi i provjereni na izvornom kodu Chromiuma 156*
 - `apply.sh` je dodaje u gradnju (u sljedećoj gradnji, ne u Fazi 0).
 - **Još nije napravljeno:** Java dio koji bira način (Ice / sistem / vlastita boja) i primjenjuje `ThemeOverlay.Ice.*` na aktivnosti, i stranica postavki za izbor. Mapiranje boja na Material uloge je prva procjena i treba ga pogledati na uređaju.
 
+## Ice sloj, stanje 2026-11-16 (napravljeno, NIJE gradjeno: čeka tvoj pregled prije pakovanja)
+Svaka zakrpa je provjerena na izvornom kodu 156.0.8078.79 tačno onako kako ga gradnja vidi (`android/tools/srcprep.py check`, redoslijed iz `patches/series`): svih 15 se čisto primjenjuje. C++/Java se ovdje ne može kompajlirati (Chromium traži svoj libc++), zato gradnja odmah poslije `gn gen` kompajlira samo Ice .cc fajlove (`overlay/compile-check.sh`), pa greška izađe rano.
+- **Brendiranje** (`ice-01-branding.patch`, `overlay/files`, `hook.sh`): ime Ice, paket `org.ice.browser`, ikone (obična, adaptivna, monohromna za Android 13) iz desktop ikone, tekstovi "Chromium" -> "Ice" istim `ice-rebrand.py` kao desktop.
+- **Tema** (`ice-30`, `ice-31-color-mode.patch`): Ice boje zadane (dan/noć), Postavke > Tema > Boje: Ice / Sistemske boje (Material You) / Vlastita boja (#RRGGBB). Promjena se odmah primjenjuje na otvorene prozore. Sistemske i vlastita trebaju Android 12+, ispod toga ostaje Ice.
+- **Ugrađene ekstenzije i dodaci** (`desktop-patches.txt`, `ice-35-android-builtins.patch`, `builtins/gen-android-builtins.py`): iste desktop zakrpe (ComponentLoader + SHA-256 provjera, DNR, skriveni ugrađeni, Ice nova kartica, dodaci). 17 ugrađenih + dodaci SN Downloader, Video Sniffer, Ice Shield, Ice uvoz idu u APK (assets, nekomprimovano, ~17 MB) i pri prvom pokretanju se raspakuju u `<podaci aplikacije>/ice/` (ponovo samo kad se fajlovi promijene).
+- **Postavke > Napredne funkcije** (`ice-36-advanced-settings.patch`): prekidači SN Downloader / Video Sniffer / Multiselect, isti tekstovi i prefovi kao desktop, važe poslije ponovnog pokretanja.
+- **Još nije:** Ice nova kartica na telefonu (Android otvara svoju nativnu `chrome-native://newtab`; override iz ekstenzije postoji u kodu, ali treba zakrpa koja nativnu stranicu zamijeni), Ice panel ("Funkcije" i meni; na telefonu kao donji list iz menija), keep-alive po tabu.
+
 ## Sljedeće faze
 1. **Brendiranje**: ime Ice, paket `org.ice.browser` (instalira se uz Chrome/ungoogled), ikona, tema (iz `core-build/branding`).
 2. **Ugrađene funkcije** kao komponentne ekstenzije (prilagoditi desktop zakrpe ice-01/02/05: putanja resursa u APK-u umjesto `DIR_RESOURCES`), Ice Shield.
