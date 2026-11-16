@@ -1,0 +1,251 @@
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java
+@@ -56,6 +56,7 @@
+ import org.chromium.chrome.browser.flags.ChromeSwitches;
+ import org.chromium.chrome.browser.language.GlobalAppLocaleController;
+ import org.chromium.chrome.browser.night_mode.GlobalNightModeStateProviderHolder;
++import org.chromium.chrome.browser.night_mode.IceColorMode;
+ import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
+ import org.chromium.chrome.browser.night_mode.NightModeUtils;
+ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
+@@ -604,10 +605,22 @@
+         // in org.chromium.chrome.browser.WarmupManager#applyContextOverrides for Custom Tabs
+         // UI that's pre-inflated using a themed application context as part of CCT warmup.
+         // Note: this should be called before any calls to `Window#getDecorView`.
+-        if (shouldApplyDynamicColors()) {
+-            if (!maybeApplyCustomizedColors()) {
+-                DynamicColors.applyToActivityIfAvailable(this);
+-            }
++        // Ice: Settings > Theme > Colours. Ice palette (default, also on Android < 12 where there
++        // are no dynamic colours), system colours (Material You, upstream behaviour incl. the new tab
++        // page's colour choice) or a Material scheme built from the user's custom colour.
++        String iceMode = IceColorMode.getMode();
++        @ColorInt Integer iceCustom =
++                IceColorMode.CUSTOM.equals(iceMode) ? IceColorMode.getCustomColor() : null;
++        boolean iceDynamic =
++                shouldApplyDynamicColors()
++                        && DynamicColors.isDynamicColorAvailable()
++                        && (IceColorMode.SYSTEM.equals(iceMode) || iceCustom != null);
++        if (!iceDynamic) {
++            applySingleThemeOverlay(R.style.ThemeOverlay_Ice);
++        } else if (iceCustom != null) {
++            NtpCustomizationUtils.applyDynamicColorToActivity(this, iceCustom);
++        } else if (!maybeApplyCustomizedColors()) {
++            DynamicColors.applyToActivityIfAvailable(this);
+         }
+ 
+         // TODO(https://crbug.com/392634251): Explore setting elegantTextHeight to 'true' on older
+--- a/chrome/browser/ui/android/night_mode/BUILD.gn
++++ b/chrome/browser/ui/android/night_mode/BUILD.gn
+@@ -9,6 +9,7 @@
+ 
+ android_library("java") {
+   sources = [
++    "java/src/org/chromium/chrome/browser/night_mode/IceColorMode.java",
+     "java/src/org/chromium/chrome/browser/night_mode/AutoDarkFeedbackSource.java",
+     "java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java",
+     "java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateProviderHolder.java",
+@@ -63,6 +64,7 @@
+ android_resources("java_resources") {
+   sources = [
+     "java/res/layout/radio_button_group_theme_preference.xml",
++    "java/res/values/ice_theme_strings.xml",
+     "java/res/xml/theme_preferences.xml",
+   ]
+ 
+--- /dev/null
++++ b/chrome/browser/ui/android/night_mode/java/res/values/ice_theme_strings.xml
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Ice: Settings > Theme > Colours -->
++<resources>
++    <string name="ice_colors_title" translatable="false">Colours</string>
++    <string name="ice_custom_color_title" translatable="false">Custom colour</string>
++    <string name="ice_custom_color_dialog" translatable="false">Colour as #RRGGBB, for example #0B6E85</string>
++    <string-array name="ice_color_mode_entries" translatable="false">
++        <item>Ice</item>
++        <item>System colours (Material You)</item>
++        <item>Custom colour</item>
++    </string-array>
++    <string-array name="ice_color_mode_values" translatable="false">
++        <item>ice</item>
++        <item>system</item>
++        <item>custom</item>
++    </string-array>
++</resources>
+--- a/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml
++++ b/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml
+@@ -8,4 +8,16 @@
+ <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+     <org.chromium.chrome.browser.night_mode.settings.RadioButtonGroupThemePreference
+         android:key="ui_theme_pref" />
++    <!-- Ice: colours of the browser UI, see IceColorMode -->
++    <ListPreference
++        android:key="ice_color_mode"
++        android:title="@string/ice_colors_title"
++        android:entries="@array/ice_color_mode_entries"
++        android:entryValues="@array/ice_color_mode_values"
++        android:defaultValue="ice" />
++    <EditTextPreference
++        android:key="ice_custom_color"
++        android:title="@string/ice_custom_color_title"
++        android:dialogMessage="@string/ice_custom_color_dialog"
++        android:defaultValue="#0B6E85" />
+ </PreferenceScreen>
+\ No newline at end of file
+--- /dev/null
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/IceColorMode.java
+@@ -0,0 +1,95 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++package org.chromium.chrome.browser.night_mode;
++
++import android.app.Activity;
++import android.content.SharedPreferences;
++import android.graphics.Color;
++
++import org.chromium.base.ApplicationStatus;
++import org.chromium.base.ContextUtils;
++import org.chromium.base.task.PostTask;
++import org.chromium.base.task.TaskTraits;
++import org.chromium.build.annotations.NullMarked;
++import org.chromium.build.annotations.Nullable;
++
++/**
++ * Ice: which colours the browser UI uses (Settings > Theme > Colours). ICE, the Ice palette, is the
++ * default; SYSTEM uses the wallpaper colours of Android 12+ (Material You); CUSTOM builds a Material
++ * colour scheme from a colour the user enters.
++ */
++@NullMarked
++public final class IceColorMode {
++    public static final String PREF_MODE = "ice_color_mode";
++    public static final String PREF_CUSTOM = "ice_custom_color";
++    public static final String ICE = "ice";
++    public static final String SYSTEM = "system";
++    public static final String CUSTOM = "custom";
++    public static final String DEFAULT_CUSTOM = "#0B6E85";
++
++    private IceColorMode() {}
++
++    private static SharedPreferences prefs() {
++        return ContextUtils.getAppSharedPreferences();
++    }
++
++    public static String getMode() {
++        String mode = prefs().getString(PREF_MODE, ICE);
++        return SYSTEM.equals(mode) || CUSTOM.equals(mode) ? mode : ICE;
++    }
++
++    public static void setMode(String mode) {
++        prefs().edit().putString(PREF_MODE, mode).apply();
++    }
++
++    public static String getCustomColorText() {
++        String text = prefs().getString(PREF_CUSTOM, DEFAULT_CUSTOM);
++        return text == null ? DEFAULT_CUSTOM : text;
++    }
++
++    public static void setCustomColorText(String text) {
++        prefs().edit().putString(PREF_CUSTOM, normalize(text)).apply();
++    }
++
++    /** The custom colour, or null if what was entered is not a colour. */
++    public static @Nullable Integer getCustomColor() {
++        return parse(getCustomColorText());
++    }
++
++    /** Accepts #RRGGBB, RRGGBB, #RGB and RGB. */
++    public static boolean isValidColor(String text) {
++        return parse(text) != null;
++    }
++
++    private static String normalize(String text) {
++        String t = text.trim();
++        if (!t.startsWith("#")) t = "#" + t;
++        if (t.length() == 4) {
++            t = "#" + t.charAt(1) + t.charAt(1) + t.charAt(2) + t.charAt(2) + t.charAt(3) + t.charAt(3);
++        }
++        return t.toUpperCase(java.util.Locale.ROOT);
++    }
++
++    private static @Nullable Integer parse(String text) {
++        String t = normalize(text);
++        if (t.length() != 7) return null;
++        try {
++            return Color.parseColor(t);
++        } catch (IllegalArgumentException e) {
++            return null;
++        }
++    }
++
++    /** Re-creates the open activities so that a new colour choice shows at once. */
++    public static void applyToRunningActivities() {
++        PostTask.postTask(
++                TaskTraits.UI_DEFAULT,
++                () -> {
++                    for (Activity activity : ApplicationStatus.getRunningActivities()) {
++                        activity.recreate();
++                    }
++                });
++    }
++}
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
+@@ -9,6 +9,9 @@
+ import android.content.Context;
+ import android.os.Bundle;
+ 
++import androidx.preference.EditTextPreference;
++import androidx.preference.ListPreference;
++
+ import org.chromium.base.shared_preferences.SharedPreferencesManager;
+ import org.chromium.base.supplier.MonotonicObservableSupplier;
+ import org.chromium.base.supplier.ObservableSuppliers;
+@@ -16,6 +19,7 @@
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
++import org.chromium.chrome.browser.night_mode.IceColorMode;
+ import org.chromium.chrome.browser.night_mode.NightModeUtils;
+ import org.chromium.chrome.browser.night_mode.R;
+ import org.chromium.chrome.browser.night_mode.ThemeType;
+@@ -75,6 +79,37 @@
+                 ChromeFeatureList.DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING)) {
+             WebContentsDarkModeMessageController.notifyEventSettingsOpened(getProfile());
+         }
++
++        initIceColors();
++    }
++
++    /** Ice: Colours (Ice / system / custom), stored by IceColorMode, applied to open windows at once. */
++    private void initIceColors() {
++        ListPreference mode = (ListPreference) findPreference(IceColorMode.PREF_MODE);
++        EditTextPreference custom = (EditTextPreference) findPreference(IceColorMode.PREF_CUSTOM);
++        mode.setPersistent(false);
++        custom.setPersistent(false);
++        mode.setValue(IceColorMode.getMode());
++        custom.setText(IceColorMode.getCustomColorText());
++        custom.setVisible(IceColorMode.CUSTOM.equals(mode.getValue()));
++        mode.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
++        custom.setSummaryProvider(preference -> IceColorMode.getCustomColorText());
++        mode.setOnPreferenceChangeListener(
++                (preference, newValue) -> {
++                    String value = (String) newValue;
++                    IceColorMode.setMode(value);
++                    custom.setVisible(IceColorMode.CUSTOM.equals(value));
++                    IceColorMode.applyToRunningActivities();
++                    return true;
++                });
++        custom.setOnPreferenceChangeListener(
++                (preference, newValue) -> {
++                    String value = (String) newValue;
++                    if (!IceColorMode.isValidColor(value)) return false;
++                    IceColorMode.setCustomColorText(value);
++                    IceColorMode.applyToRunningActivities();
++                    return true;
++                });
+     }
+ 
+     @Override
