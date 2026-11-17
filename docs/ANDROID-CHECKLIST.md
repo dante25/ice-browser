@@ -14,7 +14,7 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 ## Za ovaj build
 - [ ] Ice panel kao desktop (ice-20/21): traka s ikonama na DESNOJ strani (meni, bookmarks, historija, preuzimanja, Funkcije), panel preko stranice; na uskom ekranu iz dugmeta
 - [ ] Funkcije u panelu: sve ugrađene ekstenzije i dodaci, tap = njen popup
-- [ ] Ekstenzije u bookmark baru (desno, 3-4 korištene) + prekidač "Traka za ekstenzije" u Izgled
+- [~] ~~Ekstenzije u bookmark baru~~ OTKAZANO (korisnik 2026-11-17): ekstenzije su u bočnom panelu, u bookmark bar se ne dodaje ništa
 - [ ] Password manager: lokalno spremište, "Sačuvati šifru?", popunjavanje, lista šifri, uvoz/izvoz CSV
 - [ ] Ice nova kartica (ice-32 / ice-newtab) umjesto Chromiumove nativne
 - [ ] Uvoz iz drugog browsera na Androidu: iz fajlova (bookmarks HTML, šifre CSV)
