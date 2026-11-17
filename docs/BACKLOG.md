@@ -66,4 +66,9 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
 ## Android: Password Manager (prijava 2026-11-17)
 - Chromium 156 na Androidu nema lokalno čuvanje šifri: `CreatePasswordStoreBackend` na Androidu koristi samo Google Play Services backend ("internal backend", postoji samo u Google Chromeu). Bez njega dobija prazan backend, a UI traži "update Google Play Services". Ažuriranje GMS-a ne pomaže. `login_database.cc` i `password_store_built_in_backend.cc` se na Androidu ni ne kompajliraju (BUILD.gn, `is_android` grana).
 - Odmah upotrebljivo: Postavke → Autofill → "Autofill using another service" + Android-ov autofill servis (Bitwarden, KeePassDX, Proton Pass…), bez Googlea.
-- Vlastiti Ice password manager na Androidu (lokalno, šifrovano): vratiti LoginDatabase + built-in backend na Android, spremanje/popunjavanje i listu šifri u postavkama. Veći posao; čeka odluku korisnika.
+- ODLUKA KORISNIKA (2026-11-17): vratiti originalnu funkciju password managera (lokalno, kao Chromium prije vezivanja za Google / kao desktop Ice).
+- Plan:
+  1. Spremište: na Androidu kompajlirati `login_database*`, `password_store_built_in_backend*` (components/password_manager/core/browser/password_store/BUILD.gn), `CreatePasswordStoreBackend` -> LoginDatabase + PasswordStoreBuiltInBackend; `IsPasswordManagerAvailable` -> true. Provjeriti OSCryptAsync i AffiliationService na Androidu.
+  2. Spremanje ("Sačuvati šifru?", save_update_password_message_delegate) i popunjavanje: postoje, rade sa bilo kojim spremištem; provjeriti da ništa ne traži GMS.
+  3. Postavke -> Password Manager: novi ekran (lista, pretraga, prikaz/izmjena/brisanje, uvoz/izvoz CSV) preko PasswordStoreBridge, umjesto otvaranja Googleovog ekrana (CredentialManagerLauncher / PasswordManagerHelper).
+  4. Prikaz šifre tek nakon otključavanja ekrana (biometrija/PIN), kao u Chromeu.
