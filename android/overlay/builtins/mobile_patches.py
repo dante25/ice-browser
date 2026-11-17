@@ -8,6 +8,7 @@ build stops.
 
 PROGRESS = 'chrome-extensions/permanent-progress-bar-for-youtube/'
 NONSTOP = 'chrome-extensions/youtube-nonstop/'
+HIDECARDS = 'chrome-extensions/hide-labels-and-end-cards-on-youtube/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -35,6 +36,15 @@ PATCHES = {
          "const appName = isYoutubeMusic ? 'ytmusic-app' : (window.location.hostname === 'm.youtube.com' ? 'ytm-app' : 'ytd-app');"),
         ("appObserver.observe(document.querySelector(appName), {",
          "appObserver.observe(document.querySelector(appName) || document.documentElement, {"),
+    ],
+    # Hide Labels and End Cards: ran and inserted its CSS only on www.youtube.com tabs. The player classes
+    # it hides (.ytp-ce-element end cards, .branding-img-container) are the same in the mobile player.
+    HIDECARDS + 'manifest.json': [
+        ('"https://www.youtube.com/*" ]', '"https://www.youtube.com/*", "https://m.youtube.com/*" ]', 2),
+    ],
+    HIDECARDS + 'src/service-worker.min.js': [
+        ('chrome.tabs.query({url:"*://www.youtube.com/*"}', 'chrome.tabs.query({url:["*://www.youtube.com/*","*://m.youtube.com/*"]}'),
+        ('n.url.includes("https://www.youtube.com/")', '(n.url.includes("https://www.youtube.com/")||n.url.includes("https://m.youtube.com/"))'),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
