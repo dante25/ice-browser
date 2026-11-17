@@ -19,5 +19,8 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [ ] Ice nova kartica (ice-32 / ice-newtab) umjesto Chromiumove nativne
 - [ ] Uvoz iz drugog browsera na Androidu: iz fajlova (bookmarks HTML, šifre CSV)
 - [ ] Keep-alive po tabu (meni taba, zadano isključeno)
-- [ ] SN Downloader 0.13.3, Video Sniffer 1.2.2 (već u repou)
+- [x] SN Downloader 0.13.3 (u repou)
+- [x] Video Sniffer 1.2.3: bez ikakvog ograničenja veličine (i YouTube spajanje ide preko diska)
+- [x] YouTube ugrađene ekstenzije (kvalitet, progress bar, nonstop, end cards, screenshot, multiselect) rade samo na www.youtube.com: Ice na Androidu otvara YouTube kao desktop stranicu (component_loader.cc, overlay; korisnik to može promijeniti u postavkama sajta)
+- [ ] Panel: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java napisani (overlay); treba još BUILD.gn (toolbar/extensions) sa novim izvorom
 - [ ] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene
