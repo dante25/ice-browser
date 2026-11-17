@@ -699,6 +699,17 @@ class ExtensionActionListMediator implements Destroyable {
         mHandler.postDelayed(this::showPopupOnAnchor, 300);
     }
 
+    /** Ice: popups that stay open over the page until their own X / Cancel (downloads). */
+    private boolean isIcePersistentPopup(String actionId) {
+        try {
+            ExtensionAction action = mExtensionsToolbarBridge.getAction(actionId, null);
+            String name = action == null ? "" : action.getName();
+            return "Ultimate SN Downloader".equals(name) || "Video Sniffer".equals(name);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private void showPopupOnAnchor() {
         if (!(mActionState instanceof ActionState.PopupPending)) {
             return;
@@ -752,7 +763,8 @@ class ExtensionActionListMediator implements Destroyable {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         mTabModelSelector,
-                        inspectWithDevTools);
+                        inspectWithDevTools,
+                        isIcePersistentPopup(actionId));
         popup.loadInitialPage();
         popup.addOnDismissListener(this::closePopup);
         mActionState = new ActionState.PopupActive(popup, actionId);

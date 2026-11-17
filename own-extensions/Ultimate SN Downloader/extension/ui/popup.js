@@ -47,6 +47,7 @@ async function init() {
 
 $('all').onchange = () => { KEYS.forEach(k => { $(k).checked = $('all').checked; }); validate(); };
 KEYS.forEach(k => { $(k).onchange = syncAll; });
+$('iceClose').onclick = () => window.close();   // the popup stays open on Android until closed here
 $('manager').onclick = async () => { await sendSW({ t: 'manager:open' }); window.close(); };
 $('start').onclick = async () => {
   if (desc && desc.site === 'ih') {              // fetching other sites' pages needs access to them (asked once, here, on the click)

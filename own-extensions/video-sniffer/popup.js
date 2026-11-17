@@ -496,3 +496,6 @@ async function render() {
   document.getElementById('ytpage').addEventListener('click', (e) => copy(e.target, `yt-dlp ${sq(tab.url)}`));
   document.getElementById('ytformats').addEventListener('click', (e) => copy(e.target, `yt-dlp -F ${sq(tab.url)}`));
 })();
+
+// the popup stays open on Android (downloads) until closed here
+document.getElementById('iceClose').addEventListener('click', () => window.close());

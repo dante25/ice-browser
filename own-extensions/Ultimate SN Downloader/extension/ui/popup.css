@@ -1,5 +1,6 @@
 body { width:340px; overflow-x:hidden; }
 header { display:flex; gap:8px; align-items:center; padding:12px 14px; background:#fff; border-bottom:1px solid var(--line); }
+header .x { margin-left:auto; border:0; background:none; font-size:18px; line-height:1; padding:4px 8px; cursor:pointer; }
 main { padding:12px; display:flex; flex-direction:column; gap:10px; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; gap:10px; align-items:center; }
 #opts { display:block; } #opts[hidden], .card[hidden] { display:none; }
