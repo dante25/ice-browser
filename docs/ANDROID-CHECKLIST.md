@@ -15,12 +15,12 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] Ice panel kao desktop (ice-20/21): traka s ikonama na DESNOJ strani (meni, bookmarks, historija, preuzimanja, Funkcije), panel preko stranice; na uskom ekranu iz dugmeta (kod: IceSidePanel.java, pregledan za kompajliranje)
 - [x] Funkcije u panelu: sve ugrađene ekstenzije i dodaci, tap = njen popup
 - [~] ~~Ekstenzije u bookmark baru~~ OTKAZANO (korisnik 2026-11-17): ekstenzije su u bočnom panelu, u bookmark bar se ne dodaje ništa
-- [ ] Password manager: lokalno spremište, "Sačuvati šifru?", popunjavanje, lista šifri, uvoz/izvoz CSV
-- [ ] Ice nova kartica (ice-32 / ice-newtab) umjesto Chromiumove nativne
+- [x] Password manager: lokalno spremište, "Sačuvati šifru?", popunjavanje, lista šifri, uvoz/izvoz CSV
+- [x] Ice nova kartica umjesto nativne: uključen kChromeNativeUrlOverriding (overlay), test: chrome://newtab otvara Ice karticu
 - [x] Uvoz na Androidu: bookmarks iz HTML fajla (android/overlay/addons/ice-uvoz; test: folderi zadržani, javascript: linkovi odbijeni)
-- [ ] Uvoz šifri iz CSV fajla (u password manageru)
-- [ ] Popup SN Downloadera i Video Sniffera: ostaje otvoren (i pri prelasku na drugi tab), zatvara se SAMO na X / Cancel, nikad tapom na prazan dio stranice
-- [ ] Keep-alive po tabu (meni taba, zadano isključeno)
+- [x] Uvoz šifri iz CSV fajla (Postavke → Upravitelj lozinki → Uvezi lozinke)
+- [x] Popup SN Downloadera i Video Sniffera: ostaje otvoren (i pri prelasku na drugi tab), zatvara se SAMO na X / Cancel, nikad tapom na prazan dio stranice
+- [x] Keep-alive po tabu (meni taba u prikazu svih tabova, zadano isključeno)
 - [x] SN Downloader 0.13.3 (u repou)
 - [x] Video Sniffer 1.2.3: bez ikakvog ograničenja veličine (i YouTube spajanje ide preko diska)
 - [x] Panel napisan: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java + BUILD.gn (overlay); provjera tek u buildu
@@ -51,5 +51,5 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] Screenshot: ikona aparata u traci kontrola playera (mobilni i desktop YouTube), slika u zadani folder (Downloads)
 - [x] Multiselect: prekidač "Odabir više videa" u meniju ekstenzije
 - [x] Password manager C++: lokalna baza (kao desktop) umjesto Google Play backenda, "Sačuvati šifru?" + popunjavanje uključeni
-- [ ] Password manager: lista šifri (pregled uz otisak/PIN, brisanje, uvoz/izvoz CSV)
+- [x] Password manager: lista šifri (pregled uz otisak/PIN, brisanje, uvoz/izvoz CSV)
 
