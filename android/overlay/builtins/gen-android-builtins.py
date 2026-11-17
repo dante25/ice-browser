@@ -31,9 +31,11 @@ mp = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(mp)
 for rel, changes in mp.PATCHES.items():
     f = os.path.join(stage, rel)
     text = open(f, encoding='utf-8').read()
-    for old, new in changes:
+    for change in changes:
+        old, new = change[0], change[1]
+        want = change[2] if len(change) > 2 else 1      # optional: how many times the original text occurs
         n = text.count(old)
-        if n != 1: sys.exit(f'mobile patch for {rel}: expected the original text once, found {n}: {old[:80]!r}')
+        if n != want: sys.exit(f'mobile patch for {rel}: expected the original text {want}x, found {n}: {old[:80]!r}')
         text = text.replace(old, new)
     open(f, 'w', encoding='utf-8').write(text)
 print(f'{sum(len(c) for c in mp.PATCHES.values())} mobile change(s) in {len(mp.PATCHES)} file(s)')
