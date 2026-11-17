@@ -1,6 +1,10 @@
 /* Ultimate SN Downloader — service worker: job registry, pacing (anti-ban), cooldown, download queue, progress window. */
 import { PROFILES, FB_PROFILES, nextDelay, cooldownFor } from './throttle.js';
 import { getRoot, permission, writeFile } from './fsstore.js';
+
+// Android: no folder picker (File System Access) - files go to Downloads through chrome.downloads, and the
+// progress page is one tab that is reused instead of a new window per download.
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
 import { parseHostFile, setHosts, hostCount, matchRule, matchRules, isCardRule, runCardRule, isDirectImage, runStringRule, needsPage, isFunctionRule, baseName } from './ih.js';
 
 const DEFAULTS = { ihMinKB: 20, speed: 'normal', subfolder: '', layout: '{site}/{owner}/{type}', template: '{owner}_{date}_{code}_{index}', photos: true, videos: true, storyreel: true };
@@ -255,12 +259,12 @@ async function downloadOne(j, m) {
 }
 
 // Chrome's own download list (used by the video button: one click, nothing to choose)
-function chromeDownload(url, filename) {
+function chromeDownload(url, filename, withId = false) {
   return new Promise((resolve, reject) => {
     chrome.downloads.download({ url, filename, conflictAction: 'uniquify', saveAs: false }, id => {
       if (chrome.runtime.lastError || id === undefined) return reject(new Error('FORBIDDEN ' + ((chrome.runtime.lastError && chrome.runtime.lastError.message) || 'download refused')));
       const timer = setTimeout(() => { delete S.dl[id]; reject(new Error('timeout')); }, 10 * 60e3);
-      S.dl[id] = { resolve: v => { clearTimeout(timer); resolve(v); }, reject: e => { clearTimeout(timer); reject(e); } };
+      S.dl[id] = { resolve: v => { clearTimeout(timer); resolve(withId ? { id, size: v } : v); }, reject: e => { clearTimeout(timer); reject(e); } };
     });
   });
 }
@@ -275,13 +279,28 @@ chrome.downloads.onChanged.addListener(async d => {
 
 // The chosen download folder (File System Access handle). While the browser has not granted access the job waits, and the progress window asks the user.
 async function refreshFolder() {
+  if (IS_ANDROID) { S.folder = { set: true, name: 'Downloads', permission: 'granted', android: true }; return null; }
   const root = await getRoot();
   S.folder = { set: !!root, name: root ? root.name : '', permission: root ? await permission(root) : 'none' };
   broadcastSoon();
   return root;
 }
 
+// Android: straight to Downloads/Ultimate SN Downloader/... (or the sub-folder from the settings), with the page's
+// Referer; files below the minimum size (thumbnails, icons) are removed again.
+async function androidSave(url, relPath, referer, minBytes) {
+  const name = (S.settings.subfolder ? '' : 'Ultimate SN Downloader/') + relPath;
+  const r = await withReferer(url, referer, () => chromeDownload(url, name, true));
+  if (minBytes && r.size && r.size < minBytes) {
+    try { await chrome.downloads.removeFile(r.id); } catch (e) {}
+    try { await chrome.downloads.erase({ id: r.id }); } catch (e) {}
+    throw new Error('TOO_SMALL');
+  }
+  return r.size;
+}
+
 async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) {
+  if (IS_ANDROID) return androidSave(url, relPath, referer, minBytes);
   let root = await refreshFolder(), asked = false;
   while (!root || S.folder.permission !== 'granted') {
     if (!asked) {            // Chrome drops the folder permission when no page of the extension is open: bring the progress window back so one click re-allows it
@@ -304,6 +323,16 @@ async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) 
 
 // ------------------------------------------------------------------ progress window
 async function openManager(focus = false) {
+  if (IS_ANDROID) {            // one progress tab, reused for every download; a new one only if it was closed. Opened in the background so the gallery tab keeps scanning.
+    try {
+      const url = chrome.runtime.getURL('ui/manager.html');
+      if (S.managerTab) { try { await chrome.tabs.get(S.managerTab); if (focus) await chrome.tabs.update(S.managerTab, { active: true }); return; } catch (e) { S.managerTab = null; } }
+      const [open] = await chrome.tabs.query({ url });
+      if (open) { S.managerTab = open.id; if (focus) await chrome.tabs.update(open.id, { active: true }); return; }
+      S.managerTab = (await chrome.tabs.create({ url, active: !!focus })).id;
+    } catch (e) {}
+    return;
+  }
   try {
     if (S.managerWindow) { try { await chrome.windows.get(S.managerWindow); if (focus) await chrome.windows.update(S.managerWindow, { focused: true }); return; } catch (e) { S.managerWindow = null; } }
     const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/manager.html'), type: 'popup', width: 520, height: 700, focused: focus });
@@ -320,6 +349,7 @@ async function openFolderWindow() {
 }
 chrome.windows.onRemoved.addListener(id => { if (id === folderWindow) folderWindow = null; });
 chrome.windows.onRemoved.addListener(id => { if (id === S.managerWindow) S.managerWindow = null; });
+chrome.tabs.onRemoved.addListener(id => { if (id === S.managerTab) S.managerTab = null; });
 
 // ------------------------------------------------------------------ Image Host Grabber
 let ihLoaded = null, ruleSeq = 20000;

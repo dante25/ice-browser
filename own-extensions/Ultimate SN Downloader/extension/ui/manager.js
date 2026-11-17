@@ -34,6 +34,7 @@ function render() {
   const t = state.totals || { bytes: 0 };
   $('totals').textContent = 'Total downloaded: ' + Object.keys(SITES).filter(k => t[k]).map(k => SITES[k].name + ' ' + t[k]).join(' · ') + (Object.keys(SITES).some(k => t[k]) ? ' · ' : '') + fmtB(t.bytes || 0);
   const f = state.folder || {};
+  $('folderBtn').hidden = !!f.android;           // Android: always Downloads, nothing to choose
   $('folderBtn').textContent = f.set ? '📁 ' + (f.name || 'Folder') : '📁 Choose folder';
   const ban = $('folderBan');
   if (!f.set) { ban.hidden = false; ban.innerHTML = '<span><b>Choose where to save the files.</b> The extension writes straight into that folder, so nothing shows up in Chrome\'s download list.</span><button id="fb_choose" class="primary">Choose folder…</button>'; }
