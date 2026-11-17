@@ -17,7 +17,9 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [~] ~~Ekstenzije u bookmark baru~~ OTKAZANO (korisnik 2026-11-17): ekstenzije su u bočnom panelu, u bookmark bar se ne dodaje ništa
 - [ ] Password manager: lokalno spremište, "Sačuvati šifru?", popunjavanje, lista šifri, uvoz/izvoz CSV
 - [ ] Ice nova kartica (ice-32 / ice-newtab) umjesto Chromiumove nativne
-- [ ] Uvoz iz drugog browsera na Androidu: iz fajlova (bookmarks HTML, šifre CSV)
+- [x] Uvoz na Androidu: bookmarks iz HTML fajla (android/overlay/addons/ice-uvoz; test: folderi zadržani, javascript: linkovi odbijeni)
+- [ ] Uvoz šifri iz CSV fajla (u password manageru)
+- [ ] Popup SN Downloadera i Video Sniffera: ostaje otvoren (i pri prelasku na drugi tab), zatvara se SAMO na X / Cancel, nikad tapom na prazan dio stranice
 - [ ] Keep-alive po tabu (meni taba, zadano isključeno)
 - [x] SN Downloader 0.13.3 (u repou)
 - [x] Video Sniffer 1.2.3: bez ikakvog ograničenja veličine (i YouTube spajanje ide preko diska)
