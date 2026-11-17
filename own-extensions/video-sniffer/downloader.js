@@ -234,7 +234,6 @@ const YT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.
 const CHUNK = 9.5e6;
 const IDLE_MS = 15000;
 const MAX_TRIES = 6;
-const MERGE_LIMIT = 1.5e9;
 
 async function downloadMerge() {
   const streams = [
@@ -243,7 +242,6 @@ async function downloadMerge() {
   ];
   if (streams.some((s) => !s.size)) throw new Error('YouTube did not report the stream size; use yt-dlp instead.');
   const total = streams.reduce((n, s) => n + s.size, 0);
-  if (total > MERGE_LIMIT) throw new Error('Larger than 1.5 GB: too big to join video and sound on this device.');
 
   await setReferer();
   await chrome.declarativeNetRequest.updateSessionRules({
@@ -338,28 +336,52 @@ async function downloadMerge() {
     }
   };
 
+  // Each stream goes to its own temporary file on disk (origin private file system): no size limit.
+  const root = await navigator.storage.getDirectory();
+  for await (const name of root.keys()) if (name.startsWith('vs-') && name.endsWith('.part')) await root.removeEntry(name).catch(() => {});
+  const stamp = Date.now();
+  const tmpNames = streams.map((_, i) => `vs-${stamp}-${i}.part`);
   const fetchAll = async ({ url, size }, i) => {
     const x = info[i];
-    const out = new Uint8Array(size);
-    for (let from = 0; from < size; from += CHUNK) {
-      const to = Math.min(from + CHUNK, size) - 1;
-      out.set(await fetchRange(x, url, from, to), from);
+    const fh = await root.getFileHandle(tmpNames[i], { create: true });
+    const w = await fh.createWritable();
+    try {
+      for (let from = 0; from < size; from += CHUNK) {
+        const to = Math.min(from + CHUNK, size) - 1;
+        await w.write(await fetchRange(x, url, from, to));
+      }
+      await w.close();
+    } catch (e) {
+      await w.abort().catch(() => {});
+      throw e;
     }
     x.done = true;
-    return out;
+    return fh.getFile();
   };
-  let video, audio;
+  let blobUrl = '';
   try {
-    [video, audio] = await Promise.all(streams.map(fetchAll));
+    let files;
+    try {
+      files = await Promise.all(streams.map(fetchAll));
+    } finally {
+      clearInterval(tick);
+    }
+    show();
+    status('Merging video and audio…');
+    const blob = files.length > 1 ? await mergeFmp4Files(files[0], files[1]) : files[0];
+    blobUrl = URL.createObjectURL(blob);
+    status('Saving to Downloads…');
+    const id = await chrome.downloads.download({ url: blobUrl, filename: `${baseName}.mp4`, conflictAction: 'uniquify' });
+    for (;;) {
+      await new Promise((res) => setTimeout(res, 700));
+      const [d] = await chrome.downloads.search({ id });
+      if (!d || d.state === 'complete') break;
+      if (d.state === 'interrupted') throw new Error(`Saving failed: ${d.error}`);
+    }
   } finally {
-    clearInterval(tick);
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    for (const n of tmpNames) await root.removeEntry(n).catch(() => {});
   }
-  show();
-  status('Merging video and audio…');
-  const blob = audio ? mergeFmp4(video, audio) : new Blob([video], { type: 'video/mp4' });
-  const blobUrl = URL.createObjectURL(blob);
-  await chrome.downloads.download({ url: blobUrl, filename: `${baseName}.mp4`, conflictAction: 'uniquify' });
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   $('cancel').hidden = true;
   status('Done. Saved to your Downloads folder.');
 }
