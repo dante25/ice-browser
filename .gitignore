@@ -13,6 +13,8 @@ permissions.json
 exceptions.json
 guardian.json
 extensions/
+# ...but not the Android overlay (Chromium source folders named extensions)
+!android/overlay/files/**/extensions/
 ice-features/ice-sidebar/features.json
 dist/
 
