@@ -54,3 +54,10 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
 1. Kompajl (part-03 do part-08) se dovrši bez promjena u kodu.
 2. Dok kompajl traje, sučelje se ne piše. Korisnik prikuplja izmjene za sučelje i pozadinsko ponašanje (osnovno je isto kao desktop, plus sitnice).
 3. Tek kad korisnik pošalje popis, počinje rad na sučelju.
+
+## Android: traka za ekstenzije ispod adresne trake (zahtjev 2026-11-17)
+- Posebna traka odmah ispod adresne trake, visine kao adresna traka ili malo tanja, sa ikonama svih ekstenzija (klizi lijevo/desno ako ih ima više).
+- Tap na ekstenziju: za obične ekstenzije popup odozdo (donji panel) sa svim opcijama ekstenzije.
+- SN Downloader i Video Sniffer: plutajući popup preko sadržaja stranice (YouTube, galerije). Ostaje otvoren dok se skida i kad se prelazi s taba na tab. Zatvara se SAMO na X / Cancel, nikad tapom na prazan dio stranice (da se slučajno ne prekine).
+- Izvedba: kao Chromiumova traka za oznake (TopControlLayer u TopControlsStacker, ista mehanika skrolanja s adresnom trakom); popup sadržaj isti kao sada (ExtensionActionPopupContents).
+- Redoslijed: prvo provjeriti na telefonu da se popupi uopšte otvaraju (APK iz run 44016894226), pa onda traka.
