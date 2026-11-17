@@ -72,3 +72,9 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
   2. Spremanje ("Sačuvati šifru?", save_update_password_message_delegate) i popunjavanje: postoje, rade sa bilo kojim spremištem; provjeriti da ništa ne traži GMS.
   3. Postavke -> Password Manager: novi ekran (lista, pretraga, prikaz/izmjena/brisanje, uvoz/izvoz CSV) preko PasswordStoreBridge, umjesto otvaranja Googleovog ekrana (CredentialManagerLauncher / PasswordManagerHelper).
   4. Prikaz šifre tek nakon otključavanja ekrana (biometrija/PIN), kao u Chromeu.
+
+## Android: nalazi s telefona (2026-11-17, APK iz run 44016894226)
+- Popupi ekstenzija se sad otvaraju (ispravka ExtensionActionListMediator radi).
+- Ekstenzije u traci (izmjena zahtjeva): umjesto posebne trake, ikone 3-4 korištene ekstenzije u bookmark baru, desno u ćošku; sve ostale ostaju u meniju ekstenzija (slagalica). Prekidač u postavkama za tu traku (Izgled, pored "Show bookmarks bar").
+- Uvoz iz drugog browsera ne radi: "Access to native messaging is unauthorized". Android nema native messaging, a podaci drugih browsera su zaključani u njihovim aplikacijama. Na Androidu uvoz mora ići iz fajlova (bookmarks HTML, šifre CSV - šifre tek kad proradi password manager).
+- Video Sniffer: neki YouTube videi zapnu (npr. 19.0/28.3 MB, bez poruke "retrying"). Sumnja: Android zamrzava tab s preuzimanjem kad se pređe na drugi tab (tajmeri i fetch stoje). Rješenje: preuzimanje premjestiti iz taba u pozadinu ekstenzije.
