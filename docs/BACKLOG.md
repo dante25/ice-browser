@@ -62,3 +62,8 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
 - Izvedba: kao Chromiumova traka za oznake (TopControlLayer u TopControlsStacker, ista mehanika skrolanja s adresnom trakom); popup sadržaj isti kao sada (ExtensionActionPopupContents).
 - Postavke: prekidači "Traka za ekstenzije" i "Bookmark bar" (korisnik ga tako zove; ne "oznake"), svaki se uključuje/isključuje po potrebi, da trake ne zauzimaju ekran kad ne trebaju. Chromium bookmark bar na telefonu ne nudi (samo tablet/desktop): treba je omogućiti i na telefonu.
 - Redoslijed: prvo provjeriti na telefonu da se popupi uopšte otvaraju (APK iz run 44016894226), pa onda traka.
+
+## Android: Password Manager (prijava 2026-11-17)
+- Chromium 156 na Androidu nema lokalno čuvanje šifri: `CreatePasswordStoreBackend` na Androidu koristi samo Google Play Services backend ("internal backend", postoji samo u Google Chromeu). Bez njega dobija prazan backend, a UI traži "update Google Play Services". Ažuriranje GMS-a ne pomaže. `login_database.cc` i `password_store_built_in_backend.cc` se na Androidu ni ne kompajliraju (BUILD.gn, `is_android` grana).
+- Odmah upotrebljivo: Postavke → Autofill → "Autofill using another service" + Android-ov autofill servis (Bitwarden, KeePassDX, Proton Pass…), bez Googlea.
+- Vlastiti Ice password manager na Androidu (lokalno, šifrovano): vratiti LoginDatabase + built-in backend na Android, spremanje/popunjavanje i listu šifri u postavkama. Veći posao; čeka odluku korisnika.
