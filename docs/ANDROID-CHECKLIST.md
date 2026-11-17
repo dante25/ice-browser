@@ -12,8 +12,8 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] Ugrađene ekstenzije vidljive u meniju ekstenzija (build 44110016419)
 
 ## Za ovaj build
-- [ ] Ice panel kao desktop (ice-20/21): traka s ikonama na DESNOJ strani (meni, bookmarks, historija, preuzimanja, Funkcije), panel preko stranice; na uskom ekranu iz dugmeta
-- [ ] Funkcije u panelu: sve ugrađene ekstenzije i dodaci, tap = njen popup
+- [x] Ice panel kao desktop (ice-20/21): traka s ikonama na DESNOJ strani (meni, bookmarks, historija, preuzimanja, Funkcije), panel preko stranice; na uskom ekranu iz dugmeta (kod: IceSidePanel.java, pregledan za kompajliranje)
+- [x] Funkcije u panelu: sve ugrađene ekstenzije i dodaci, tap = njen popup
 - [~] ~~Ekstenzije u bookmark baru~~ OTKAZANO (korisnik 2026-11-17): ekstenzije su u bočnom panelu, u bookmark bar se ne dodaje ništa
 - [ ] Password manager: lokalno spremište, "Sačuvati šifru?", popunjavanje, lista šifri, uvoz/izvoz CSV
 - [ ] Ice nova kartica (ice-32 / ice-newtab) umjesto Chromiumove nativne
@@ -22,7 +22,7 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] SN Downloader 0.13.3 (u repou)
 - [x] Video Sniffer 1.2.3: bez ikakvog ograničenja veličine (i YouTube spajanje ide preko diska)
 - [x] Panel napisan: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java + BUILD.gn (overlay); provjera tek u buildu
-- [ ] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene
+- [x] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene - DA: SN Downloader, Video Sniffer, Multiselect (ice-36), isto kao desktop ice-10
 
 ## Prijave s telefona 2026-11-17 (večer)
 - [x] (kod napisan, ExternalNavigationHandler.java overlay) Prijava na YouTube/Google u Iceu otvara Chrome umjesto taba u Iceu: Google prijava (accounts.google.com), YouTube i intent:// linkovi prema drugim browserima moraju ostati u Iceu (ExternalNavigationHandler / ExternalNavigationDelegateImpl).

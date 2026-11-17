@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uvoz iz drugog browsera</title>
+<link rel="stylesheet" href="uvoz.css">
+</head>
+<body>
+<h1>Uvoz iz drugog browsera</h1>
+<div id="last" hidden></div>
+
+<h2>Bookmarks</h2>
+<p class="note">U drugom browseru izvezi bookmarks u HTML fajl (Chrome: Bookmarks → ⋮ → Izvezi; Firefox: Bookmarks → Upravljaj → Uvoz i rezervna kopija → Izvezi u HTML), pa ga ovdje odaberi.</p>
+<label class="pick"><input type="file" id="bm" accept=".html,.htm,text/html"> <span>Odaberi HTML fajl…</span></label>
+<p class="note" id="bmNote"></p>
+
+<h2>Lozinke</h2>
+<p class="note">U drugom browseru izvezi lozinke u CSV fajl (Chrome: Upravitelj lozinki → Postavke → Izvezi; Firefox: Lozinke → ⋯ → Izvezi). Uvoz: Ice postavke → Upravitelj lozinki → ⋮ → Uvoz lozinki (CSV).</p>
+
+<p class="note">Podaci se dodaju postojećim, ništa se ne briše.</p>
+<script src="uvoz.js"></script>
+</body>
+</html>

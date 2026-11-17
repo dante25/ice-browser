@@ -50,6 +50,11 @@ for d in sorted(os.listdir(os.path.join(repo, 'dodaci'))):
     if os.path.isfile(os.path.join(repo, 'dodaci', d, 'manifest.json')):
         assert d not in ADDONS, 'duplicate add-on name ' + d
         ADDONS[d] = 'dodaci/' + d
+# Android versions of add-ons that cannot work as on the desktop (android/overlay/addons/<name>):
+# ice-uvoz reads other browsers through a desktop program (native messaging); on Android it imports files.
+for d in sorted(os.listdir(os.path.join(repo, 'android/overlay/addons'))):
+    assert d in ADDONS, 'android add-on without a desktop one: ' + d
+    ADDONS[d] = 'android/overlay/addons/' + d
 
 entries = []   # (destination under <app data>/ice, source file)
 def walk(kind, name, src, skip_top=(), base=repo):
