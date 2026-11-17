@@ -89,7 +89,8 @@
   // ---------- Pronalaženje velike slike ----------
   // 1) "imgres?imgurl=" link (Google ga stavlja na sličicu ili u panel); 2) najveća prava slika u panelu
   const fromImgres = (scope) => {
-    for (const a of scope.querySelectorAll('a[href*="imgurl="]')) {
+    const own = scope.matches && scope.matches('a[href*="imgurl="]') ? [scope] : [];   // the tile itself can be the link
+    for (const a of [...own, ...scope.querySelectorAll('a[href*="imgurl="]')]) {
       try {
         const u = new URL(a.href, location.href);
         const img = u.searchParams.get('imgurl');
@@ -107,7 +108,10 @@
 
   function findFull(thumb) {
     const tile = clickable(thumb);
-    const quick = fromImgres(tile) || fromImgres(tile.parentElement || tile);
+    // the tile's own link, or the one next to it - not the whole grid (that would give the first tile's image)
+    const parent = tile.parentElement;
+    const near = parent && parent.querySelectorAll('img').length <= 1 ? fromImgres(parent) : null;
+    const quick = fromImgres(tile) || near;
     if (quick) return Promise.resolve(quick);
     return new Promise((resolve) => {
       const t0 = Date.now();

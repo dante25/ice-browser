@@ -11,6 +11,7 @@ NONSTOP = 'chrome-extensions/youtube-nonstop/'
 HIDECARDS = 'chrome-extensions/hide-labels-and-end-cards-on-youtube/'
 SHOT = 'chrome-extensions/screenshot-youtube/'
 MULTI = 'chrome-extensions/multiselect-for-youtube/'
+GIMG = 'ice-features/google-images-viewer/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -102,6 +103,23 @@ PATCHES = {
     MULTI + 'js/content.js': [
         ('function u(e){const{type:t,value:o}=e;if("command"===t)c(t,o)}',
          'function u(e,x,r){const{type:t,value:o}=e;if("ice-ms-state"===t){r({on:!!document.querySelector("#msfy-video-checkbox")});return}if("command"===t)c(t,o)}'),
+    ],
+    # Google Images viewer: the same page address on the phone (www.google.com), and the viewer does not
+    # depend on Google's internal names, so it already runs on mobile Google; only the layout was for a
+    # wide screen (64px sides, big arrows). Phone layout for narrow windows.
+    GIMG + 'viewer.css': [
+        ('#ice-viewer .ice-next{right:0}',
+         '#ice-viewer .ice-next{right:0}\n'
+         '/* Ice (Android): narrow screen */\n'
+         '@media (max-width:600px){'
+         '#ice-viewer .ice-wrap{inset:0 6px;gap:10px}'
+         '#ice-viewer img.ice-main{max-height:calc(100vh - 210px)}'
+         '#ice-viewer .ice-title{font-size:17px;-webkit-line-clamp:2}'
+         '#ice-viewer .ice-domain{font-size:14px;margin-bottom:12px}'
+         '#ice-viewer .ice-count{margin-top:12px}'
+         '#ice-viewer .ice-close{top:8px;right:8px}'
+         '#ice-viewer .ice-nav{width:34px;height:72px;line-height:72px;font-size:30px;background:rgba(60,60,60,.6)}'
+         '}'),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
