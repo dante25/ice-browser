@@ -62,3 +62,4 @@ Svaka zakrpa je provjerena na izvornom kodu 156.0.8078.79 tačno onako kako ga g
 - `DownloadSnackbarController.java`: `ChromeActivity` u 156 nije generička klasa (`instanceof ChromeActivity<?>` nije kompajlirao).
 - `IceColorMode.java`: `getMode()` bez vraćanja vrijednosti koja može biti null (NullAway).
 Pri sljedećoj gradnji od nule prebaciti ih u `ice-31`/`ice-37` i obrisati odavde.
+- `ExtensionActionListMediator.java` (2026-11-17): popup ekstenzije se kačio samo za dugme ekstenzije u traci; na telefonu za njega nema mjesta, pa tap nije radio ništa. Sad se kači za područje ekstenzija u traci (ili sadržaj), uz rezervni poziv nakon 300 ms.

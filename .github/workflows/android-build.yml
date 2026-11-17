@@ -123,6 +123,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-02:
     runs-on: ubuntu-latest
@@ -158,6 +175,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-03:
     runs-on: ubuntu-latest
@@ -193,6 +227,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-04:
     runs-on: ubuntu-latest
@@ -228,6 +279,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-05:
     runs-on: ubuntu-latest
@@ -263,6 +331,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-06:
     runs-on: ubuntu-latest
@@ -298,6 +383,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-07:
     runs-on: ubuntu-latest
@@ -333,6 +435,23 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
 
   part-08:
     runs-on: ubuntu-latest
@@ -368,3 +487,20 @@ jobs:
           threads: ${{ inputs.threads || 0 }}
           keystore_b64: ${{ secrets.KEYSTORE_B64 }}
           keystore_pass: ${{ secrets.KEYSTORE_PASS }}
+      # Ice: also keep the tree of a finished build, so that a later fix (source_run_id = this run)
+      # recompiles only what it changes instead of hours from the last unfinished part.
+      - name: Pack finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        shell: bash
+        env:
+          UGC_WORK: /mnt/ugc
+        run: .github/scripts/hosted-export.sh
+      - name: Save finished build tree
+        if: steps.stage.outputs.status == 'completed'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-tree-${{ env.ARCH }}
+          path: build-tree.tar.zst
+          retention-days: 3
+          overwrite: true
+          compression-level: 0
