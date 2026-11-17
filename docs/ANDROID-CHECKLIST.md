@@ -26,5 +26,5 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [ ] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene
 
 ## Prijave s telefona 2026-11-17 (večer)
-- [ ] Prijava na YouTube/Google u Iceu otvara Chrome umjesto taba u Iceu: Google prijava (accounts.google.com), YouTube i intent:// linkovi prema drugim browserima moraju ostati u Iceu (ExternalNavigationHandler / ExternalNavigationDelegateImpl).
+- [x] (kod napisan, ExternalNavigationHandler.java overlay) Prijava na YouTube/Google u Iceu otvara Chrome umjesto taba u Iceu: Google prijava (accounts.google.com), YouTube i intent:// linkovi prema drugim browserima moraju ostati u Iceu (ExternalNavigationHandler / ExternalNavigationDelegateImpl).
 - [ ] YouTube ugrađene ekstenzije moraju raditi i na MOBILNOM YouTubeu (m.youtube.com), ne samo u desktop načinu: Android varijante tih ekstenzija (originali ostaju netaknuti za desktop), redom: Default Quality Adjuster, Permanent Progress Bar, YouTube NonStop, Hide Labels/End Cards, Screenshot, Multiselect, Adblock for YouTube (provjeriti).
