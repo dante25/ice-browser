@@ -9,6 +9,7 @@ build stops.
 PROGRESS = 'chrome-extensions/permanent-progress-bar-for-youtube/'
 NONSTOP = 'chrome-extensions/youtube-nonstop/'
 HIDECARDS = 'chrome-extensions/hide-labels-and-end-cards-on-youtube/'
+SHOT = 'chrome-extensions/screenshot-youtube/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -45,6 +46,43 @@ PATCHES = {
     HIDECARDS + 'src/service-worker.min.js': [
         ('chrome.tabs.query({url:"*://www.youtube.com/*"}', 'chrome.tabs.query({url:["*://www.youtube.com/*","*://m.youtube.com/*"]}'),
         ('n.url.includes("https://www.youtube.com/")', '(n.url.includes("https://www.youtube.com/")||n.url.includes("https://m.youtube.com/"))'),
+    ],
+    # Screenshot YouTube: ran only on www.youtube.com and put its button into the desktop player's control
+    # bar (.ytp-right-controls), which the mobile player does not have. Mobile: its own small bar in the
+    # top left corner of the player (also in fullscreen), the title from the page title.
+    SHOT + 'manifest.json': [
+        ('"matches": [ "https://www.youtube.com/*" ]', '"matches": [ "https://www.youtube.com/*", "https://m.youtube.com/*" ]'),
+    ],
+    SHOT + 'page.js': [
+        ("'use strict';\n",
+         "'use strict';\n\n"
+         "// Ice (Android): own button bar on the mobile player\n"
+         "function iceMobileBar() {\n"
+         "\tif (location.hostname !== 'm.youtube.com' || !/^\\/(watch|shorts)/.test(location.pathname)) return null;\n"
+         "\tvar mp = document.getElementById('movie_player');\n"
+         "\tif (!mp) return null;\n"
+         "\tvar bar = mp.querySelector('.ice-syt-bar');\n"
+         "\tif (!bar) {\n"
+         "\t\tbar = document.createElement('div');\n"
+         "\t\tbar.className = 'ice-syt-bar';\n"
+         "\t\tmp.appendChild(bar);\n"
+         "\t}\n"
+         "\treturn bar;\n"
+         "}\n"),
+        ('screenshotButton.innerHTML = "Screenshot";',
+         'screenshotButton.innerHTML = location.hostname === "m.youtube.com" ? "\\u{1F4F7}" : "Screenshot";'),
+        ("\t\t\ttitle = '';", "\t\t\ttitle = document.title.replace(/ - YouTube$/, '').trim();"),
+        ('var ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0];',
+         'var ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0] || iceMobileBar();'),
+        ('let ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0];\n\t\tif (ytpRightControls && isAppended === false) {',
+         'let ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0] || iceMobileBar();\n\t\tif (ytpRightControls && (isAppended === false || !ytpRightControls.contains(screenshotButton))) {'),
+    ],
+    SHOT + 'style.css': [
+        ('.SYText {',
+         '/* Ice (Android): mobile player bar */\n'
+         '.ice-syt-bar {\n\tposition: absolute;\n\ttop: 6px;\n\tleft: 6px;\n\tz-index: 60;\n\tdisplay: flex;\n\tgap: 4px;\n}\n'
+         '.ice-syt-bar button {\n\tbackground: rgba(0, 0, 0, 0.55);\n\tcolor: #fff;\n\tborder: 0;\n\tborder-radius: 6px;\n\tpadding: 4px 8px;\n\tfont-size: 16px;\n\tline-height: 1.2;\n\twidth: auto !important;\n}\n\n'
+         '.SYText {'),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
