@@ -7,6 +7,7 @@ build stops.
 """
 
 PROGRESS = 'chrome-extensions/permanent-progress-bar-for-youtube/'
+NONSTOP = 'chrome-extensions/youtube-nonstop/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -22,6 +23,18 @@ PATCHES = {
     PROGRESS + 'data/inject/isolated.js': [
         ("addEventListener('yt-navigate-finish', () => { // top frame",
          "addEventListener('state-navigateend', () => observe('navigation')); // Ice: m.youtube.com\naddEventListener('yt-navigate-finish', () => { // top frame"),
+    ],
+    # YouTube NonStop: ran only on www/music.youtube.com and stopped with an error on the mobile site,
+    # because it watched the desktop app element (ytd-app); the mobile app element is ytm-app.
+    NONSTOP + 'manifest.json': [
+        ('"https://www.youtube.com/*", "https://music.youtube.com/*"',
+         '"https://www.youtube.com/*", "https://m.youtube.com/*", "https://music.youtube.com/*"', 2),
+    ],
+    NONSTOP + 'autoconfirm.js': [
+        ("const appName = isYoutubeMusic ? 'ytmusic-app' : 'ytd-app';",
+         "const appName = isYoutubeMusic ? 'ytmusic-app' : (window.location.hostname === 'm.youtube.com' ? 'ytm-app' : 'ytd-app');"),
+        ("appObserver.observe(document.querySelector(appName), {",
+         "appObserver.observe(document.querySelector(appName) || document.documentElement, {"),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
