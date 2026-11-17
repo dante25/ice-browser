@@ -47,18 +47,22 @@ PATCHES = {
         ('chrome.tabs.query({url:"*://www.youtube.com/*"}', 'chrome.tabs.query({url:["*://www.youtube.com/*","*://m.youtube.com/*"]}'),
         ('n.url.includes("https://www.youtube.com/")', '(n.url.includes("https://www.youtube.com/")||n.url.includes("https://m.youtube.com/"))'),
     ],
-    # Screenshot YouTube: ran only on www.youtube.com and put its button into the desktop player's control
-    # bar (.ytp-right-controls), which the mobile player does not have. Mobile: its own small bar in the
-    # top left corner of the player (also in fullscreen), the title from the page title.
+    # Screenshot YouTube: ran only on www.youtube.com and put a "Screenshot" text button into the desktop
+    # player's control bar (.ytp-right-controls), which the mobile player does not have. Android: a camera
+    # icon in the player's control bar on both sites - desktop: .ytp-right-controls, mobile: the top bar of
+    # the player controls (shown and hidden with the controls), or an own bar in the player if YouTube
+    # changes it. The picture goes to the default download folder (Downloads), as before.
     SHOT + 'manifest.json': [
         ('"matches": [ "https://www.youtube.com/*" ]', '"matches": [ "https://www.youtube.com/*", "https://m.youtube.com/*" ]'),
     ],
     SHOT + 'page.js': [
         ("'use strict';\n",
          "'use strict';\n\n"
-         "// Ice (Android): own button bar on the mobile player\n"
+         "// Ice (Android): the mobile player's control bar\n"
          "function iceMobileBar() {\n"
          "\tif (location.hostname !== 'm.youtube.com' || !/^\\/(watch|shorts)/.test(location.pathname)) return null;\n"
+         "\tvar top = document.querySelector('#player-control-overlay .player-controls-top');\n"
+         "\tif (top) return top;\n"
          "\tvar mp = document.getElementById('movie_player');\n"
          "\tif (!mp) return null;\n"
          "\tvar bar = mp.querySelector('.ice-syt-bar');\n"
@@ -70,7 +74,9 @@ PATCHES = {
          "\treturn bar;\n"
          "}\n"),
         ('screenshotButton.innerHTML = "Screenshot";',
-         'screenshotButton.innerHTML = location.hostname === "m.youtube.com" ? "\\u{1F4F7}" : "Screenshot";'),
+         'screenshotButton.innerHTML = \'<svg viewBox="0 0 24 24" width="24" height="24" style="vertical-align:middle;fill:#fff"><path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3H9zm3 4.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>\';\n'
+         'screenshotButton.title = "Screenshot";\n'
+         'screenshotButton.setAttribute("aria-label", "Screenshot");'),
         ("\t\t\ttitle = '';", "\t\t\ttitle = document.title.replace(/ - YouTube$/, '').trim();"),
         ('var ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0];',
          'var ytpRightControls = document.getElementsByClassName("ytp-right-controls")[0] || iceMobileBar();'),
@@ -79,9 +85,11 @@ PATCHES = {
     ],
     SHOT + 'style.css': [
         ('.SYText {',
-         '/* Ice (Android): mobile player bar */\n'
+         '/* Ice (Android): camera icon in the player control bars */\n'
+         '.screenshotButton svg { pointer-events: none; }\n'
+         '.player-controls-top .screenshotButton, .ice-syt-bar .screenshotButton {\n\tbackground: transparent;\n\tborder: 0;\n\tpadding: 8px;\n\tmin-width: 40px;\n\tmin-height: 40px;\n\tz-index: 60;\n}\n'
          '.ice-syt-bar {\n\tposition: absolute;\n\ttop: 6px;\n\tleft: 6px;\n\tz-index: 60;\n\tdisplay: flex;\n\tgap: 4px;\n}\n'
-         '.ice-syt-bar button {\n\tbackground: rgba(0, 0, 0, 0.55);\n\tcolor: #fff;\n\tborder: 0;\n\tborder-radius: 6px;\n\tpadding: 4px 8px;\n\tfont-size: 16px;\n\tline-height: 1.2;\n\twidth: auto !important;\n}\n\n'
+         '.ice-syt-bar button {\n\tbackground: rgba(0, 0, 0, 0.55) !important;\n\tcolor: #fff;\n\tborder: 0;\n\tborder-radius: 6px;\n\twidth: auto !important;\n}\n\n'
          '.SYText {'),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
