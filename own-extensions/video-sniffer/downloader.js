@@ -213,7 +213,8 @@ async function downloadFile() {
 // googlevideo expects the client the URLs were issued for: inject.js passes that client's User-Agent (ua); visionOS is the default.
 const YT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 const CHUNK = 9.5e6;
-const IDLE_MS = 20000;
+const IDLE_MS = 15000;
+const MAX_TRIES = 6;
 const MERGE_LIMIT = 1.5e9;
 
 async function downloadMerge() {
@@ -243,71 +244,98 @@ async function downloadMerge() {
   $('bar').hidden = false;
   $('bar').max = total;
 
+  // Progress per stream, shown every second together with how long no data has arrived, so a
+  // stall is visible (and its cause can be told apart: no data vs. a frozen page).
   let got = 0;
   const t0 = performance.now();
+  const info = streams.map((s, i) => ({ name: streams.length > 1 ? (i ? 'audio' : 'video') : 'video', got: 0, size: s.size, last: performance.now(), attempt: 0, ctl: null, done: false }));
   const show = () => {
     $('bar').value = got;
-    const mbps = got / 1e6 / ((performance.now() - t0) / 1000);
-    status(`Downloading ${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(1)} MB · ${mbps.toFixed(1)} MB/s`);
+    const now = performance.now();
+    const mbps = got / 1e6 / ((now - t0) / 1000);
+    const parts = info.map((x) => {
+      let t = `${x.name} ${(x.got / 1e6).toFixed(1)}/${(x.size / 1e6).toFixed(1)} MB`;
+      if (!x.done) {
+        const quiet = Math.floor((now - x.last) / 1000);
+        if (quiet >= 3) t += ` (no data ${quiet} s)`;
+        if (x.attempt > 1) t += ` [try ${x.attempt}/${MAX_TRIES}]`;
+      } else t += ' ✓';
+      return t;
+    });
+    status(`Downloading ${(got / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(1)} MB · ${mbps.toFixed(1)} MB/s — ${parts.join(' · ')}`);
   };
+  // Watchdog: a range that gets no data for IDLE_MS is aborted and retried from where it stopped.
+  const tick = setInterval(() => {
+    const now = performance.now();
+    for (const x of info) if (!x.done && x.ctl && now - x.last > IDLE_MS) x.ctl.abort();
+    show();
+  }, 1000);
 
-  // One range request. If no data arrives for IDLE_MS it is retried: YouTube sometimes leaves a
-  // connection hanging, which used to freeze the download for good.
-  const fetchRange = async (url, from, to) => {
+  // One range request; a retry continues from the last byte received instead of starting the chunk again.
+  const fetchRange = async (x, url, from, to) => {
+    const out = new Uint8Array(to - from + 1);
+    let part = 0;
     for (let attempt = 1; ; attempt++) {
+      x.attempt = attempt;
       const ctl = new AbortController();
+      x.ctl = ctl;
+      x.last = performance.now();
       const stop = () => ctl.abort();
       abort.signal.addEventListener('abort', stop, { once: true });
-      let idle;
-      const bump = () => {
-        clearTimeout(idle);
-        idle = setTimeout(() => ctl.abort(), IDLE_MS);
-      };
-      let part = 0;
+      let reader;
       try {
-        bump();
         const u = new URL(url);
-        u.searchParams.set('range', `${from}-${to}`);
+        u.searchParams.set('range', `${from + part}-${to}`);
         const r = await fetch(u, { signal: ctl.signal });
         if (!r.ok) {
           const err = new Error(`HTTP ${r.status}: YouTube refused the download`);
-          err.fatal = true;
+          err.fatal = r.status !== 503 && r.status !== 500;
           throw err;
         }
-        const out = new Uint8Array(to - from + 1);
-        const reader = r.body.getReader();
+        reader = r.body.getReader();
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-          bump();
-          out.set(value, part);
-          part += value.length;
-          got += value.length;
-          show();
+          x.last = performance.now();
+          const n = Math.min(value.length, out.length - part);
+          out.set(n === value.length ? value : value.subarray(0, n), part);
+          part += n;
+          x.got += n;
+          got += n;
+          if (part >= out.length) break;
         }
-        if (part !== out.length) throw new Error('Incomplete chunk');
+        if (part !== out.length) throw new Error('connection closed early');
+        reader.cancel().catch(() => {});
         return out;
       } catch (e) {
-        got -= part;
+        if (reader) reader.cancel().catch(() => {});
         if (abort.signal.aborted || e.fatal) throw e;
-        if (attempt >= 3) throw new Error(`YouTube stopped sending data at ${(got / 1e6).toFixed(1)} MB (3 attempts): ${e.message}`);
-        status(`Connection stalled at ${(got / 1e6).toFixed(1)} MB, retrying (${attempt}/3)…`);
+        if (attempt >= MAX_TRIES) throw new Error(`YouTube stopped sending the ${x.name} at ${(x.got / 1e6).toFixed(1)} MB (${MAX_TRIES} attempts): ${e.message}`);
+        await new Promise((res) => setTimeout(res, 1000 * attempt));
       } finally {
-        clearTimeout(idle);
         abort.signal.removeEventListener('abort', stop);
+        x.ctl = null;
       }
     }
   };
 
-  const fetchAll = async ({ url, size }) => {
+  const fetchAll = async ({ url, size }, i) => {
+    const x = info[i];
     const out = new Uint8Array(size);
     for (let from = 0; from < size; from += CHUNK) {
       const to = Math.min(from + CHUNK, size) - 1;
-      out.set(await fetchRange(url, from, to), from);
+      out.set(await fetchRange(x, url, from, to), from);
     }
+    x.done = true;
     return out;
   };
-  const [video, audio] = await Promise.all(streams.map(fetchAll));
+  let video, audio;
+  try {
+    [video, audio] = await Promise.all(streams.map(fetchAll));
+  } finally {
+    clearInterval(tick);
+  }
+  show();
   status('Merging video and audio…');
   const blob = audio ? mergeFmp4(video, audio) : new Blob([video], { type: 'video/mp4' });
   const blobUrl = URL.createObjectURL(blob);

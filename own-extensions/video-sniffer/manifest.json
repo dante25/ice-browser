@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Sniffer",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Detects videos (HLS, DASH, MP4, WebM...) by watching network traffic, page scripts, players and the DOM.",
   "permissions": [
     "webRequest",
