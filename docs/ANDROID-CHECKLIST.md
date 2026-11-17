@@ -28,3 +28,6 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 ## Prijave s telefona 2026-11-17 (večer)
 - [x] (kod napisan, ExternalNavigationHandler.java overlay) Prijava na YouTube/Google u Iceu otvara Chrome umjesto taba u Iceu: Google prijava (accounts.google.com), YouTube i intent:// linkovi prema drugim browserima moraju ostati u Iceu (ExternalNavigationHandler / ExternalNavigationDelegateImpl).
 - [ ] YouTube ugrađene ekstenzije moraju raditi i na MOBILNOM YouTubeu (m.youtube.com), ne samo u desktop načinu: Android varijante tih ekstenzija (originali ostaju netaknuti za desktop), redom: Default Quality Adjuster, Permanent Progress Bar, YouTube NonStop, Hide Labels/End Cards, Screenshot, Multiselect, Adblock for YouTube (provjeriti).
+- [x] Mehanizam za Android verzije ugrađenih ekstenzija: android/overlay/builtins/mobile_patches.py (kopije, originali netaknuti, kontrolne sume od kopija)
+- [x] Default Quality Adjuster na m.youtube.com (test s lažnom mobilnom stranicom: original ostaje medium, Android verzija postavi hd720)
+- [ ] Permanent Progress Bar, YouTube NonStop, Hide Labels/End Cards, Screenshot, Multiselect na m.youtube.com

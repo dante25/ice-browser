@@ -17,7 +17,27 @@ repo, out = sys.argv[1], sys.argv[2]
 spec = importlib.util.spec_from_file_location('gen', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'))
 gen = importlib.util.module_from_spec(spec); spec.loader.exec_module(gen)
 ext = os.path.join(out, 'chrome/browser/extensions'); os.makedirs(ext, exist_ok=True)
-subprocess.run([sys.executable, '-I', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'), repo,
+
+# Android versions of the built-ins: copies of the desktop sources (which stay unchanged) with the changes in
+# mobile_patches.py (the YouTube built-ins must also work on m.youtube.com). Every change must match exactly
+# once, so an update of an original fails here instead of silently shipping a broken extension. The
+# SHA-256 list compiled into the browser is made from these copies.
+import tempfile
+stage = tempfile.mkdtemp(prefix='ice-android-builtins-')
+for name, src in gen.BUILTINS.items():
+    shutil.copytree(os.path.join(repo, src), os.path.join(stage, src))
+spec2 = importlib.util.spec_from_file_location('mobile_patches', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mobile_patches.py'))
+mp = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(mp)
+for rel, changes in mp.PATCHES.items():
+    f = os.path.join(stage, rel)
+    text = open(f, encoding='utf-8').read()
+    for old, new in changes:
+        n = text.count(old)
+        if n != 1: sys.exit(f'mobile patch for {rel}: expected the original text once, found {n}: {old[:80]!r}')
+        text = text.replace(old, new)
+    open(f, 'w', encoding='utf-8').write(text)
+print(f'{sum(len(c) for c in mp.PATCHES.values())} mobile change(s) in {len(mp.PATCHES)} file(s)')
+subprocess.run([sys.executable, '-I', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'), stage,
                 os.path.join(ext, 'ice_builtins_files.inc')], check=True)
 
 # Add-ons: the same list as core-build/package-deb.sh (tests/ and README.md at the top are not shipped)
@@ -30,8 +50,8 @@ for d in sorted(os.listdir(os.path.join(repo, 'dodaci'))):
         ADDONS[d] = 'dodaci/' + d
 
 entries = []   # (destination under <app data>/ice, source file)
-def walk(kind, name, src, skip_top=()):
-    root = os.path.join(repo, src)
+def walk(kind, name, src, skip_top=(), base=repo):
+    root = os.path.join(base, src)
     if not os.path.isfile(os.path.join(root, 'manifest.json')): sys.exit('missing manifest: ' + root)
     if kind == 'dodaci':   # unpacked extensions: Chromium refuses names starting with "_" except _locales
         bad = [os.path.join(dp, n) for dp, dns, fns in os.walk(root) for n in dns + fns if n.startswith('_') and n != '_locales']
@@ -44,7 +64,7 @@ def walk(kind, name, src, skip_top=()):
             full = os.path.join(dp, fn)
             if os.path.islink(full): sys.exit('symlink not allowed: ' + full)
             entries.append((f'{kind}/{name}/' + os.path.relpath(full, root).replace(os.sep, '/'), full))
-for name in sorted(gen.BUILTINS): walk('ice-builtins', name, gen.BUILTINS[name])
+for name in sorted(gen.BUILTINS): walk('ice-builtins', name, gen.BUILTINS[name], base=stage)
 for name in sorted(ADDONS): walk('dodaci', name, ADDONS[name], skip_top=('tests', 'README.md'))
 
 adir = os.path.join(out, 'chrome/android/ice_assets'); shutil.rmtree(adir, ignore_errors=True)
