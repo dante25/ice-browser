@@ -84,7 +84,7 @@ jobs:
         with:
           name: build-tree-${{ env.ARCH }}
           path: build-tree.tar.zst
-          retention-days: 1
+          retention-days: 3
           overwrite: true
           compression-level: 0
 

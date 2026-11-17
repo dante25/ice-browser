@@ -50,4 +50,10 @@ GN='  buildtools/linux64/gn gen "${output_folder}" --fail-on-unused-args'
 sed -i "\\|^  buildtools/linux64/gn gen \"\${output_folder}\" --fail-on-unused-args\$|a\\  bash ../ice-android/compile-check.sh" build.sh
 grep -q '^  bash ../ice-android/compile-check.sh$' build.sh || { echo "build.sh: compile check not inserted" >&2; exit 1; }
 
+# 4) keep unfinished build trees 3 days instead of 1 (upstream build-stage action), so a failed
+#    part can still be resumed the next day; not part of the build fingerprint
+if [ -f .github/actions/build-stage/action.yml ]; then
+  sed -i 's/^\(        retention-days: \)1$/\13/' .github/actions/build-stage/action.yml
+fi
+
 echo "Ice overlay applied: $n patch(es), $(wc -l < /tmp/ice-flags.gn) GN arg line(s)"
