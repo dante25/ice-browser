@@ -45,7 +45,7 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
   - [x] YouTube ugrađene (osim Multiselecta, vidi dolje), Adblock, Video Sniffer, Ice Shield, Hide Anything, Search by image, Back with backspace, Right click: rade na svim sajtovima
   - [x] Google Images pregled: radi i na mobilnom Googleu; raspored za telefon; ispravljena greška (tapnuta slika je prikazivala prvu sliku)
   - [x] SN Downloader: Instagram, X, DeviantArt, Flickr su isti sajt na telefonu
-  - [ ] SN Downloader na m.facebook.com: skeniranje u radnom tabu na desktop Facebooku (isti login), bez testa ovdje (Facebook nedostupan iz ovog okruženja)
+  - [x] SN Downloader na m.facebook.com (0.13.4): skeniranje u radnom tabu na desktop Facebooku (isti login); test s lažnim Facebookom (pravi nedostupan odavde)
   - [ ] Webmail Ad Blocker na mobilnom Gmailu/Outlooku/Yahoo: treba prava mobilna stranica (nedostupna ovdje); do tada radi u "Desktop site"
   - [ ] Multiselect na m.youtube.com (vezan za desktop sučelje YouTubea; radi u "Desktop site")
 - [x] Screenshot: ikona aparata u traci kontrola playera (mobilni i desktop YouTube), slika u zadani folder (Downloads)
