@@ -39,3 +39,17 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] Multiselect for YouTube: vezan za desktop sučelje (masthead, guide, desktop mreže) - radi u "Desktop site" načinu
 - [x] YouTube se više NE otvara prisilno kao desktop stranica (to je bilo privremeno); "Desktop site" ostaje u meniju
 - [x] .gitignore pravilo extensions/ je skrivalo overlay fajlove (side panel, popup fix) - sada su u repozitoriju i pregledani za kompajliranje
+
+## Zahtjevi 2026-11-17 (noć)
+- [ ] Ekstenzije moraju raditi na SVAKOM mobilnom sajtu kao na desktopu (ne samo m.youtube.com):
+  - [x] YouTube ugrađene (osim Multiselecta, vidi dolje), Adblock, Video Sniffer, Ice Shield, Hide Anything, Search by image, Back with backspace, Right click: rade na svim sajtovima
+  - [x] Google Images pregled: radi i na mobilnom Googleu; raspored za telefon; ispravljena greška (tapnuta slika je prikazivala prvu sliku)
+  - [x] SN Downloader: Instagram, X, DeviantArt, Flickr su isti sajt na telefonu
+  - [ ] SN Downloader na m.facebook.com: skeniranje u radnom tabu na desktop Facebooku (isti login), bez testa ovdje (Facebook nedostupan iz ovog okruženja)
+  - [ ] Webmail Ad Blocker na mobilnom Gmailu/Outlooku/Yahoo: treba prava mobilna stranica (nedostupna ovdje); do tada radi u "Desktop site"
+  - [ ] Multiselect na m.youtube.com (vezan za desktop sučelje YouTubea; radi u "Desktop site")
+- [x] Screenshot: ikona aparata u traci kontrola playera (mobilni i desktop YouTube), slika u zadani folder (Downloads)
+- [x] Multiselect: prekidač "Odabir više videa" u meniju ekstenzije
+- [x] Password manager C++: lokalna baza (kao desktop) umjesto Google Play backenda, "Sačuvati šifru?" + popunjavanje uključeni
+- [ ] Password manager: lista šifri (pregled uz otisak/PIN, brisanje, uvoz/izvoz CSV)
+
