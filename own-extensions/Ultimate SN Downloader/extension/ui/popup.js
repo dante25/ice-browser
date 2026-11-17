@@ -20,6 +20,12 @@ async function init() {
   syncAll();
   const onSite = tab && !!siteOfUrl(tab.url);
   if (!onSite || !/^https?:/.test(tab.url || '')) { $('title').textContent = 'Open Instagram, Facebook, X, DeviantArt or Flickr'; $('sub').textContent = 'Go to a profile, album, group, post or reel, then click again.'; $('badge').textContent = '–'; return; }
+  if (/^https:\/\/(m|mbasic|touch|mobile)\.facebook\.com\//.test(tab.url || '')) {   // mobile Facebook (phone): scan in a desktop work tab
+    $('title').textContent = 'Facebook (mobile site)'; $('sub').textContent = 'Opening this page of the desktop Facebook in a work tab…'; $('badge').textContent = 'FB';
+    const r = await sendSW({ t: 'fb:desk', url: tab.url });
+    if (!r || r.error) { $('title').textContent = 'Facebook (mobile site)'; $('sub').textContent = (r && r.error) || 'The work tab did not open.'; $('badge').textContent = '!'; return; }
+    tab = await chrome.tabs.get(r.tabId);
+  }
   desc = await sendTab({ t: 'describe' });
   if (!desc && siteOfUrl(tab.url) === 'ih') {          // any other page: Image Host Grabber is put into it on demand
     try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/common.js', 'content/ih.js', 'content/bridge.js'] }); } catch (e) { /* page not allowed */ }

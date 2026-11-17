@@ -4,6 +4,26 @@
    - builds GraphQL requests the way the sites' own code does (doc_id from the "<Query>.graphql" module, tokens from getAsyncParams)
    - answers RPC calls from the content script (which cannot see page variables) */
 (function () {
+  // The work tab for m.facebook.com (see fbDeskTab in background/sw.js): the page's script also sees a desktop browser, so Facebook
+  // keeps the desktop site in this tab. Only in the tab opened with #usd-desk (kept for the tab's later pages in sessionStorage).
+  try {
+    if (location.hostname === 'www.facebook.com' && /Android/.test(navigator.userAgent) &&
+        (location.hash === '#usd-desk' || sessionStorage.getItem('usd-desk') === '1')) {
+      sessionStorage.setItem('usd-desk', '1');
+      var ua = navigator.userAgent.replace(/\(Linux; Android[^)]*\)/, '(X11; Linux x86_64)').replace(/ Mobile(?= |$)/, '');
+      var nav = Object.getPrototypeOf(navigator);
+      Object.defineProperty(nav, 'userAgent', { get: function () { return ua; }, configurable: true });
+      Object.defineProperty(nav, 'appVersion', { get: function () { return ua.replace(/^Mozilla\//, ''); }, configurable: true });
+      Object.defineProperty(nav, 'platform', { get: function () { return 'Linux x86_64'; }, configurable: true });
+      Object.defineProperty(nav, 'maxTouchPoints', { get: function () { return 0; }, configurable: true });
+      if (navigator.userAgentData) {
+        var uad = navigator.userAgentData, proto = Object.getPrototypeOf(uad);
+        Object.defineProperty(proto, 'mobile', { get: function () { return false; }, configurable: true });
+        Object.defineProperty(proto, 'platform', { get: function () { return 'Linux'; }, configurable: true });
+      }
+      if (location.hash === '#usd-desk') history.replaceState(history.state, '', location.pathname + location.search);
+    }
+  } catch (e) {}
   if (window.__usd) return;
   var TAG = '__usd';
   var origFetch = window.fetch;

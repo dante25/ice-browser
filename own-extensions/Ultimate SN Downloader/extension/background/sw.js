@@ -353,6 +353,48 @@ async function openManager(focus = false) {
     S.managerWindow = w.id;
   } catch (e) { /* no window API in this context */ }
 }
+// ------------------------------------------------------------------ m.facebook.com (Android)
+// The phone gets the mobile Facebook (m.facebook.com), a different site without the data the scanner reads. The scan runs in one
+// work tab (reused) on the same page of www.facebook.com: only that tab asks Facebook for the desktop site (desktop browser headers
+// through a session rule bound to the tab; main_hook.js does the same for the page's script). Same login (cookies are shared).
+const FB_DESK_RULE = 8800;
+const MOBILE_FB = /^https:\/\/(m|mbasic|touch|mobile)\.facebook\.com\//;
+const desktopUA = () => navigator.userAgent.replace(/\(Linux; Android[^)]*\)/, '(X11; Linux x86_64)').replace(/ Mobile(?= |$)/, '');
+function fbDesktopUrl(u) {
+  const a = new URL(u);
+  a.hostname = 'www.facebook.com';
+  a.hash = 'usd-desk';
+  return a.href;
+}
+async function fbDeskTab(mobileUrl) {
+  const url = fbDesktopUrl(mobileUrl);
+  let t = null;
+  if (S.fbDeskTab) t = await chrome.tabs.get(S.fbDeskTab).catch(() => null);
+  if (!t) t = await chrome.tabs.create({ url: 'about:blank', active: false });
+  S.fbDeskTab = t.id;
+  await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [FB_DESK_RULE], addRules: [{ id: FB_DESK_RULE, priority: 3,
+    action: { type: 'modifyHeaders', requestHeaders: [
+      { header: 'User-Agent', operation: 'set', value: desktopUA() },
+      { header: 'Sec-CH-UA-Mobile', operation: 'set', value: '?0' },
+      { header: 'Sec-CH-UA-Platform', operation: 'set', value: '"Linux"' }] },
+    condition: { tabIds: [t.id], resourceTypes: ['main_frame', 'sub_frame', 'xmlhttprequest', 'script', 'other'] } }] });
+  await chrome.tabs.update(t.id, { url });
+  await sleep(500);
+  await waitTab(t.id);
+  for (let i = 0; i < 60; i++) {           // the content scripts answer once the page is there
+    const tt = await chrome.tabs.get(t.id).catch(() => null);
+    if (!tt) throw new Error('The work tab was closed.');
+    if (MOBILE_FB.test(tt.url || '')) throw new Error('Facebook sent the work tab to the mobile site again.');
+    const d = await chrome.tabs.sendMessage(t.id, { t: 'describe' }).catch(() => null);
+    if (d && d.site) return { tabId: t.id, desc: d };
+    await sleep(500);
+  }
+  throw new Error('The desktop Facebook page did not load in the work tab.');
+}
+chrome.tabs.onRemoved.addListener(id => {
+  if (id === S.fbDeskTab) { S.fbDeskTab = null; chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [FB_DESK_RULE] }).catch(() => {}); }
+});
+
 let folderWindow = null;
 async function openFolderWindow() {
   if (IS_ANDROID) {            // a tab (reused), not a new window
@@ -728,6 +770,7 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
       case 'block:clear': S.block[msg.site] = { until: 0, level: 0, last: 0 }; broadcastSoon(); return respond({});
       case 'settings:set': S.settings = { ...S.settings, ...msg.settings }; saveSoon(); broadcastSoon(); return respond({ ok: true });
       case 'manager:open': await openManager(); return respond({});
+      case 'fb:desk': try { return respond(await fbDeskTab(msg.url)); } catch (e) { return respond({ error: e.message || String(e) }); }
       case 'folder:window': await openManager(false); await openFolderWindow(); return respond({});
       default: return respond({});
     }
