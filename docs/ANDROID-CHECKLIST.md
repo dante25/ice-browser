@@ -22,7 +22,7 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] SN Downloader 0.13.3 (u repou)
 - [x] Video Sniffer 1.2.3: bez ikakvog ograničenja veličine (i YouTube spajanje ide preko diska)
 - [x] YouTube ugrađene ekstenzije (kvalitet, progress bar, nonstop, end cards, screenshot, multiselect) rade samo na www.youtube.com: Ice na Androidu otvara YouTube kao desktop stranicu (component_loader.cc, overlay; korisnik to može promijeniti u postavkama sajta)
-- [ ] Panel: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java napisani (overlay); treba još BUILD.gn (toolbar/extensions) sa novim izvorom
+- [x] Panel napisan: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java + BUILD.gn (overlay); provjera tek u buildu
 - [ ] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene
 
 ## Prijave s telefona 2026-11-17 (večer)
