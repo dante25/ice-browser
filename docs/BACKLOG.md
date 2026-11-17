@@ -60,5 +60,5 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
 - Tap na ekstenziju: za obične ekstenzije popup odozdo (donji panel) sa svim opcijama ekstenzije.
 - SN Downloader i Video Sniffer: plutajući popup preko sadržaja stranice (YouTube, galerije). Ostaje otvoren dok se skida i kad se prelazi s taba na tab. Zatvara se SAMO na X / Cancel, nikad tapom na prazan dio stranice (da se slučajno ne prekine).
 - Izvedba: kao Chromiumova traka za oznake (TopControlLayer u TopControlsStacker, ista mehanika skrolanja s adresnom trakom); popup sadržaj isti kao sada (ExtensionActionPopupContents).
-- Postavke: prekidači "Traka za ekstenzije" i "Traka za oznake" (bookmark bar), svaki se uključuje/isključuje po potrebi, da trake ne zauzimaju ekran kad ne trebaju. Chromium traku za oznake na telefonu ne nudi (samo tablet/desktop): treba je omogućiti i na telefonu.
+- Postavke: prekidači "Traka za ekstenzije" i "Bookmark bar" (korisnik ga tako zove; ne "oznake"), svaki se uključuje/isključuje po potrebi, da trake ne zauzimaju ekran kad ne trebaju. Chromium bookmark bar na telefonu ne nudi (samo tablet/desktop): treba je omogućiti i na telefonu.
 - Redoslijed: prvo provjeriti na telefonu da se popupi uopšte otvaraju (APK iz run 44016894226), pa onda traka.
