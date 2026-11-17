@@ -8,7 +8,6 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 async function fs() { return import(chrome.runtime.getURL('background/fsstore.js')); }
 async function chooseFolder() {
-  if (state.folder && state.folder.android) return chooseAndroidFolder();
   try {
     const h = await showDirectoryPicker({ id: 'usn', mode: 'readwrite', startIn: 'downloads' });
     const m = await fs();
@@ -16,16 +15,6 @@ async function chooseFolder() {
     await m.permission(h, true);
     await sw({ t: 'folder:changed' }); refresh();
   } catch (e) { if (e && e.name !== 'AbortError') alert('Could not open the folder picker: ' + e.message); }
-}
-// Android has no folder picker for extensions: the folder is a folder inside Downloads, chosen once by name and
-// remembered (settings.subfolder). Files keep their structure below it: <folder>/<site>/<profile or group>/<type>/...
-async function chooseAndroidFolder() {
-  const cur = (state.settings && state.settings.subfolder) || 'Ultimate SN Downloader';
-  const v = prompt('Folder for Ultimate SN Downloader, inside Downloads:', cur);
-  if (v === null) return;
-  const name = v.trim().replace(/[\\:*?"<>|]+/g, '_').replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/');
-  await sw({ t: 'settings:set', settings: { subfolder: name === 'Ultimate SN Downloader' ? '' : name } });
-  refresh();
 }
 async function allowFolder() {
   const m = await fs(), h = await m.getRoot();
@@ -45,8 +34,7 @@ function render() {
   const t = state.totals || { bytes: 0 };
   $('totals').textContent = 'Total downloaded: ' + Object.keys(SITES).filter(k => t[k]).map(k => SITES[k].name + ' ' + t[k]).join(' · ') + (Object.keys(SITES).some(k => t[k]) ? ' · ' : '') + fmtB(t.bytes || 0);
   const f = state.folder || {};
-  $('folderBtn').textContent = f.android ? '📁 Downloads/' + ((state.settings && state.settings.subfolder) || 'Ultimate SN Downloader')
-    : f.set ? '📁 ' + (f.name || 'Folder') : '📁 Choose folder';
+  $('folderBtn').textContent = f.downloads ? '📁 Downloads (choose folder…)' : f.set ? '📁 ' + (f.name || 'Folder') : '📁 Choose folder';
   const ban = $('folderBan');
   if (!f.set) { ban.hidden = false; ban.innerHTML = '<span><b>Choose where to save the files.</b> The extension writes straight into that folder, so nothing shows up in Chrome\'s download list.</span><button id="fb_choose" class="primary">Choose folder…</button>'; }
   else if (f.permission !== 'granted') { ban.hidden = false; ban.innerHTML = '<span>Chrome needs your OK to write into <b>' + esc(f.name) + '</b> again.</span><button id="fb_allow" class="primary">Allow</button>'; }

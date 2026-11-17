@@ -2,8 +2,9 @@
 import { PROFILES, FB_PROFILES, nextDelay, cooldownFor } from './throttle.js';
 import { getRoot, permission, writeFile } from './fsstore.js';
 
-// Android: no folder picker (File System Access) - files go to Downloads through chrome.downloads, and the
-// progress page is one tab that is reused instead of a new window per download.
+// Android: the folder is chosen with the same picker as on the desktop; until one is chosen, files go to
+// Downloads through chrome.downloads (nothing to allow). Progress and folder pages open in one reused tab
+// instead of new windows; while that tab is open Chrome keeps the folder permission.
 const IS_ANDROID = /Android/i.test(navigator.userAgent);
 import { parseHostFile, setHosts, hostCount, matchRule, matchRules, isCardRule, runCardRule, isDirectImage, runStringRule, needsPage, isFunctionRule, baseName } from './ih.js';
 
@@ -279,9 +280,9 @@ chrome.downloads.onChanged.addListener(async d => {
 
 // The chosen download folder (File System Access handle). While the browser has not granted access the job waits, and the progress window asks the user.
 async function refreshFolder() {
-  if (IS_ANDROID) { S.folder = { set: true, name: 'Downloads', permission: 'granted', android: true }; return null; }
   const root = await getRoot();
-  S.folder = { set: !!root, name: root ? root.name : '', permission: root ? await permission(root) : 'none' };
+  if (IS_ANDROID && !root) { S.folder = { set: true, name: 'Downloads', permission: 'granted', android: true, downloads: true }; broadcastSoon(); return null; }
+  S.folder = { set: !!root, name: root ? root.name : '', permission: root ? await permission(root) : 'none', android: IS_ANDROID };
   broadcastSoon();
   return root;
 }
@@ -300,8 +301,8 @@ async function androidSave(url, relPath, referer, minBytes) {
 }
 
 async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) {
-  if (IS_ANDROID) return androidSave(url, relPath, referer, minBytes);
   let root = await refreshFolder(), asked = false;
+  if (IS_ANDROID && !root) return androidSave(url, relPath, referer, minBytes);
   while (!root || S.folder.permission !== 'granted') {
     if (!asked) {            // Chrome drops the folder permission when no page of the extension is open: bring the progress window back so one click re-allows it
       asked = true;
@@ -341,6 +342,15 @@ async function openManager(focus = false) {
 }
 let folderWindow = null;
 async function openFolderWindow() {
+  if (IS_ANDROID) {            // a tab (reused), not a new window
+    try {
+      const url = chrome.runtime.getURL('ui/folder.html');
+      const [open] = await chrome.tabs.query({ url });
+      if (open) { await chrome.tabs.update(open.id, { active: true }); return; }
+      await chrome.tabs.create({ url, active: true });
+    } catch (e) {}
+    return;
+  }
   try {
     if (folderWindow) { try { await chrome.windows.update(folderWindow, { focused: true }); return; } catch (e) { folderWindow = null; } }
     const w = await chrome.windows.create({ url: chrome.runtime.getURL('ui/folder.html'), type: 'popup', width: 460, height: 330, focused: true });
