@@ -38,7 +38,11 @@ for rel, changes in mp.PATCHES.items():
         if n != want: sys.exit(f'mobile patch for {rel}: expected the original text {want}x, found {n}: {old[:80]!r}')
         text = text.replace(old, new)
     open(f, 'w', encoding='utf-8').write(text)
-print(f'{sum(len(c) for c in mp.PATCHES.values())} mobile change(s) in {len(mp.PATCHES)} file(s)')
+for rel, text in getattr(mp, 'FILES', {}).items():   # new files of the Android versions
+    f = os.path.join(stage, rel)
+    if os.path.exists(f): sys.exit(f'mobile file {rel} exists in the original')
+    open(f, 'w', encoding='utf-8').write(text)
+print(f'{sum(len(c) for c in mp.PATCHES.values())} mobile change(s) in {len(mp.PATCHES)} file(s), {len(getattr(mp, "FILES", {}))} new file(s)')
 subprocess.run([sys.executable, '-I', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'), stage,
                 os.path.join(ext, 'ice_builtins_files.inc')], check=True)
 

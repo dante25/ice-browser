@@ -10,6 +10,7 @@ PROGRESS = 'chrome-extensions/permanent-progress-bar-for-youtube/'
 NONSTOP = 'chrome-extensions/youtube-nonstop/'
 HIDECARDS = 'chrome-extensions/hide-labels-and-end-cards-on-youtube/'
 SHOT = 'chrome-extensions/screenshot-youtube/'
+MULTI = 'chrome-extensions/multiselect-for-youtube/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -92,6 +93,16 @@ PATCHES = {
          '.ice-syt-bar button {\n\tbackground: rgba(0, 0, 0, 0.55) !important;\n\tcolor: #fff;\n\tborder: 0;\n\tborder-radius: 6px;\n\twidth: auto !important;\n}\n\n'
          '.SYText {'),
     ],
+    # Multiselect for YouTube: the selection mode is switched with Ctrl+M or a button in the desktop
+    # YouTube top bar - a phone has neither. Android: a switch "Odabir više videa" at the top of the
+    # extension's menu (popup); the state comes from the page (the video checkboxes are there or not).
+    MULTI + 'popup.html': [
+        ('<script src="js/options.js"></script>', '<script src="js/ice-toggle.js"></script>\n    <script src="js/options.js"></script>'),
+    ],
+    MULTI + 'js/content.js': [
+        ('function u(e){const{type:t,value:o}=e;if("command"===t)c(t,o)}',
+         'function u(e,x,r){const{type:t,value:o}=e;if("ice-ms-state"===t){r({on:!!document.querySelector("#msfy-video-checkbox")});return}if("command"===t)c(t,o)}'),
+    ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
     # has the same quality API. Also: wait until the player knows its qualities, and re-apply when the
@@ -106,4 +117,55 @@ PATCHES = {
          'document.addEventListener("state-navigateend",()=>{/^\\/(watch|shorts)/.test(location.pathname)&&this.init()},!0),'
          'document.addEventListener("loadeddata",w=>{w.target&&w.target.tagName==="VIDEO"&&this.setQuality()},!0)'),
     ],
+}
+
+# New files of the Android versions {path: text}
+FILES = {
+    MULTI + 'js/ice-toggle.js': r"""// Ice (Android): switch for the selection mode at the top of the popup (on the phone there is no Ctrl+M)
+(function () {
+  const api = typeof chrome !== 'undefined' ? chrome : browser;
+  const box = document.createElement('div');
+  box.id = 'ice-ms';
+  box.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;margin:0 0 8px;border-bottom:1px solid rgba(128,128,128,.35);font:600 15px system-ui,sans-serif';
+  const label = document.createElement('span');
+  label.textContent = 'Odabir više videa';
+  const sw = document.createElement('input');
+  sw.type = 'checkbox';
+  sw.setAttribute('role', 'switch');
+  sw.style.cssText = 'width:44px;height:24px;accent-color:#37c8e0';
+  const note = document.createElement('div');
+  note.style.cssText = 'padding:0 16px 8px;font:12px system-ui,sans-serif;opacity:.75';
+  box.append(label, sw);
+  let tabId = null;
+  const state = () => tabId === null ? Promise.resolve(null)
+    : api.tabs.sendMessage(tabId, { type: 'ice-ms-state' }).then((r) => r && r.on).catch(() => null);
+  const show = (on) => {
+    sw.disabled = on === null;
+    sw.checked = !!on;
+    note.textContent = on === null ? 'Radi na YouTubeu (www.youtube.com): otvori YouTube u ovom tabu.' : '';
+  };
+  sw.addEventListener('change', async () => {
+    const want = sw.checked;
+    try { await api.tabs.sendMessage(tabId, { type: 'command', value: 'toggleMultiSelectMode' }); } catch (e) {}
+    for (let i = 0; i < 10; i++) {          // the page needs a moment to add or remove the checkboxes
+      await new Promise((r) => setTimeout(r, 150));
+      const on = await state();
+      if (on === want) break;
+      if (i === 9) show(on);
+    }
+    show(await state());
+  });
+  const put = () => { if (document.body.firstChild !== box) document.body.prepend(box, note); };
+  const start = () => {
+    put();
+    // options.js fills the body later; keep the switch on top
+    new MutationObserver(put).observe(document.body, { childList: true });
+  };
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  api.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {
+    tabId = tabs[0] ? tabs[0].id : null;
+    show(await state());
+  });
+})();
+""",
 }
