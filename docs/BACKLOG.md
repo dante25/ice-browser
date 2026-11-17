@@ -82,5 +82,5 @@ Pojašnjenje (korisnik, 2026-11-15): zadano je isključeno za **sve** tabove. Za
 
 ## Android: Ice bočni panel kao na desktopu (zahtjev 2026-11-17)
 - Desktop: lijevi rail (hamburger = meni, bookmarks, ..., "Funkcije") + panel preko stranice sa chrome://ice-panel (#features / #menu), ice-20/21/22 (views, nema ih na Androidu).
-- Android: isti rail lijevo na širokom ekranu (Fold otvoren), panel preko stranice sa istim chrome://ice-panel sadržajem (Funkcije = sve ugrađene ekstenzije i dodaci sa njihovim popupima, meni). Na uskom ekranu panel iz dugmeta u traci.
+- Android: rail i panel na DESNOJ strani (zahtjev korisnika 2026-11-17), na širokom ekranu (Fold otvoren); panel preko stranice sa istim chrome://ice-panel sadržajem (Funkcije = sve ugrađene ekstenzije i dodaci sa njihovim popupima, meni). Na uskom ekranu panel iz dugmeta u traci.
 - Redoslijed: APK s ugrađenim ekstenzijama u meniju (u izradi) -> password manager (bez njega korisnik ne može na FB/IG) -> Ice panel + ekstenzije u bookmark baru.
