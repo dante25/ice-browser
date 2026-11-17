@@ -24,3 +24,7 @@ Dogovor 2026-11-17: nema buildova za sitne promjene. Sve se prvo napravi i provj
 - [x] YouTube ugrađene ekstenzije (kvalitet, progress bar, nonstop, end cards, screenshot, multiselect) rade samo na www.youtube.com: Ice na Androidu otvara YouTube kao desktop stranicu (component_loader.cc, overlay; korisnik to može promijeniti u postavkama sajta)
 - [ ] Panel: IceSidePanel.java + ExtensionsToolbarCoordinatorImpl.java napisani (overlay); treba još BUILD.gn (toolbar/extensions) sa novim izvorom
 - [ ] Postavke: sve stavke desktop stranice "Napredne funkcije" (ice-10) - provjeriti da su sve prenesene
+
+## Prijave s telefona 2026-11-17 (večer)
+- [ ] Prijava na YouTube/Google u Iceu otvara Chrome umjesto taba u Iceu: Google prijava (accounts.google.com), YouTube i intent:// linkovi prema drugim browserima moraju ostati u Iceu (ExternalNavigationHandler / ExternalNavigationDelegateImpl).
+- [ ] YouTube ugrađene ekstenzije moraju raditi i na MOBILNOM YouTubeu (m.youtube.com), ne samo u desktop načinu: Android varijante tih ekstenzija (originali ostaju netaknuti za desktop), redom: Default Quality Adjuster, Permanent Progress Bar, YouTube NonStop, Hide Labels/End Cards, Screenshot, Multiselect, Adblock for YouTube (provjeriti).
