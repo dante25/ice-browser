@@ -287,22 +287,35 @@ async function refreshFolder() {
   return root;
 }
 
-// Android: straight to Downloads/Ultimate SN Downloader/... (or the sub-folder from the settings), with the page's
-// Referer; files below the minimum size (thumbnails, icons) are removed again.
-async function androidSave(url, relPath, referer, minBytes) {
+// Android without a chosen folder: Downloads/Ultimate SN Downloader/... (or the sub-folder from the settings).
+// The file is fetched here with the page's Referer (the browser's own downloads can't send one, and many image
+// hosts refuse requests without it), then handed to chrome.downloads as a data: URL. Very large files go to
+// chrome.downloads directly.
+function b64(buf) {
+  const u = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+async function androidSave(url, relPath, auth, referer, minBytes) {
   const name = (S.settings.subfolder ? '' : 'Ultimate SN Downloader/') + relPath;
-  const r = await withReferer(url, referer, () => chromeDownload(url, name, true));
-  if (minBytes && r.size && r.size < minBytes) {
-    try { await chrome.downloads.removeFile(r.id); } catch (e) {}
-    try { await chrome.downloads.erase({ id: r.id }); } catch (e) {}
-    throw new Error('TOO_SMALL');
-  }
-  return r.size;
+  let resp;
+  try { resp = await withReferer(url, referer, () => fetch(url, { credentials: auth ? 'include' : 'omit' })); } catch (e) { throw new Error('network: ' + e.message); }
+  if (resp.status === 403 || resp.status === 401) throw new Error('FORBIDDEN (link expired)');
+  if (resp.status === 404 || resp.status === 410) throw new Error('NOT_FOUND');
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const len = Number(resp.headers.get('content-length') || 0);
+  if (minBytes && len && len < minBytes) { try { await resp.body.cancel(); } catch (e) {} throw new Error('TOO_SMALL'); }
+  if (len > 150e6) { try { await resp.body.cancel(); } catch (e) {} return chromeDownload(url, name); }
+  const buf = await resp.arrayBuffer();
+  if (minBytes && buf.byteLength < minBytes) throw new Error('TOO_SMALL');
+  const type = (resp.headers.get('content-type') || 'application/octet-stream').split(';')[0];
+  await chromeDownload('data:' + type + ';base64,' + b64(buf), name);
+  return buf.byteLength;
 }
 
 async function saveFile(url, relPath, auth = false, referer = '', minBytes = 0) {
   let root = await refreshFolder(), asked = false;
-  if (IS_ANDROID && !root) return androidSave(url, relPath, referer, minBytes);
+  if (IS_ANDROID && !root) return androidSave(url, relPath, auth, referer, minBytes);
   while (!root || S.folder.permission !== 'granted') {
     if (!asked) {            // Chrome drops the folder permission when no page of the extension is open: bring the progress window back so one click re-allows it
       asked = true;

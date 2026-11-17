@@ -7,7 +7,6 @@ const page = params.get('page');
 const baseName = (params.get('name') || 'video').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 100);
 const mode = params.get('mode');
 const fileExt = params.get('ext') || 'mp4';
-const FILE_LIMIT = 1e9;
 
 const $ = (id) => document.getElementById(id);
 const status = (t) => ($('status').textContent = t);
@@ -33,7 +32,7 @@ async function setReferer() {
             { header: 'Origin', operation: 'set', value: new URL(page).origin },
           ],
         },
-        condition: { resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+        condition: { resourceTypes: ['xmlhttprequest', 'other'], initiatorDomains: [chrome.runtime.id] },
       },
     ],
   });
@@ -175,36 +174,56 @@ async function start() {
   $('cancel').hidden = true;
 }
 
-// Single file (mp4, webm...): fetched here with the page's Referer/Origin, then saved via downloads.
+// Single file (mp4, webm...): fetched here with the page's Referer/Origin (the browser's own downloads
+// can't send them), written straight to a temporary file on disk (origin private file system: no size
+// limit, nothing held in memory), then saved to Downloads and the temporary file removed.
 async function downloadFile() {
   await setReferer();
-  const r = await fetch(srcUrl, { credentials: 'include', signal: abort.signal });
-  if (!r.ok) throw new Error(`HTTP ${r.status}: the server refused the request`);
-  const total = Number(r.headers.get('content-length')) || 0;
-  if (total > FILE_LIMIT) {
-    await r.body.cancel();
-    throw new Error('File is larger than 1 GB; use the yt-dlp button in the popup instead.');
-  }
   $('controls').hidden = false;
   $('start').hidden = true;
   $('cancel').hidden = false;
   $('bar').hidden = false;
-  $('bar').max = total || 1;
-
-  const parts = [];
-  let got = 0;
-  const reader = r.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    parts.push(value);
-    got += value.length;
-    if (total) $('bar').value = got;
-    status(`Downloading ${(got / 1e6).toFixed(1)}${total ? ' / ' + (total / 1e6).toFixed(1) : ''} MB`);
+  status('Starting download…');
+  const root = await navigator.storage.getDirectory();
+  for await (const name of root.keys()) if (name.startsWith('vs-') && name.endsWith('.part')) await root.removeEntry(name).catch(() => {});
+  const tmpName = `vs-${Date.now()}.part`;
+  const fh = await root.getFileHandle(tmpName, { create: true });
+  let writer = await fh.createWritable();
+  let blobUrl = '';
+  try {
+    const r = await fetch(srcUrl, { credentials: 'include', signal: abort.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}: the server refused the request`);
+    const total = Number(r.headers.get('content-length')) || 0;
+    $('bar').max = total || 1;
+    let got = 0;
+    const t0 = performance.now();
+    const reader = r.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writer.write(value);
+      got += value.length;
+      if (total) $('bar').value = got;
+      const mbps = got / 1e6 / ((performance.now() - t0) / 1000);
+      status(`Downloading ${(got / 1e6).toFixed(1)}${total ? ' / ' + (total / 1e6).toFixed(1) : ''} MB · ${mbps.toFixed(1)} MB/s`);
+    }
+    await writer.close();
+    writer = null;
+    status('Saving to Downloads…');
+    blobUrl = URL.createObjectURL(await fh.getFile());
+    const id = await chrome.downloads.download({ url: blobUrl, filename: `${baseName}.${fileExt}`, conflictAction: 'uniquify', saveAs: false });
+    for (;;) {
+      await new Promise((res) => setTimeout(res, 700));
+      const [d] = await chrome.downloads.search({ id });
+      if (!d || d.state === 'complete') break;
+      if (d.state === 'interrupted') throw new Error(`Saving failed: ${d.error}`);
+    }
+  } finally {
+    if (writer) await writer.abort().catch(() => {});
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    await root.removeEntry(tmpName).catch(() => {});
   }
-  const blobUrl = URL.createObjectURL(new Blob(parts, { type: r.headers.get('content-type') || 'video/mp4' }));
-  await chrome.downloads.download({ url: blobUrl, filename: `${baseName}.${fileExt}`, conflictAction: 'uniquify' });
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  $('bar').value = $('bar').max;
   $('cancel').hidden = true;
   status('Done. Saved to your Downloads folder.');
 }
@@ -224,7 +243,7 @@ async function downloadMerge() {
   ];
   if (streams.some((s) => !s.size)) throw new Error('YouTube did not report the stream size; use yt-dlp instead.');
   const total = streams.reduce((n, s) => n + s.size, 0);
-  if (total > MERGE_LIMIT) throw new Error('Larger than 1.5 GB; use yt-dlp instead.');
+  if (total > MERGE_LIMIT) throw new Error('Larger than 1.5 GB: too big to join video and sound on this device.');
 
   await setReferer();
   await chrome.declarativeNetRequest.updateSessionRules({
