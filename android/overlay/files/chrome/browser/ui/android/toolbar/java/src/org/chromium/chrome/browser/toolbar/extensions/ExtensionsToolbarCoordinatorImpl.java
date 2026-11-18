@@ -109,8 +109,8 @@ public class ExtensionsToolbarCoordinatorImpl
     private int mLastIconWidthPx;
     private @Nullable Runnable mOnFeatureRemoved;
     private boolean mIsWebApp;
-    // Ice: the right-side rail and Funkcije panel (IceSidePanel), not in web apps.
-    private @Nullable IceSidePanel mIceSidePanel;
+    // Ice: extension buttons in the bookmark bar (instead of "All bookmarks"), not in web apps.
+    private @Nullable IceBookmarkBarExtensions mIceBookmarkBarExtensions;
 
     @Override
     public void initializeWithNative(
@@ -204,8 +204,8 @@ public class ExtensionsToolbarCoordinatorImpl
                         .getDimensionPixelSize(R.dimen.extension_action_icon_canvas_width);
         updateMenuIconVisibility();
         if (!mIsWebApp) {
-            mIceSidePanel =
-                    IceSidePanel.create(context, mExtensionsToolbarBridge, currentTabSupplier, tabCreator);
+            mIceBookmarkBarExtensions =
+                    IceBookmarkBarExtensions.create(context, mExtensionsToolbarBridge, currentTabSupplier);
         }
     }
 
@@ -238,9 +238,9 @@ public class ExtensionsToolbarCoordinatorImpl
             return;
         }
         mIsDestroyed = true;
-        if (mIceSidePanel != null) {
-            mIceSidePanel.destroy();
-            mIceSidePanel = null;
+        if (mIceBookmarkBarExtensions != null) {
+            mIceBookmarkBarExtensions.destroy();
+            mIceBookmarkBarExtensions = null;
         }
 
         if (mLayoutChangeListener != null && mContainer != null) {

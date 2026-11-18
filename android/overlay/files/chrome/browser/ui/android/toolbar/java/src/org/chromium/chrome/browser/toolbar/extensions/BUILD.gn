@@ -39,7 +39,7 @@ android_library("java") {
     "ExtensionsMenuProperties.java",
     "ExtensionsMenuViewBinder.java",
     "ExtensionsToolbarCoordinatorImpl.java",
-    "IceSidePanel.java",
+    "IceBookmarkBarExtensions.java",
     "ExtensionsToolbarDragTouchHandler.java",
     "ExtensionsToolbarProperties.java",
     "SitePermissionsPageProperties.java",
