@@ -51,30 +51,42 @@ PATCHES = {
     ],
     # Screenshot YouTube: ran only on www.youtube.com and put a "Screenshot" text button into the desktop
     # player's control bar (.ytp-right-controls), which the mobile player does not have. Android: a camera
-    # icon in the player's control bar on both sites - desktop: .ytp-right-controls, mobile: the top bar of
-    # the player controls (shown and hidden with the controls), or an own bar in the player if YouTube
-    # changes it. The picture goes to the default download folder (Downloads), as before.
+    # icon in the player's control bar on desktop YouTube (.ytp-right-controls); on mobile YouTube an own
+    # small bar over the player's top left corner (never inside YouTube's player elements). The picture goes to the default download folder (Downloads), as before.
     SHOT + 'manifest.json': [
         ('"matches": [ "https://www.youtube.com/*" ]', '"matches": [ "https://www.youtube.com/*", "https://m.youtube.com/*" ]'),
     ],
     SHOT + 'page.js': [
         ("'use strict';\n",
          "'use strict';\n\n"
-         "// Ice (Android): the mobile player's control bar\n"
+         "// Ice (Android): own button bar over the mobile player. Never inside YouTube's own player\n"
+         "// elements (that broke the player's controls after in-page navigation), and only once the\n"
+         "// player has its video; positioned over the player's top left corner.\n"
          "function iceMobileBar() {\n"
-         "\tif (location.hostname !== 'm.youtube.com' || !/^\\/(watch|shorts)/.test(location.pathname)) return null;\n"
-         "\tvar top = document.querySelector('#player-control-overlay .player-controls-top');\n"
-         "\tif (top) return top;\n"
+         "\tif (location.hostname !== 'm.youtube.com' || !/^\\/(watch|shorts)/.test(location.pathname)) {\n"
+         "\t\tvar old = document.querySelector('.ice-syt-bar');\n"
+         "\t\tif (old) old.remove();\n"
+         "\t\treturn null;\n"
+         "\t}\n"
          "\tvar mp = document.getElementById('movie_player');\n"
-         "\tif (!mp) return null;\n"
-         "\tvar bar = mp.querySelector('.ice-syt-bar');\n"
+         "\tif (!mp || !mp.querySelector('video') || !mp.offsetHeight) return null;\n"
+         "\tvar bar = document.querySelector('.ice-syt-bar');\n"
          "\tif (!bar) {\n"
          "\t\tbar = document.createElement('div');\n"
          "\t\tbar.className = 'ice-syt-bar';\n"
-         "\t\tmp.appendChild(bar);\n"
          "\t}\n"
+         "\tvar fs = document.fullscreenElement;\n"
+         "\tvar host = fs && fs.contains(mp) ? fs : document.body;\n"
+         "\tif (bar.parentElement !== host) host.appendChild(bar);\n"
+         "\tvar r = mp.getBoundingClientRect();\n"
+         "\tbar.style.top = (r.top + 6) + 'px';\n"
+         "\tbar.style.left = (r.left + 6) + 'px';\n"
+         "\tbar.style.display = r.bottom > 0 ? 'flex' : 'none';\n"
          "\treturn bar;\n"
-         "}\n"),
+         "}\n"
+         "window.addEventListener('scroll', function () { iceMobileBar(); }, { passive: true });\n"
+         "window.addEventListener('resize', function () { iceMobileBar(); });\n"
+         "document.addEventListener('fullscreenchange', function () { iceMobileBar(); });\n"),
         ('screenshotButton.innerHTML = "Screenshot";',
          'screenshotButton.innerHTML = \'<svg viewBox="0 0 24 24" width="24" height="24" style="vertical-align:middle;fill:#fff"><path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3H9zm3 4.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>\';\n'
          'screenshotButton.title = "Screenshot";\n'
@@ -89,8 +101,8 @@ PATCHES = {
         ('.SYText {',
          '/* Ice (Android): camera icon in the player control bars */\n'
          '.screenshotButton svg { pointer-events: none; }\n'
-         '.player-controls-top .screenshotButton, .ice-syt-bar .screenshotButton {\n\tbackground: transparent;\n\tborder: 0;\n\tpadding: 8px;\n\tmin-width: 40px;\n\tmin-height: 40px;\n\tz-index: 60;\n}\n'
-         '.ice-syt-bar {\n\tposition: absolute;\n\ttop: 6px;\n\tleft: 6px;\n\tz-index: 60;\n\tdisplay: flex;\n\tgap: 4px;\n}\n'
+         '.ice-syt-bar .screenshotButton {\n\tbackground: transparent;\n\tborder: 0;\n\tpadding: 8px;\n\tmin-width: 40px;\n\tmin-height: 40px;\n}\n'
+         '.ice-syt-bar {\n\tposition: fixed;\n\tz-index: 2147483000;\n\tdisplay: flex;\n\tgap: 4px;\n}\n'
          '.ice-syt-bar button {\n\tbackground: rgba(0, 0, 0, 0.55) !important;\n\tcolor: #fff;\n\tborder: 0;\n\tborder-radius: 6px;\n\twidth: auto !important;\n}\n\n'
          '.SYText {'),
     ],
