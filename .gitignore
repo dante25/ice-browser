@@ -20,3 +20,6 @@ dist/
 
 # Ice core build (core-build/build.sh)
 core-build/.work/
+
+# Chromium writes this into unpacked extensions when they are loaded for a test; never ship it
+_metadata/
