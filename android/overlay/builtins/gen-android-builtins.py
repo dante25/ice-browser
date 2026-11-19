@@ -26,6 +26,22 @@ import tempfile
 stage = tempfile.mkdtemp(prefix='ice-android-builtins-')
 for name, src in gen.BUILTINS.items():
     shutil.copytree(os.path.join(repo, src), os.path.join(stage, src))
+# Add-ons are staged as well, so mobile_patches can change their Android copies too.
+ADDONS = {'sn-downloader': 'own-extensions/Ultimate SN Downloader/extension',
+          'video-sniffer': 'own-extensions/video-sniffer',
+          'ice-shield': 'ice-features/ice-shield'}
+for d in sorted(os.listdir(os.path.join(repo, 'dodaci'))):
+    if os.path.isfile(os.path.join(repo, 'dodaci', d, 'manifest.json')):
+        assert d not in ADDONS, 'duplicate add-on name ' + d
+        ADDONS[d] = 'dodaci/' + d
+# Android versions of add-ons that cannot work as on the desktop (android/overlay/addons/<name>):
+# ice-uvoz reads other browsers through a desktop program (native messaging); on Android it imports files.
+for d in sorted(os.listdir(os.path.join(repo, 'android/overlay/addons'))):
+    assert d in ADDONS, 'android add-on without a desktop one: ' + d
+    ADDONS[d] = 'android/overlay/addons/' + d
+for name, src in ADDONS.items():
+    shutil.copytree(os.path.join(repo, src), os.path.join(stage, src),
+                    ignore=shutil.ignore_patterns('node_modules'))
 spec2 = importlib.util.spec_from_file_location('mobile_patches', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mobile_patches.py'))
 mp = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(mp)
 for rel, changes in mp.PATCHES.items():
@@ -46,20 +62,6 @@ print(f'{sum(len(c) for c in mp.PATCHES.values())} mobile change(s) in {len(mp.P
 subprocess.run([sys.executable, '-I', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'), stage,
                 os.path.join(ext, 'ice_builtins_files.inc')], check=True)
 
-# Add-ons: the same list as core-build/package-deb.sh (tests/ and README.md at the top are not shipped)
-ADDONS = {'sn-downloader': 'own-extensions/Ultimate SN Downloader/extension',
-          'video-sniffer': 'own-extensions/video-sniffer',
-          'ice-shield': 'ice-features/ice-shield'}
-for d in sorted(os.listdir(os.path.join(repo, 'dodaci'))):
-    if os.path.isfile(os.path.join(repo, 'dodaci', d, 'manifest.json')):
-        assert d not in ADDONS, 'duplicate add-on name ' + d
-        ADDONS[d] = 'dodaci/' + d
-# Android versions of add-ons that cannot work as on the desktop (android/overlay/addons/<name>):
-# ice-uvoz reads other browsers through a desktop program (native messaging); on Android it imports files.
-for d in sorted(os.listdir(os.path.join(repo, 'android/overlay/addons'))):
-    assert d in ADDONS, 'android add-on without a desktop one: ' + d
-    ADDONS[d] = 'android/overlay/addons/' + d
-
 entries = []   # (destination under <app data>/ice, source file)
 def walk(kind, name, src, skip_top=(), base=repo):
     root = os.path.join(base, src)
@@ -76,7 +78,7 @@ def walk(kind, name, src, skip_top=(), base=repo):
             if os.path.islink(full): sys.exit('symlink not allowed: ' + full)
             entries.append((f'{kind}/{name}/' + os.path.relpath(full, root).replace(os.sep, '/'), full))
 for name in sorted(gen.BUILTINS): walk('ice-builtins', name, gen.BUILTINS[name], base=stage)
-for name in sorted(ADDONS): walk('dodaci', name, ADDONS[name], skip_top=('tests', 'README.md'))
+for name in sorted(ADDONS): walk('dodaci', name, ADDONS[name], skip_top=('tests', 'README.md'), base=stage)
 
 adir = os.path.join(out, 'chrome/android/ice_assets'); shutil.rmtree(adir, ignore_errors=True)
 os.makedirs(os.path.join(adir, 'files'))

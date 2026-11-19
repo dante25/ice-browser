@@ -12,6 +12,7 @@ HIDECARDS = 'chrome-extensions/hide-labels-and-end-cards-on-youtube/'
 SHOT = 'chrome-extensions/screenshot-youtube/'
 MULTI = 'chrome-extensions/multiselect-for-youtube/'
 GIMG = 'ice-features/google-images-viewer/'
+SHIELD = 'ice-features/ice-shield/'
 QUALITY = 'chrome-extensions/default-quality-adjuster-for-youtube/inject.js'
 
 PATCHES = {
@@ -132,6 +133,12 @@ PATCHES = {
          '#ice-viewer .ice-close{top:8px;right:8px}'
          '#ice-viewer .ice-nav{width:34px;height:72px;line-height:72px;font-size:30px;background:rgba(60,60,60,.6)}'
          '}'),
+    ],
+    # Ice Shield: its settings (Google Safe Browsing API key, list state) are only an options page,
+    # which Android has no way to open. Android: the same page as the extension's popup (tap on
+    # Ice Shield in the extensions menu).
+    SHIELD + 'manifest.json': [
+        ('"options_ui"', '"action": { "default_title": "Ice Shield", "default_popup": "options.html" },\n  "options_ui"'),
     ],
     # Default Quality Adjuster: it waited for the desktop player's settings button (.ytp-settings-button),
     # which m.youtube.com does not have, so it never set the quality. The mobile player (#movie_player)
