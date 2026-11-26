@@ -92,7 +92,7 @@
          android:key="glic"
 --- /dev/null
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/settings/IceAdvancedSettings.java
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,169 @@
 +// Copyright 2026 The Ice Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
