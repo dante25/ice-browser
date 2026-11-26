@@ -743,13 +743,25 @@ ToolbarActionsModel::GetFilteredPinnedActionIds() const {
                          return !std::ranges::contains(pinned, id);
                        });
 
-  // Ice: Tab Counter, SN Downloader and Video Sniffer are always pinned.
-  for (const char* ice_id : {"fhnegjjodccfaliddboelcleikbmapik",
-                             "mphpcefjdbdemmjpplkpaidolnacnlgb",
-                             "bpgjpdfphkgemklhkdiemkjbmamdmcgd"}) {
-    if (!std::ranges::contains(pinned, std::string(ice_id))) {
-      pinned.push_back(ice_id);
+  // Ice (Android): the extension list starts with Tab Session Manager, SN
+  // Downloader, Video Sniffer and "Uvoz iz drugog browsera", in this order; the
+  // rest follows. The Tab Counter is not shipped on Android (Chromium has its own).
+  {
+    static constexpr const char* kIceFirst[] = {
+        "iaiomicjabeggjcfkbimgmglanimpnae",   // Tab Session Manager
+        "mphpcefjdbdemmjpplkpaidolnacnlgb",   // SN Downloader
+        "bpgjpdfphkgemklhkdiemkjbmamdmcgd",   // Video Sniffer
+        "dfhbiomgcficgkidolpkoiafdoegbbha"};  // Uvoz iz drugog browsera
+    extensions::ExtensionIdList ordered;
+    for (const char* ice_id : kIceFirst) {
+      ordered.push_back(ice_id);
     }
+    for (const auto& id : pinned) {
+      if (!std::ranges::contains(ordered, id)) {
+        ordered.push_back(id);
+      }
+    }
+    pinned = std::move(ordered);
   }
 
   // TODO(pbos): Make sure that the pinned IDs are pruned from ExtensionPrefs on

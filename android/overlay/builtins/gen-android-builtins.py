@@ -16,6 +16,8 @@ sys.dont_write_bytecode = True
 repo, out = sys.argv[1], sys.argv[2]
 spec = importlib.util.spec_from_file_location('gen', os.path.join(repo, 'core-build/gen-ice-builtins-files.py'))
 gen = importlib.util.module_from_spec(spec); spec.loader.exec_module(gen)
+# Ice: no Tab Counter on Android (the browser has its own counter).
+gen.BUILTINS.pop('chrome-tab-counter', None)
 ext = os.path.join(out, 'chrome/browser/extensions'); os.makedirs(ext, exist_ok=True)
 
 # Android versions of the built-ins: copies of the desktop sources (which stay unchanged) with the changes in

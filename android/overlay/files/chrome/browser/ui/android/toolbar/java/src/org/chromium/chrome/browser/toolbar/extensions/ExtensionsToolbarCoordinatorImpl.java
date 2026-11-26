@@ -109,8 +109,6 @@ public class ExtensionsToolbarCoordinatorImpl
     private int mLastIconWidthPx;
     private @Nullable Runnable mOnFeatureRemoved;
     private boolean mIsWebApp;
-    // Ice: extension buttons in the bookmark bar (instead of "All bookmarks"), not in web apps.
-    private @Nullable IceBookmarkBarExtensions mIceBookmarkBarExtensions;
 
     @Override
     public void initializeWithNative(
@@ -203,10 +201,6 @@ public class ExtensionsToolbarCoordinatorImpl
                 context.getResources()
                         .getDimensionPixelSize(R.dimen.extension_action_icon_canvas_width);
         updateMenuIconVisibility();
-        if (!mIsWebApp) {
-            mIceBookmarkBarExtensions =
-                    IceBookmarkBarExtensions.create(context, mExtensionsToolbarBridge, currentTabSupplier);
-        }
     }
 
     @Override
@@ -238,10 +232,6 @@ public class ExtensionsToolbarCoordinatorImpl
             return;
         }
         mIsDestroyed = true;
-        if (mIceBookmarkBarExtensions != null) {
-            mIceBookmarkBarExtensions.destroy();
-            mIceBookmarkBarExtensions = null;
-        }
 
         if (mLayoutChangeListener != null && mContainer != null) {
             View anchorView = mContainer.findViewById(R.id.extensions_menu_button);
