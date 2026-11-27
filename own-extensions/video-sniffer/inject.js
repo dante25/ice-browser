@@ -55,7 +55,7 @@
   // window.___rs; every video the page has loaded (feed, reel, watch) is then a record in that store, with
   // playable_url (SD), playable_url(quality:"HD"), the DASH manifest and progressive_urls.
   const IS_FB = /(^|\.)facebook\.com$/.test(location.hostname);
-  if (IS_FB && !window.__vsRelay) {
+  if (IS_FB && !window.__vsRelay && !window.__vsEsuit) {
     window.__vsRelay = true;
     const MOD = 'relay-runtime/store/RelayPublishQueue';
     const patch = (src) =>

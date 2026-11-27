@@ -10,13 +10,7 @@
   let busy = false;
   const LABEL = 'Video Sniffer: download this video (best quality)';
   // Ultimate SN Downloader puts its own blue ⬇ in the same corner on Facebook/Instagram ...
-  const SHIFT = 0;
-  // ... and its button is hidden, so only one download button is ever on a video (SN's opens its own windows).
-  try {
-    const st = document.createElement('style');
-    st.textContent = '#usn-quick{display:none!important}';
-    (document.head || document.documentElement).appendChild(st);
-  } catch {}
+  const SHIFT = /(^|\.)(facebook|instagram)\.com$/.test(location.hostname) ? 46 : 0;
 
   // The page's own GraphQL replies (posted by inject.js): where Facebook keeps every video's addresses.
   const captured = [];
@@ -115,6 +109,7 @@
       const now = Date.now();
       if (now - lastMove < 100) return;
       lastMove = now;
+      if (IS_FB) return; // Facebook: the button sits inside the player (fbesuit.js)
       const v = videoAt(e.clientX, e.clientY);
       if (!v) return current && hideSoon();
       const r = v.getBoundingClientRect();
@@ -128,6 +123,17 @@
     },
     true
   );
+
+  // Facebook: fbesuit.js (page world) asks for the download and shows the progress.
+  if (IS_FB) {
+    window.addEventListener('message', (e) => {
+      if (e.source !== window || e.data?.__vsniffer !== 6) return;
+      chrome.runtime.sendMessage({ type: 'quick', isFb: true, fb: e.data.fb, page: e.data.page, title: e.data.title, src: '', duration: 0 }).catch(() => {});
+    });
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg?.type === 'qstatus') window.postMessage({ __vsniffer: 7, text: msg.text, title: msg.title }, '*');
+    });
+  }
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type !== 'qstatus' || !btn) return;
