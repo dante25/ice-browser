@@ -40,14 +40,25 @@
     for (const m of t.match(URL_RE) || []) report(m, source);
   }
 
+  // Facebook/Instagram: the site's own GraphQL replies hold every video's HD/DASH addresses (the mechanism of
+  // Ultimate SN Downloader's main_hook.js). Passed to quick.js, which looks the clicked video up by its id.
+  const CAP = /\/api\/graphql|\/graphql\/query|\/api\/v1\/|\/ajax\/|\/graphql\/|\/_puppy\/|\/_napi\//;
+  const capture = (url, text) => {
+    try {
+      if (/(^|\.)(facebook|instagram)\.com$/.test(location.hostname) && CAP.test(url) && text) window.postMessage({ __vsniffer: 2, url, text }, '*');
+    } catch {}
+  };
+
   // fetch: request URL + any URL found in text/JSON responses (weak: API replies list many unrelated videos).
   const origFetch = window.fetch;
   window.fetch = function (...args) {
     const p = origFetch.apply(this, args);
     try {
       const input = args[0];
-      report(typeof input === 'string' ? input : input?.url || String(input), 'fetch');
+      const reqUrl = typeof input === 'string' ? input : input?.url || String(input);
+      report(reqUrl, 'fetch');
       p.then((r) => {
+        if (CAP.test(reqUrl)) r.clone().text().then((t) => capture(reqUrl, t)).catch(() => {});
         const ct = r.headers.get('content-type') || '';
         const len = Number(r.headers.get('content-length')) || 0;
         if (len < MAX_SCAN && /json|text|javascript|xml/i.test(ct)) {
@@ -64,7 +75,10 @@
       report(String(url), 'xhr');
       this.addEventListener('load', () => {
         try {
-          if (this.responseType === '' || this.responseType === 'text') scanText(this.responseText, 'xhr response');
+          if (this.responseType === '' || this.responseType === 'text') {
+            scanText(this.responseText, 'xhr response');
+            capture(String(url), this.responseText);
+          }
         } catch {}
       });
     } catch {}
