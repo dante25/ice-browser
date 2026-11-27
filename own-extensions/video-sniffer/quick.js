@@ -9,8 +9,14 @@
   let lastMove = 0;
   let busy = false;
   const LABEL = 'Video Sniffer: download this video (best quality)';
-  // Ultimate SN Downloader puts its own blue ⬇ at the same corner on Facebook/Instagram: sit left of it.
-  const SHIFT = /(^|\.)(facebook|instagram)\.com$/.test(location.hostname) ? 46 : 0;
+  // Ultimate SN Downloader puts its own blue ⬇ in the same corner on Facebook/Instagram ...
+  const SHIFT = 0;
+  // ... and its button is hidden, so only one download button is ever on a video (SN's opens its own windows).
+  try {
+    const st = document.createElement('style');
+    st.textContent = '#usn-quick{display:none!important}';
+    (document.head || document.documentElement).appendChild(st);
+  } catch {}
 
   // The page's own GraphQL replies (posted by inject.js): where Facebook keeps every video's addresses.
   const captured = [];
