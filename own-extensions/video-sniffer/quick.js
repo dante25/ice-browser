@@ -8,7 +8,9 @@
   let hideTimer = 0;
   let lastMove = 0;
   let busy = false;
-  const LABEL = 'Download this video (best quality)';
+  const LABEL = 'Video Sniffer: download this video (best quality)';
+  // Ultimate SN Downloader puts its own blue ⬇ at the same corner on Facebook/Instagram: sit left of it.
+  const SHIFT = /(^|\.)(facebook|instagram)\.com$/.test(location.hostname) ? 46 : 0;
 
   // The page's own GraphQL replies (posted by inject.js): where Facebook keeps every video's addresses.
   const captured = [];
@@ -43,7 +45,7 @@
     btn.textContent = '⬇';
     btn.title = LABEL;
     btn.style.cssText =
-      'position:fixed;z-index:2147483647;display:none;min-width:34px;height:34px;padding:0 6px;box-sizing:border-box;border-radius:17px;background:#2f7cf6;color:#fff;font:700 17px/34px system-ui,sans-serif;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);user-select:none;';
+      'position:fixed;z-index:2147483647;display:none;min-width:34px;height:34px;padding:0 6px;box-sizing:border-box;border-radius:17px;background:#1e9e5a;color:#fff;font:700 17px/34px system-ui,sans-serif;text-align:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);user-select:none;';
     btn.addEventListener('mouseenter', () => clearTimeout(hideTimer));
     btn.addEventListener('mouseleave', hideSoon);
     for (const t of ['mousedown', 'mouseup', 'pointerdown', 'pointerup']) btn.addEventListener(t, (e) => e.stopPropagation(), true);
@@ -94,7 +96,7 @@
       clearTimeout(hideTimer);
       current = v;
       const b = ensure();
-      b.style.left = Math.max(4, Math.min(innerWidth - 44, r.right - 48)) + 'px';
+      b.style.left = Math.max(4, Math.min(innerWidth - 44, r.right - 48 - SHIFT)) + 'px';
       b.style.top = Math.max(4, r.top + 10) + 'px';
       b.style.display = 'block';
     },
