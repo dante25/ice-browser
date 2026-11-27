@@ -150,7 +150,8 @@
         msg.fb = await findFacebook(v);
         const a = lastAsk;
         if (!msg.fb) msg.fbReason = (
-          !a ? 'Page script did not answer - reload the Facebook tab (F5) and try again'
+          a?.timedOut ? `Took too long at step "${a.timedOut}" - trying the files the player downloaded`
+          : !a ? 'Page script did not answer - reload the Facebook tab (F5) and try again'
           : !a.store ? 'Facebook\'s data store is not hooked - reload the tab (F5), then try again'
           : `This video is not in the page data yet (tried ${a.tried?.length || 0} ids) - let it play for a second, then click again`
         );
@@ -301,6 +302,20 @@
     return best && bestRank < 10 ? { url: unesc(best), dash: null } : null;
   }
 
+  // Scans the JSON blocks of the live page (not its whole HTML: a feed's HTML is tens of MB).
+  function fromLivePage(id) {
+    const out = { urls: [], mpd: '' };
+    for (const s of document.querySelectorAll('script[type="application/json"]')) {
+      const t = s.textContent;
+      if (!t || t.length > 15e6 || !t.includes(id)) continue;
+      try {
+        walk(JSON.parse(t), id, out);
+      } catch {}
+    }
+    return bestFrom(out);
+  }
+
+  // A fetched page of the video (/reel/<id>/, /watch/?v=<id>).
   function fromDocument(html, id) {
     const out = { urls: [], mpd: '' };
     const re = /<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/g;
@@ -314,32 +329,50 @@
     return bestFrom(out) || fromText(html, id);
   }
 
+  let step = '';
+  const tick = () => new Promise((r) => setTimeout(r, 0)); // let the page breathe between heavy steps
+
   async function findFacebook(video) {
     const id = videoId(video) || '';
-    show('…', 'Reading the video data…', true);
-    // 0) the page's Relay store: what the player itself is using right now (id from the link, the player's
-    //    React props, or the video's duration)
-    const live = fromStore(await askStore(id, video));
-    if (live) return live;
-    if (!id) return null;
-    // 1) what the page has received (feed / reel replies), newest first
-    const out = { urls: [], mpd: '' };
-    for (let i = captured.length - 1; i >= 0; i--) {
-      if (captured[i].includes(id)) for (const d of parsePayload(captured[i])) walk(d, id, out);
+    const run = async () => {
+      step = 'Relay store';
+      show('…', 'Reading the video data (1/4: page store)…', true);
+      const live = fromStore(await askStore(id, video));
+      if (live) return live;
+      if (!id) return null;
+      step = 'received replies';
+      show('…', 'Reading the video data (2/4: page replies)…', true);
+      await tick();
+      const out = { urls: [], mpd: '' };
+      for (let i = captured.length - 1; i >= 0; i--) {
+        if (captured[i].includes(id)) for (const d of parsePayload(captured[i])) walk(d, id, out);
+      }
+      const got = bestFrom(out);
+      if (got) return got;
+      step = 'page data';
+      show('…', 'Reading the video data (3/4: page data)…', true);
+      await tick();
+      const here = fromLivePage(id);
+      if (here) return here;
+      step = "the video's own page";
+      show('…', "Reading the video data (4/4: the video's page)…", true);
+      for (const path of [`/reel/${id}/`, `/watch/?v=${id}`]) {
+        try {
+          const r = await fetch(path, { credentials: 'include', headers: { accept: 'text/html' }, signal: AbortSignal.timeout(6000) });
+          if (!r.ok) continue;
+          const found = fromDocument(await r.text(), id);
+          if (found) return found;
+        } catch {}
+      }
+      return null;
+    };
+    // Never hang: after 15 s give up and let the background try the files the player downloaded.
+    const timeout = new Promise((r) => setTimeout(() => r('timeout'), 15000));
+    const res = await Promise.race([run().catch(() => null), timeout]);
+    if (res === 'timeout') {
+      lastAsk = { ...(lastAsk || {}), timedOut: step };
+      return null;
     }
-    const got = bestFrom(out);
-    if (got) return got;
-    // 2) the page's embedded JSON / HTML, 3) the video's own page
-    const here = fromDocument(document.documentElement.innerHTML, id);
-    if (here) return here;
-    for (const path of [`/reel/${id}/`, `/watch/?v=${id}`, `/video.php?v=${id}`]) {
-      try {
-        const r = await fetch(path, { credentials: 'include', headers: { accept: 'text/html' } });
-        if (!r.ok) continue;
-        const found = fromDocument(await r.text(), id);
-        if (found) return found;
-      } catch {}
-    }
-    return null;
+    return res;
   }
 })();
