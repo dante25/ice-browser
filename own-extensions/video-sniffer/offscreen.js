@@ -206,6 +206,55 @@ async function run(job, say) {
     say('Merging…');
     blob = mergeFmp4(v, a);
     filename = `${job.name}.mp4`;
+  } else if (job.mode === 'ytmerge') {
+    // YouTube: fetched in 9.5 MB ranges (?range=), retried when a connection stalls, then video + audio merged.
+    const sizes = [Number(job.vs) || 0, job.audio ? Number(job.as) || 0 : 0];
+    if (!sizes[0] || (job.audio && !sizes[1])) throw new Error('YouTube did not report the stream size; use yt-dlp instead.');
+    if (sizes[0] + sizes[1] > LIMIT) throw new Error('Larger than 1.5 GB; use yt-dlp instead.');
+    const tick = progress(say, '');
+    const part = async (url, from, to) => {
+      for (let attempt = 1; ; attempt++) {
+        const ctl = new AbortController();
+        let idle;
+        const bump = () => {
+          clearTimeout(idle);
+          idle = setTimeout(() => ctl.abort(), 20000);
+        };
+        let got = 0;
+        try {
+          bump();
+          const u = new URL(url);
+          u.searchParams.set('range', `${from}-${to}`);
+          const r = await fetch(u, { signal: ctl.signal });
+          if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}: YouTube refused the download`), { fatal: true });
+          const out = new Uint8Array(to - from + 1);
+          const reader = r.body.getReader();
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            bump();
+            out.set(value, got);
+            got += value.length;
+          }
+          if (got !== out.length) throw new Error('Incomplete chunk');
+          tick(got);
+          return out;
+        } catch (e) {
+          if (e.fatal || attempt >= 3) throw e;
+        } finally {
+          clearTimeout(idle);
+        }
+      }
+    };
+    const all = async (url, size) => {
+      const out = new Uint8Array(size);
+      for (let from = 0; from < size; from += 9.5e6) out.set(await part(url, from, Math.min(from + 9.5e6, size) - 1), from);
+      return out;
+    };
+    const [v, a] = await Promise.all([all(job.video, sizes[0]), job.audio ? all(job.audio, sizes[1]) : null]);
+    say('Merging…');
+    blob = a ? mergeFmp4(v, a) : new Blob([v], { type: 'video/mp4' });
+    filename = `${job.name}.mp4`;
   } else if (job.mode === 'hls') {
     ({ blob, filename } = await hls(job, say));
   } else {

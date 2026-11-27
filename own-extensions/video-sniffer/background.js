@@ -145,6 +145,22 @@ const safeName = (s) => (s || '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').replac
 const MIME_EXT = { mp4: 'mp4', webm: 'webm', quicktime: 'mov', 'x-matroska': 'mkv', ogg: 'ogg', 'x-flv': 'flv' };
 
 function say(sender, text, title) {
+  if (sender.popup) {
+    // Started from the popup: progress goes on the toolbar icon of that tab.
+    const tabId = sender.tab.id;
+    chrome.action.setBadgeText({ tabId, text: text.length > 4 ? '…' : text });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: text === '✕' ? '#d93025' : '#1e9e5a' });
+    chrome.action.setTitle({ tabId, title: `Video Sniffer: ${title || text}` });
+    if (text === '✓' || text === '✕') {
+      setTimeout(async () => {
+        const n = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || []).length;
+        chrome.action.setBadgeText({ tabId, text: n ? String(n) : '' });
+        chrome.action.setBadgeBackgroundColor({ tabId, color: '#d93025' });
+        chrome.action.setTitle({ tabId, title: 'Video Sniffer' });
+      }, 6000);
+    }
+    return;
+  }
   chrome.tabs.sendMessage(sender.tab.id, { type: 'qstatus', text, title }, { frameId: sender.frameId }).catch(() => {});
 }
 
@@ -275,6 +291,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   quick(msg, sender).then(
     () => say(sender, '✓', 'Download started'),
     (e) => say(sender, '✕', e.message || String(e))
+  );
+  sendResponse({ ok: true });
+});
+
+
+// ---- Downloads started from the popup (no tab is opened) ------------------------------------------------
+const YT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
+
+async function popdl(msg) {
+  const s = { popup: true, tab: { id: msg.tabId } };
+  const job = { page: msg.page, name: safeName(msg.name) || 'video' };
+  say(s, '…', 'Starting');
+  await setReferer(msg.page);
+  if (msg.mode === 'file') return directDownload(msg.url, `${job.name}.${msg.ext || 'mp4'}`, s, { ...job, ext: msg.ext });
+  if (msg.mode === 'hls') return runOffscreen({ ...job, mode: 'hls', url: msg.url }, s);
+  if (msg.mode === 'ytmerge') {
+    // googlevideo expects the client its URLs were issued for (visionOS, as in inject.js)
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [3],
+      addRules: [
+        {
+          id: 3,
+          priority: 3,
+          action: { type: 'modifyHeaders', requestHeaders: [{ header: 'User-Agent', operation: 'set', value: YT_UA }] },
+          condition: { requestDomains: ['googlevideo.com'], resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+        },
+      ],
+    });
+    return runOffscreen({ ...job, mode: 'ytmerge', video: msg.video, vs: msg.vs, audio: msg.audio, as: msg.as }, s);
+  }
+  throw new Error('Unknown download');
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type !== 'popdl') return;
+  popdl(msg).then(
+    () => say({ popup: true, tab: { id: msg.tabId } }, '✓', 'Download started'),
+    (e) => say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e))
   );
   sendResponse({ ok: true });
 });
