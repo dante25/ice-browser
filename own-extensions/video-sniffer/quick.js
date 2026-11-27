@@ -60,8 +60,28 @@
     return btn;
   }
 
+  // A failure must be readable, not hidden in a tooltip.
+  let toastEl = null;
+  function toast(text) {
+    if (!btn) return;
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.style.cssText =
+        'position:fixed;z-index:2147483647;max-width:340px;padding:8px 12px;border-radius:8px;background:#b3261e;color:#fff;font:13px/1.4 system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.5);user-select:text;cursor:text;';
+      document.documentElement.appendChild(toastEl);
+    }
+    const r = btn.getBoundingClientRect();
+    toastEl.textContent = `Video Sniffer: ${text}`;
+    toastEl.style.left = Math.max(4, Math.min(innerWidth - 350, r.left - 300)) + 'px';
+    toastEl.style.top = r.bottom + 8 + 'px';
+    toastEl.style.display = 'block';
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => (toastEl.style.display = 'none'), 12000);
+  }
+
   function show(sym, title, keep) {
     if (!btn) return;
+    if (sym === '✕') toast(title);
     btn.textContent = sym;
     btn.title = title || LABEL;
     if (!keep) {
@@ -125,10 +145,11 @@
     const v = current;
     const msg = { type: 'quick', page: top === window ? location.href : document.referrer || location.href, title: document.title, duration: v.duration, src: v.currentSrc || v.src || '' };
     try {
-      if (IS_FB) msg.fb = await findFacebook(v);
-      if (IS_FB && !msg.fb) {
+      if (IS_FB) {
+        msg.isFb = true;
+        msg.fb = await findFacebook(v);
         const a = lastAsk;
-        throw new Error(
+        if (!msg.fb) msg.fbReason = (
           !a ? 'Page script did not answer - reload the Facebook tab (F5) and try again'
           : !a.store ? 'Facebook\'s data store is not hooked - reload the tab (F5), then try again'
           : `This video is not in the page data yet (tried ${a.tried?.length || 0} ids) - let it play for a second, then click again`

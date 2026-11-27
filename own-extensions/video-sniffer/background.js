@@ -245,6 +245,39 @@ async function pickFromList(tabId, duration) {
   return files[0] || items.filter((i) => i.kind === 'file').pop() || null;
 }
 
+// What the Facebook player fetched, from the sniffed list: the efg parameter names the track kind.
+function fbTrack(url) {
+  try {
+    const e = new URL(url).searchParams.get('efg');
+    if (!e) return '';
+    const t = String(JSON.parse(atob(e.replace(/-/g, '+').replace(/_/g, '/'))).vencode_tag || '');
+    return /audio/i.test(t) ? 'audio' : /progressive/i.test(t) ? 'muxed' : t ? 'video' : '';
+  } catch {
+    return '';
+  }
+}
+
+async function fbFromList(tabId) {
+  const items = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || [])
+    .filter((i) => i.kind === 'file' && /fbcdn\.net|facebook\.com/.test(i.url))
+    .map((i) => ({ ...i, track: fbTrack(i.url) }))
+    .filter((i) => i.track);
+  const newest = (list) => list.reduce((m, i) => Math.max(m, i.ts), 0);
+  const best = (list) => {
+    const t = newest(list);
+    return list.filter((i) => i.ts >= t - 30000).sort((a, b) => (b.size || 0) - (a.size || 0))[0];
+  };
+  const muxed = items.filter((i) => i.track === 'muxed');
+  const video = items.filter((i) => i.track === 'video');
+  const audio = items.filter((i) => i.track === 'audio');
+  if (video.length && audio.length) {
+    const v = best(video);
+    return { url: muxed.length ? best(muxed).url : '', dash: { video: v.url, audio: best(audio).url, height: 1 } };
+  }
+  if (muxed.length) return { url: best(muxed).url, dash: null };
+  return null;
+}
+
 async function quick(msg, sender) {
   const page = msg.page || sender.tab.url;
   const name = safeName(msg.title || sender.tab.title) || 'video';
@@ -252,8 +285,11 @@ async function quick(msg, sender) {
   const job = { page, name };
 
   // Facebook: the page's own data was read by quick.js; DASH (video + audio, up to 1080p) if it beats the HD file.
-  if (msg.fb) {
-    const { url, dash } = msg.fb;
+  // If that found nothing, use what the player itself downloaded (sniffed fbcdn files).
+  const fb = msg.fb || (msg.isFb ? await fbFromList(sender.tab.id) : null);
+  if (msg.isFb && !fb) throw new Error(msg.fbReason || 'No video address found on this page');
+  if (fb) {
+    const { url, dash } = fb;
     if (dash?.audio && (!url || dash.height > 720)) {
       try {
         say(sender, '…', `Downloading ${dash.height}p`);
