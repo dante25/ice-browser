@@ -43,33 +43,34 @@ namespace {
 using PermissionsManager = extensions::PermissionsManager;
 using SitePermissionsHelper = extensions::SitePermissionsHelper;
 
-// Returns true if the action name for `a` comes before the action name for `b`
-// in an alphabetical, case-insensitive comparison.
-// Ice: Tab Session Manager, SN Downloader, Video Sniffer and "Uvoz iz drugog
-// browsera" come first, in this order; everything else follows alphabetically.
-int IceRank(const std::string& id) {
-  static constexpr const char* kIceFirst[] = {
-      "iaiomicjabeggjcfkbimgmglanimpnae",   // Tab Session Manager
-      "mphpcefjdbdemmjpplkpaidolnacnlgb",   // SN Downloader
-      "bpgjpdfphkgemklhkdiemkjbmamdmcgd",   // Video Sniffer
-      "dfhbiomgcficgkidolpkoiafdoegbbha"};  // Uvoz iz drugog browsera
+// Ice: Tab Session Manager, Ultimate SN Downloader, Video Sniffer and "Uvoz iz
+// drugog browsera" are listed first (in this order) at the top of the menu;
+// everything else follows alphabetically. Matched by name, because the ids of
+// the unpacked add-ons differ between devices.
+int IceRank(const std::u16string& lower_name) {
+  static constexpr const char16_t* kIceFirst[] = {
+      u"tab session manager", u"ultimate sn downloader", u"video sniffer",
+      u"uvoz iz drugog browsera"};
   for (int i = 0; i < 4; ++i) {
-    if (id == kIceFirst[i]) {
+    if (lower_name == kIceFirst[i]) {
       return i;
     }
   }
   return 4;
 }
 
+// Returns true if `a` comes before `b`: Ice extensions first, then the action
+// name in an alphabetical, case-insensitive comparison.
 bool SortActionsByName(const std::unique_ptr<ExtensionActionViewModel>& a,
                        const std::unique_ptr<ExtensionActionViewModel>& b) {
-  const int rank_a = IceRank(a->GetId());
-  const int rank_b = IceRank(b->GetId());
+  const std::u16string name_a = base::i18n::ToLower(a->GetActionName());
+  const std::u16string name_b = base::i18n::ToLower(b->GetActionName());
+  const int rank_a = IceRank(name_a);
+  const int rank_b = IceRank(name_b);
   if (rank_a != rank_b) {
     return rank_a < rank_b;
   }
-  return base::i18n::ToLower(a->GetActionName()) <
-         base::i18n::ToLower(b->GetActionName());
+  return name_a < name_b;
 }
 
 // The state of the main page in the menu, corresponding to the current site's
