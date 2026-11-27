@@ -68,7 +68,9 @@ chrome.webRequest.onResponseStarted.addListener(
     const kind = classify(d.url, type);
     if (!kind) return;
     const range = h('content-range').match(/\/(\d+)$/);
-    const size = range ? Number(range[1]) : Number(h('content-length')) || 0;
+    // A Facebook piece (?bytestart=..): its content-length is the piece, not the video, so only the total counts.
+    const piece = normalizeUrl(d.url) !== d.url.split('#')[0];
+    const size = range ? Number(range[1]) : piece ? 0 : Number(h('content-length')) || 0;
     if (kind === 'file' && size && size < MIN_FILE_SIZE) return;
     add(d.tabId, { url: d.url, kind, type, size, source: 'network' });
   },
@@ -239,7 +241,7 @@ async function quick(msg, sender) {
     if (dash?.audio && (!url || dash.height > 720)) {
       try {
         say(sender, '…', `Downloading ${dash.height}p`);
-        return await runOffscreen({ ...job, mode: 'merge', video: dash.video, audio: dash.audio, name: `${name} [${dash.height}p]` }, sender);
+        return await runOffscreen({ ...job, mode: 'dash', video: dash.video, audio: dash.audio, name: `${name} [${dash.height}p]` }, sender);
       } catch (e) {
         if (!url) throw e;
       }

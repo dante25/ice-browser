@@ -43,6 +43,78 @@ async function fetchAll(url, tick) {
   return { bytes: out, type: r.headers.get('content-type') || 'video/mp4' };
 }
 
+
+// ---- Facebook DASH: one file per stream, read in pieces (ESUIT's way) ------------------------------------
+// init range (ftyp+moov) + sidx (indexRange) + every piece the sidx lists, joined back into a fragmented MP4.
+const rangeOf = (s) => String(s).split('-').map(Number);
+const piece = (url, a, b) => `${url}${url.includes('?') ? '&' : '?'}bytestart=${a}&byteend=${b}`;
+
+async function getRange(url, a, b) {
+  const r = await fetch(piece(url, a, b), { credentials: 'include' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}: the server refused a video piece`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+// Byte ranges of the media pieces listed by the sidx box that starts at file offset `at`.
+function sidxRanges(b, at) {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (String.fromCharCode(b[4], b[5], b[6], b[7]) !== 'sidx') throw new Error('Unexpected index data (no sidx)');
+  const size = v.getUint32(0);
+  let p = 8;
+  const ver = b[p];
+  p += 12; // version+flags, reference id, timescale
+  let first;
+  if (ver === 0) {
+    p += 4;
+    first = v.getUint32(p);
+    p += 4;
+  } else {
+    p += 8;
+    first = Number(v.getBigUint64(p));
+    p += 8;
+  }
+  p += 2;
+  const n = v.getUint16(p);
+  p += 2;
+  let pos = at + size + first;
+  const out = [];
+  for (let i = 0; i < n; i++, p += 12) {
+    const len = v.getUint32(p) & 0x7fffffff;
+    out.push([pos, pos + len - 1]);
+    pos += len;
+  }
+  return out;
+}
+
+async function dashStream(st, tick) {
+  if (!st.init || !st.index) {
+    const f = await fetchAll(st.url, (n) => tick(n));
+    return f.bytes;
+  }
+  const [i0, i1] = rangeOf(st.init);
+  const [x0, x1] = rangeOf(st.index);
+  const [init, sidx] = await Promise.all([getRange(st.url, i0, i1), getRange(st.url, x0, x1)]);
+  const refs = sidxRanges(sidx, x0);
+  const parts = new Array(refs.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < refs.length) {
+      const k = next++;
+      parts[k] = await getRange(st.url, refs[k][0], refs[k][1]);
+      tick(parts[k].length);
+    }
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
+  const all = [init, sidx, ...parts];
+  const out = new Uint8Array(all.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of all) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
 function progress(say, label) {
   let sum = 0;
   let last = 0;
@@ -127,6 +199,12 @@ async function run(job, say) {
     const [v, a] = await Promise.all([fetchAll(job.video, tick), fetchAll(job.audio, tick)]);
     say('Merging…');
     blob = mergeFmp4(v.bytes, a.bytes);
+    filename = `${job.name}.mp4`;
+  } else if (job.mode === 'dash') {
+    const tick = progress(say, '');
+    const [v, a] = await Promise.all([dashStream(job.video, tick), dashStream(job.audio, tick)]);
+    say('Merging…');
+    blob = mergeFmp4(v, a);
     filename = `${job.name}.mp4`;
   } else if (job.mode === 'hls') {
     ({ blob, filename } = await hls(job, say));
