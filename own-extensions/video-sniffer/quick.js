@@ -175,7 +175,8 @@
     }
   }
 
-  // Per AdaptationSet the largest Representation (FBContentLength / bandwidth), like SN Downloader's parseDash.
+  // Per AdaptationSet the largest Representation (FBContentLength / bandwidth). Facebook's DASH files are one
+  // file per stream, read in pieces: Initialization range + sidx (indexRange) + the pieces the sidx lists.
   function parseMpd(xml) {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     let video = null;
@@ -186,13 +187,48 @@
       for (const r of set.getElementsByTagName('Representation')) {
         const size = Number(r.getAttribute('FBContentLength') || r.getAttribute('bandwidth') || 0);
         const url = r.getElementsByTagName('BaseURL')[0]?.textContent?.trim();
-        if (url && (!best || size > best.size)) best = { url, size, height: Number(r.getAttribute('height')) || 0 };
+        if (!url || (best && size <= best.size)) continue;
+        const sb = r.getElementsByTagName('SegmentBase')[0];
+        const init = sb?.getElementsByTagName('Initialization')[0]?.getAttribute('range') || '';
+        best = {
+          url,
+          size,
+          height: Number(r.getAttribute('height')) || parseInt(r.getAttribute('FBQualityLabel')) || 0,
+          index: sb?.getAttribute('indexRange') || '',
+          init,
+        };
       }
       if (!best) continue;
       if (isAudio) audio = best;
       else video = best;
     }
-    return video ? { video: video.url, audio: audio?.url || '', height: video.height } : null;
+    return video ? { video, audio, height: video.height } : null;
+  }
+
+  // Ask inject.js (page world) for the video's record in Facebook's Relay store (ESUIT's mechanism).
+  let reqSeq = 0;
+  function askStore(id) {
+    return new Promise((resolve) => {
+      const req = ++reqSeq;
+      const done = (v) => {
+        window.removeEventListener('message', on);
+        clearTimeout(t);
+        resolve(v);
+      };
+      const on = (e) => {
+        if (e.source === window && e.data?.__vsr === 1 && e.data.req === req) done(e.data.data);
+      };
+      const t = setTimeout(() => done(null), 1500);
+      window.addEventListener('message', on);
+      window.postMessage({ __vsq: 1, id, req }, '*');
+    });
+  }
+
+  function fromStore(d) {
+    if (!d) return null;
+    const url = d.hd || d.sd || '';
+    const dash = d.mpd ? parseMpd(d.mpd) : null;
+    return url || dash ? { url, dash } : null;
   }
 
   function bestFrom(out) {
@@ -242,6 +278,9 @@
     const id = videoId(video);
     if (!id) return null;
     show('…', 'Reading the video data…', true);
+    // 0) the page's Relay store: what the player itself is using right now
+    const live = fromStore(await askStore(id));
+    if (live) return live;
     // 1) what the page has received (feed / reel replies), newest first
     const out = { urls: [], mpd: '' };
     for (let i = captured.length - 1; i >= 0; i--) {

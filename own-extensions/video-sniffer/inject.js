@@ -49,6 +49,151 @@
     } catch {}
   };
 
+  // ---- Facebook: read the video addresses straight out of the page's own Relay store -----------------------
+  // Mechanism of ESUIT Video Downloader for Facebook: facebook.com defines its modules with window.__d(name, deps,
+  // factory). The factory of relay-runtime/store/RelayPublishQueue is rewritten so the RecordSourceProxy is kept in
+  // window.___rs; every video the page has loaded (feed, reel, watch) is then a record in that store, with
+  // playable_url (SD), playable_url(quality:"HD"), the DASH manifest and progressive_urls.
+  const IS_FB = /(^|\.)facebook\.com$/.test(location.hostname);
+  if (IS_FB && !window.__vsRelay) {
+    window.__vsRelay = true;
+    const MOD = 'relay-runtime/store/RelayPublishQueue';
+    const patch = (src) =>
+      src.replace(
+        /,(\w+)=new\((\w+)\("relay-runtime\/mutations\/RelayRecordSourceProxy"/,
+        ',$1=window.___rs=new($2("relay-runtime/mutations/RelayRecordSourceProxy"'
+      );
+    const rebuild = (fn) => {
+      let src;
+      try {
+        src = Function.prototype.toString.call(fn);
+      } catch {
+        return fn;
+      }
+      const out = patch(src);
+      if (out === src) return fn;
+      const params = (out.slice(out.indexOf('(') + 1, out.indexOf(')')).replace(/\/\*[\s\S]*?\*\//g, '').match(/[^\s,]+/g) || []).join(',');
+      const body = out.slice(out.indexOf('{') + 1, out.lastIndexOf('}'));
+      try {
+        const s = document.createElement('script');
+        s.text = `window.__vsFn=function(${params}){${body}}`;
+        (document.head || document.documentElement).appendChild(s).remove();
+        if (typeof window.__vsFn === 'function') return window.__vsFn;
+      } catch {}
+      try {
+        return new Function(params, body);
+      } catch {
+        return fn;
+      }
+    };
+    const wrapD = (d) =>
+      new Proxy(d, {
+        apply(target, self, args) {
+          try {
+            if (args[0] === MOD && typeof args[2] === 'function') args[2] = rebuild(args[2]);
+          } catch {}
+          return target.apply(self, args);
+        },
+      });
+    let dFn = window.__d;
+    if (dFn && !String(dFn).includes('__d_stub')) dFn = wrapD(dFn);
+    else dFn = undefined;
+    Object.defineProperty(window, '__d', {
+      configurable: true,
+      get: () => dFn,
+      set: (v) => {
+        dFn = typeof v === 'function' ? wrapD(v) : v;
+      },
+    });
+  }
+
+  // Every record map the store keeps (the same walk ESUIT does with getRoot().__sources).
+  function relayMaps() {
+    const maps = [];
+    try {
+      const root = window.___rs?.getRoot?.();
+      if (!root) return maps;
+      for (const k of Object.keys(root)) {
+        const o = root[k];
+        if (o && Array.isArray(o.__sources)) {
+          for (const src of o.__sources) for (const kk in src) if (src[kk] instanceof Map) maps.push(src[kk]);
+        }
+      }
+    } catch {}
+    return maps;
+  }
+  function relayRec(id) {
+    for (const m of relayMaps()) {
+      const r = m.get(id);
+      if (r) return r;
+    }
+    return null;
+  }
+  const refOf = (v) => (v && typeof v === 'object' && v.__ref ? relayRec(v.__ref) : null);
+
+  // { sd, hd, mpd, prog: [{ q, url }] } for one video id, or null when the store has no such video.
+  function relayVideo(id) {
+    const r = relayRec(id);
+    if (!r) return null;
+    const out = { sd: '', hd: '', mpd: '', prog: [] };
+    const str = (v) => (typeof v === 'string' && /^https?:/.test(v) ? v : '');
+    for (const k of Object.keys(r)) {
+      const v = r[k];
+      if (k === 'playable_url') out.sd = out.sd || str(v);
+      else if (/^playable_url\(.*HD/i.test(k)) out.hd = out.hd || str(v);
+      else if (k === 'browser_native_hd_url' || k === 'hd_src' || k === 'hd_src_no_ratelimit') out.hd = out.hd || str(v);
+      else if (k === 'browser_native_sd_url' || k === 'sd_src' || k === 'sd_src_no_ratelimit') out.sd = out.sd || str(v);
+      else if (/^playlist\(.*MPEG_DASH/i.test(k) && typeof v === 'string' && v.includes('<MPD')) out.mpd = out.mpd || v;
+      else if (k === 'dash_manifest' && typeof v === 'string' && v.includes('<MPD')) out.mpd = out.mpd || v;
+      else if (/^video_delivery_response/.test(k)) {
+        const d = refOf(v);
+        if (!d) continue;
+        for (const kk of Object.keys(d)) {
+          if (kk === 'dash_manifests' && Array.isArray(d[kk])) {
+            for (const ref of d[kk]) {
+              const m = refOf(ref);
+              if (m && typeof m.manifest_xml === 'string' && !out.mpd) out.mpd = m.manifest_xml;
+            }
+          } else if (kk === 'progressive_urls' && Array.isArray(d[kk])) {
+            for (const ref of d[kk]) {
+              const p = refOf(ref);
+              const url = str(p?.progressive_url);
+              if (!url) continue;
+              const meta = refOf(p.metadata) || p.metadata || {};
+              out.prog.push({ q: String(meta.quality || ''), url });
+            }
+          }
+        }
+      }
+    }
+    for (const p of out.prog) {
+      if (/^HD$/i.test(p.q)) out.hd = out.hd || p.url;
+      else if (/^SD$/i.test(p.q)) out.sd = out.sd || p.url;
+    }
+    return out.sd || out.hd || out.mpd ? out : null;
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || e.data?.__vsq !== 1) return;
+    let data = null;
+    try {
+      data = relayVideo(String(e.data.id));
+    } catch {}
+    window.postMessage({ __vsr: 1, req: e.data.req, data, store: !!window.___rs }, '*');
+  });
+
+  // The playing Facebook video: list its complete files (not the 0.5 MB pieces the player fetches).
+  function scanFacebook() {
+    if (!IS_FB) return;
+    const h = location.pathname + location.search;
+    const id = (h.match(/\/reel\/(\d+)/) || h.match(/\/videos\/(?:[^/]+\/)?(\d+)/) || h.match(/[?&]v=(\d+)/) || [])[1];
+    if (!id) return;
+    const d = relayVideo(id);
+    if (!d) return;
+    if (d.hd) report(d.hd, 'Facebook HD', true);
+    if (d.sd) report(d.sd, 'Facebook SD', true);
+  }
+
   // fetch: request URL + any URL found in text/JSON responses (weak: API replies list many unrelated videos).
   const origFetch = window.fetch;
   window.fetch = function (...args) {
@@ -337,6 +482,7 @@
     scanMedia();
     scanAround();
     scanYouTube();
+    scanFacebook();
     document.querySelectorAll('script:not([src])').forEach((s) => scanText(s.textContent, 'page script'));
     document
       .querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]')
