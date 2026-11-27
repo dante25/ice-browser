@@ -25,6 +25,17 @@
   "content_scripts": [
     {
       "matches": [
+        "https://*.facebook.com/*"
+      ],
+      "js": [
+        "fbstore.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
         "<all_urls>"
       ],
       "js": [

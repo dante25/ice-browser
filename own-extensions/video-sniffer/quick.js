@@ -238,10 +238,36 @@
     return bestFrom(out) || fromText(html, id);
   }
 
+  let reqSeq = 0;
+  function fromStore(id) {
+    return new Promise((resolve) => {
+      const req = ++reqSeq;
+      const done = (v) => {
+        removeEventListener('message', on);
+        clearTimeout(t);
+        resolve(v);
+      };
+      const on = (e) => {
+        if (e.source !== window || e.data?.__vsniffer !== 4 || e.data.req !== req) return;
+        const r = e.data.result;
+        if (!r) return done(null);
+        const dash = r.mpd ? parseMpd(r.mpd) : null;
+        const url = r.hd || r.sd || '';
+        done(url || dash ? { url, dash } : null);
+      };
+      const t = setTimeout(() => done(null), 1500);
+      addEventListener('message', on);
+      postMessage({ __vsniffer: 3, id, req }, '*');
+    });
+  }
+
   async function findFacebook(video) {
     const id = videoId(video);
     if (!id) return null;
     show('…', 'Reading the video data…', true);
+    // 0) Facebook's own Relay store, read by video id (the ESUIT method, see fbstore.js)
+    const st = await fromStore(id);
+    if (st) return st;
     // 1) what the page has received (feed / reel replies), newest first
     const out = { urls: [], mpd: '' };
     for (let i = captured.length - 1; i >= 0; i--) {
