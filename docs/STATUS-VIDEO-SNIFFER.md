@@ -19,8 +19,8 @@
 - Chromium + mock stranica s mp4: ⬇ se pojavi, klik vrati "Download started".
 - **Nije provjereno:** da je fajl stvarno na disku, pravi Facebook, DASH spajanje na FB-u, HLS.
 
-## ESUIT mehanizam (`fbstore.js`)
-Preuzet iz `esuit arhiva.zip` (ESUIT Video Downloader for Facebook 2.9.2): `window.__d` se omota, modul `relay-runtime/store/RelayPublishQueue` se prepravi da izloži `window.___rs` (Relay store), a video se čita po id-u (`playable_url`, HD, MPEG-DASH playlist, `progressive_urls`). Testirano na lažnom loaderu (store uhvaćen, SD/HD pročitani); **nije testirano na pravom FB-u**. Ako store ne vrati ništa, `quick.js` pada na uhvaćene GraphQL odgovore pa na JSON u stranici.
+## ESUIT mehanizam (u `inject.js`, v1.3.0)
+Preuzet iz `esuit arhiva.zip` (ESUIT Video Downloader for Facebook 2.9.2; implementacija iz lokalne sesije 1.3.0 ima prednost): `window.__d` se omota, modul `relay-runtime/store/RelayPublishQueue` se prepravi da izloži `window.___rs` (Relay store), a video se čita po id-u (`playable_url`, HD, MPEG-DASH playlist, `progressive_urls`). Testirano na lažnom loaderu (store uhvaćen, SD/HD pročitani); **nije testirano na pravom FB-u** (provjeri na laptopu). Ako store ne vrati ništa, `quick.js` pada na uhvaćene GraphQL odgovore pa na JSON u stranici.
 
 ## Poznato / otvoreno
 - `mp4merge.js` radi samo s fragmentiranim MP4 (sidx/moof); ako FB DASH nije takav, pada na progresivni fajl.
