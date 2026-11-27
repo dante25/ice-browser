@@ -118,7 +118,14 @@
     const msg = { type: 'quick', page: top === window ? location.href : document.referrer || location.href, title: document.title, duration: v.duration, src: v.currentSrc || v.src || '' };
     try {
       if (IS_FB) msg.fb = await findFacebook(v);
-      if (IS_FB && !msg.fb) throw new Error('Facebook did not give this video\'s address - open the video itself and try again');
+      if (IS_FB && !msg.fb) {
+        const a = lastAsk;
+        throw new Error(
+          !a ? 'Page script did not answer - reload the Facebook tab (F5) and try again'
+          : !a.store ? 'Facebook\'s data store is not hooked - reload the tab (F5), then try again'
+          : `This video is not in the page data yet (tried ${a.tried?.length || 0} ids) - let it play for a second, then click again`
+        );
+      }
       await chrome.runtime.sendMessage(msg);
     } catch (err) {
       show('✕', err.message || String(err));
@@ -148,7 +155,7 @@
       if (a) href = a.getAttribute('href');
     }
     const h = href || location.pathname + location.search;
-    return (h.match(/\/reel\/(\d+)/) || h.match(/\/videos\/(?:[^/]+\/)?(\d+)/) || h.match(/[?&]v=(\d+)/) || [])[1] || null;
+    return (h.match(/\/reel\/(\d+)/) || h.match(/\/videos\/(?:[^/]+\/)?(\d+)/) || h.match(/[?&](?:v|video_id)=(\d+)/) || [])[1] || null;
   }
 
   function walk(root, id, out) {
@@ -207,20 +214,24 @@
 
   // Ask inject.js (page world) for the video's record in Facebook's Relay store (ESUIT's mechanism).
   let reqSeq = 0;
-  function askStore(id) {
+  let lastAsk = null;
+  function askStore(id, video) {
     return new Promise((resolve) => {
       const req = ++reqSeq;
       const done = (v) => {
         window.removeEventListener('message', on);
         clearTimeout(t);
-        resolve(v);
+        video?.removeAttribute('data-vs-pick');
+        lastAsk = v;
+        resolve(v?.data || null);
       };
       const on = (e) => {
-        if (e.source === window && e.data?.__vsr === 1 && e.data.req === req) done(e.data.data);
+        if (e.source === window && e.data?.__vsr === 1 && e.data.req === req) done(e.data);
       };
-      const t = setTimeout(() => done(null), 1500);
+      const t = setTimeout(() => done(null), 2000);
       window.addEventListener('message', on);
-      window.postMessage({ __vsq: 1, id, req }, '*');
+      video?.setAttribute('data-vs-pick', '1');
+      window.postMessage({ __vsq: 1, id, req, duration: video?.duration || 0 }, '*');
     });
   }
 
@@ -275,12 +286,13 @@
   }
 
   async function findFacebook(video) {
-    const id = videoId(video);
-    if (!id) return null;
+    const id = videoId(video) || '';
     show('…', 'Reading the video data…', true);
-    // 0) the page's Relay store: what the player itself is using right now
-    const live = fromStore(await askStore(id));
+    // 0) the page's Relay store: what the player itself is using right now (id from the link, the player's
+    //    React props, or the video's duration)
+    const live = fromStore(await askStore(id, video));
     if (live) return live;
+    if (!id) return null;
     // 1) what the page has received (feed / reel replies), newest first
     const out = { urls: [], mpd: '' };
     for (let i = captured.length - 1; i >= 0; i--) {

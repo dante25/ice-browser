@@ -173,13 +173,76 @@
     return out.sd || out.hd || out.mpd ? out : null;
   }
 
+  // The ids Facebook's own player component holds for a <video> (what ESUIT reads as payload.video.__id):
+  // the React fiber of the element and its ancestors carries the Video node in its props.
+  function fiberIds(el) {
+    const ids = [];
+    const add = (x) => x && typeof x === 'string' && !ids.includes(x) && ids.push(x);
+    try {
+      for (let n = el, d = 0; n && d < 25; n = n.parentElement, d++) {
+        const key = Object.keys(n).find((k) => k.startsWith('__reactFiber$'));
+        if (!key) continue;
+        let f = n[key];
+        for (let i = 0; f && i < 40; i++, f = f.return) {
+          const p = f.memoizedProps;
+          if (!p || typeof p !== 'object') continue;
+          for (const v of [p.video, p.media, p.videoData, p.story?.attachments?.[0]?.media, p.storyData?.video]) {
+            if (v && typeof v === 'object') {
+              add(v.__id);
+              add(String(v.id || ''));
+            }
+          }
+          add(String(p.videoID || p.videoId || p.video_id || p.videoFBID || ''));
+          if (ids.length >= 6) return ids;
+        }
+      }
+    } catch {}
+    return ids;
+  }
+
+  // Last resort: a video record in the store whose duration matches the playing <video>.
+  function relayByDuration(sec) {
+    if (!(sec > 0)) return null;
+    let best = null;
+    let bestDiff = 0.6;
+    try {
+      for (const m of relayMaps()) {
+        for (const r of m.values()) {
+          if (!r || typeof r !== 'object' || !('playable_url' in r || Object.keys(r).some((k) => k.startsWith('playable_url')))) continue;
+          const d = Number(r.playable_duration_in_ms) / 1000 || Number(r.playable_duration) / 1000 || Number(r.length_in_second) || Number(r.duration) || 0;
+          const diff = Math.abs(d - sec);
+          if (d && diff < bestDiff && r.__id) {
+            bestDiff = diff;
+            best = r.__id;
+          }
+        }
+      }
+    } catch {}
+    return best && relayVideo(best);
+  }
+
   window.addEventListener('message', (e) => {
     if (e.source !== window || e.data?.__vsq !== 1) return;
     let data = null;
+    let how = '';
+    const tried = [];
     try {
-      data = relayVideo(String(e.data.id));
+      const el = document.querySelector('video[data-vs-pick]');
+      const cands = [e.data.id, ...(el ? fiberIds(el) : [])].filter(Boolean).map(String);
+      for (const id of cands) {
+        tried.push(id);
+        data = relayVideo(id);
+        if (data) {
+          how = id === String(e.data.id) ? 'link' : 'react';
+          break;
+        }
+      }
+      if (!data && e.data.duration) {
+        data = relayByDuration(Number(e.data.duration));
+        if (data) how = 'duration';
+      }
     } catch {}
-    window.postMessage({ __vsr: 1, req: e.data.req, data, store: !!window.___rs }, '*');
+    window.postMessage({ __vsr: 1, req: e.data.req, data, how, tried, store: !!window.___rs }, '*');
   });
 
   // The playing Facebook video: list its complete files (not the 0.5 MB pieces the player fetches).
