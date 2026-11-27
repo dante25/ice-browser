@@ -16,7 +16,7 @@ h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: v
 #go { margin-top: 14px; width: 100%; padding: 9px 12px; font: inherit; font-weight: 600; border: 0; border-radius: 9px; background: var(--accent); color: var(--on-accent); cursor: pointer; }
 #go:disabled { opacity: .6; cursor: default; }
 /* Android: file import */
-body { width: auto; }
+body { width: 360px; max-width: 100%; }
 .pick { display: block; margin-top: 8px; }
 .pick input { display: none; }
 .pick span { display: block; text-align: center; padding: 10px 12px; font-weight: 600; border-radius: 9px; background: var(--accent); color: var(--on-accent); }
