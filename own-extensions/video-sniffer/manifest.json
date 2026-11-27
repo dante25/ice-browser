@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Sniffer",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Detects videos (HLS, DASH, MP4, WebM...) by watching network traffic, page scripts, players and the DOM.",
   "permissions": [
     "webRequest",
@@ -23,17 +23,6 @@
     "default_popup": "popup.html"
   },
   "content_scripts": [
-    {
-      "matches": [
-        "https://*.facebook.com/*"
-      ],
-      "js": [
-        "fbesuit.js"
-      ],
-      "run_at": "document_start",
-      "all_frames": false,
-      "world": "MAIN"
-    },
     {
       "matches": [
         "<all_urls>"

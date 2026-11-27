@@ -109,7 +109,6 @@
       const now = Date.now();
       if (now - lastMove < 100) return;
       lastMove = now;
-      if (IS_FB) return; // Facebook: the button sits inside the player (fbesuit.js)
       const v = videoAt(e.clientX, e.clientY);
       if (!v) return current && hideSoon();
       const r = v.getBoundingClientRect();
