@@ -22,3 +22,8 @@ button:hover { border-color: var(--acc); color: var(--acc); }
 #empty { padding: 16px 12px; color: var(--mut); }
 
 #best { display:block; width:100%; margin:6px 0; padding:8px; font-weight:600; background:#1e9e5a; color:#fff; border:0; border-radius:6px; cursor:pointer; }
+
+#msg { margin:6px 0; padding:8px 10px; border-radius:6px; background:#eef2f7; color:#1a1a1a; font-size:13px; line-height:1.4; word-break:break-word; }
+#msg.ok { background:#dff3e6; }
+#msg.err { background:#fbe3e1; color:#8c1d18; }
+@media (prefers-color-scheme: dark) { #msg { background:#2a2f36; color:#e6e6e6; } #msg.ok { background:#1f3a2a; } #msg.err { background:#4a2320; color:#ffd7d3; } }

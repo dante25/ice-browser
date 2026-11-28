@@ -430,11 +430,18 @@ async function popdl(msg) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== 'popdl') return;
+  // The popup waits for the answer and writes it on screen (the toolbar icon alone is easy to miss).
   popdl(msg).then(
-    (note) => say({ popup: true, tab: { id: msg.tabId } }, '✓', typeof note === 'string' ? note : 'Download started'),
-    (e) => say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e))
+    (note) => {
+      say({ popup: true, tab: { id: msg.tabId } }, '✓', typeof note === 'string' ? note : 'Download started');
+      sendResponse({ ok: true, note: typeof note === 'string' ? note : 'Done - saved to your Downloads folder' });
+    },
+    (e) => {
+      say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e));
+      sendResponse({ ok: false, error: e.message || String(e) });
+    }
   );
-  sendResponse({ ok: true });
+  return true;
 });
 
 
@@ -448,11 +455,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       say(s, '…', 'Starting');
       const fb = /(^|\.)facebook\.com$/.test(new URL(tab.url).hostname);
       return quick({ page: tab.url, title: tab.title, src: '', duration: 0, isFb: fb, fbReason: 'No video found yet - play it for a second, then click again' }, s).then(
-        (note) => say(s, '✓', typeof note === 'string' ? note : 'Download started'),
-        (e) => say(s, '✕', e.message || String(e))
+        (note) => {
+          say(s, '✓', typeof note === 'string' ? note : 'Download started');
+          sendResponse({ ok: true, note: typeof note === 'string' ? note : 'Done - saved to your Downloads folder' });
+        },
+        (e) => {
+          say(s, '✕', e.message || String(e));
+          sendResponse({ ok: false, error: e.message || String(e) });
+        }
       );
     },
-    () => {}
+    () => sendResponse({ ok: false, error: 'The tab is gone' })
   );
-  sendResponse({ ok: true });
+  return true;
 });

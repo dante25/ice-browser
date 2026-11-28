@@ -70,13 +70,33 @@ async function copy(b, text) {
 
 // Downloads run in the background (offscreen page, same Referer/Origin trick as downloader.html) and are
 // saved by chrome.downloads: no tab is opened. Progress is on the toolbar icon.
-function startDl(job, b) {
-  chrome.runtime.sendMessage({ type: 'popdl', tabId: tab.id, page: tab.url || '', ...job });
-  if (b) {
-    const old = b.textContent;
-    b.textContent = 'Started ✓';
-    setTimeout(() => (b.textContent = old), 2000);
+// What is happening, written where it cannot be missed.
+function say(text, ok) {
+  const el = document.getElementById('msg');
+  el.hidden = !text;
+  el.textContent = text || '';
+  el.className = ok === true ? 'ok' : ok === false ? 'err' : '';
+}
+
+async function ask(message, b) {
+  const old = b?.textContent;
+  say('Working… (keep this popup open)');
+  if (b) b.disabled = true;
+  try {
+    const r = await chrome.runtime.sendMessage(message);
+    if (!r) say('No answer from the extension - reload the extension and try again', false);
+    else say(r.ok ? `✓ ${r.note}` : `✕ ${r.error}`, !!r.ok);
+  } catch (e) {
+    say(`✕ ${e.message || e}`, false);
   }
+  if (b) {
+    b.disabled = false;
+    b.textContent = old;
+  }
+}
+
+function startDl(job, b) {
+  return ask({ type: 'popdl', tabId: tab.id, page: tab.url || '', ...job }, b);
 }
 
 function openStream(it, url = it.url, b) {
@@ -480,12 +500,7 @@ async function render() {
     helperLine.textContent = 'Helper is running, but yt-dlp is not installed.';
   }
   render();
-  document.getElementById('best').addEventListener('click', (e) => {
-    chrome.runtime.sendMessage({ type: 'quickTab', tabId: tab.id });
-    const b = e.target;
-    b.textContent = 'Started ✓ (progress on the toolbar icon)';
-    setTimeout(() => (b.textContent = '⬇ Download best quality'), 2500);
-  });
+  document.getElementById('best').addEventListener('click', (e) => ask({ type: 'quickTab', tabId: tab.id }, e.target));
   const probeBox = document.getElementById('probe');
   chrome.storage.local.get({ probe: true }).then((o) => (probeBox.checked = o.probe));
   probeBox.addEventListener('change', () => chrome.storage.local.set({ probe: probeBox.checked }));
