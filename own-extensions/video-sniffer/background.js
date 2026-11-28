@@ -16,20 +16,6 @@ function classify(url, contentType = '') {
   return null;
 }
 
-// Facebook/Instagram DASH files are fetched piece by piece (?bytestart=..&byteend=..): one video, many URLs.
-function normalizeUrl(u) {
-  u = u.split('#')[0];
-  if (!/[?&]byte(?:start|end)=/.test(u) || !/fbcdn\.net|cdninstagram\.com/.test(u)) return u;
-  try {
-    const x = new URL(u);
-    x.searchParams.delete('bytestart');
-    x.searchParams.delete('byteend');
-    return x.href;
-  } catch {
-    return u;
-  }
-}
-
 let queue = Promise.resolve();
 
 function add(tabId, found) {
@@ -44,7 +30,7 @@ function add(tabId, found) {
         page = tab.url || '';
         title = tab.title || '';
       } catch {}
-      const url = normalizeUrl(found.url);
+      const url = found.url.split('#')[0];
       const existing = list.find((i) => i.url === url);
       if (existing) {
         if ((found.size || 0) > (existing.size || 0)) existing.size = found.size;
@@ -68,9 +54,7 @@ chrome.webRequest.onResponseStarted.addListener(
     const kind = classify(d.url, type);
     if (!kind) return;
     const range = h('content-range').match(/\/(\d+)$/);
-    // A Facebook piece (?bytestart=..): its content-length is the piece, not the video, so only the total counts.
-    const piece = normalizeUrl(d.url) !== d.url.split('#')[0];
-    const size = range ? Number(range[1]) : piece ? 0 : Number(h('content-length')) || 0;
+    const size = range ? Number(range[1]) : Number(h('content-length')) || 0;
     if (kind === 'file' && size && size < MIN_FILE_SIZE) return;
     add(d.tabId, { url: d.url, kind, type, size, source: 'network' });
   },
@@ -137,7 +121,6 @@ chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove([`tab:${tabId}`, `url:${tabId}`, `main:${tabId}`, `yt:${tabId}`]));
-
 
 // ---- One-click download from the button on the video (quick.js) -------------------------------------
 const NOISE = /preview|thumb|sprite|poster|teaser|hover|sound|beep|notification|no_input|failure|success|click/i;
@@ -257,8 +240,21 @@ function fbTrack(url) {
   }
 }
 
+// Facebook's DASH pieces are listed as ?bytestart=..&byteend=..: the whole file is the same URL without them.
+const wholeFile = (u) => {
+  try {
+    const x = new URL(u);
+    x.searchParams.delete('bytestart');
+    x.searchParams.delete('byteend');
+    return x.href;
+  } catch {
+    return u;
+  }
+};
+
 async function fbFromList(tabId) {
   const items = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || [])
+    .map((i) => ({ ...i, url: wholeFile(i.url) }))
     .filter((i) => i.kind === 'file' && /fbcdn\.net|facebook\.com/.test(i.url))
     .map((i) => ({ ...i, track: fbTrack(i.url) }))
     .filter((i) => i.track);
