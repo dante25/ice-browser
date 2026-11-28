@@ -117,9 +117,23 @@
     }, 900);
   }
 
+  // elementsFromPoint skips elements with pointer-events:none, which Facebook puts on its <video> (an overlay
+  // takes the clicks). So the videos are tested by their own rectangle instead; the smallest one under the
+  // pointer wins (a reel page also holds the next reel's video).
   function videoAt(x, y) {
-    for (const el of document.elementsFromPoint(x, y)) if (el.tagName === 'VIDEO') return el;
-    return null;
+    let best = null;
+    let bestArea = Infinity;
+    for (const v of document.getElementsByTagName('video')) {
+      const r = v.getBoundingClientRect();
+      if (r.width < 160 || r.height < 100 || x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+      if (getComputedStyle(v).visibility === 'hidden') continue;
+      const area = r.width * r.height;
+      if (area < bestArea) {
+        best = v;
+        bestArea = area;
+      }
+    }
+    return best;
   }
 
   document.addEventListener(
