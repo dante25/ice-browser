@@ -232,6 +232,8 @@
         }
         const mpd = o.dash_manifest_xml_string || (typeof o.dash_manifest === 'string' && o.dash_manifest.includes('<MPD') ? o.dash_manifest : '');
         if (mpd && !out.mpd) out.mpd = mpd;
+        // current Facebook layout: video_delivery_response { progressive_urls: [{ progressive_url, metadata: { quality } }], dash_manifests: [{ manifest_xml }] }
+        if (typeof o.manifest_xml === 'string' && o.manifest_xml.includes('<MPD') && !out.mpd) out.mpd = o.manifest_xml;
       }
       for (const k in o) if (o[k] && typeof o[k] === 'object') stack.push([o[k], hit]);
     }
@@ -318,7 +320,16 @@
     FIELD_RE.lastIndex = 0;
     while ((m = FIELD_RE.exec(text))) {
       const near = !id || text.slice(Math.max(0, m.index - 6000), m.index + 6000).includes(id);
-      const rank = FIELDS[m[1]] + (near ? 0 : 10);
+      let rank = FIELDS[m[1]] + (near ? 0 : 10);
+      if (m[1] === 'progressive_url') {
+        // the quality of THIS item only: from the item's own '{' to the next progressive_url
+        const start = text.lastIndexOf('{', m.index);
+        const end = m.index + m[0].length;
+        let tail = text.slice(end, end + 400);
+        const nx = tail.indexOf('"progressive_url"');
+        if (nx >= 0) tail = tail.slice(0, nx);
+        if (/"quality"\s*:\s*"HD"/.test(text.slice(Math.max(0, start), m.index) + tail)) rank = (near ? 0 : 10) + 1.5;
+      }
       if (rank < bestRank) {
         bestRank = rank;
         best = m[2];
@@ -337,7 +348,16 @@
         walk(JSON.parse(t), id, out);
       } catch {}
     }
-    return bestFrom(out);
+    const got = bestFrom(out);
+    if (got) return got;
+    // not nested under the video's own node: take the address nearest to the id in the raw JSON text
+    for (const s of document.querySelectorAll('script[type="application/json"]')) {
+      const t = s.textContent;
+      if (!t || t.length > 15e6 || !t.includes(id)) continue;
+      const f = fromText(t, id);
+      if (f) return f;
+    }
+    return null;
   }
 
   // A fetched page of the video (/reel/<id>/, /watch/?v=<id>).
@@ -358,7 +378,18 @@
   const tick = () => new Promise((r) => setTimeout(r, 0)); // let the page breathe between heavy steps
 
   async function findFacebook(video) {
-    const id = videoId(video) || '';
+    // a reel page also holds the NEXT reel's <video>: try the id of the link near this video and the page's own id
+    const pageId = (location.pathname.match(/\/reel\/(\d+)/) || location.pathname.match(/\/videos\/(?:[^/]+\/)?(\d+)/) || location.search.match(/[?&]v=(\d+)/) || [])[1] || '';
+    const ids = [...new Set([videoId(video) || '', pageId].filter(Boolean))];
+    let found = null;
+    for (const id of ids.length ? ids : ['']) {
+      found = await findOne(video, id);
+      if (found || !id) break;
+    }
+    return found;
+  }
+
+  async function findOne(video, id) {
     const run = async () => {
       step = 'Relay store';
       show('…', 'Reading the video data (1/4: page store)…', true);
