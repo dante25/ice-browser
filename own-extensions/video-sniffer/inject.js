@@ -40,14 +40,183 @@
     for (const m of t.match(URL_RE) || []) report(m, source);
   }
 
+  // Facebook/Instagram: the site's own GraphQL replies hold every video's HD/DASH addresses (the mechanism of
+  // Ultimate SN Downloader's main_hook.js). Passed to quick.js, which looks the clicked video up by its id.
+  const CAP = /\/api\/graphql|\/graphql\/query|\/api\/v1\/|\/ajax\/|\/graphql\/|\/_puppy\/|\/_napi\//;
+  const capture = (url, text) => {
+    try {
+      if (/(^|\.)(facebook|instagram)\.com$/.test(location.hostname) && CAP.test(url) && text) window.postMessage({ __vsniffer: 2, url, text }, '*');
+    } catch {}
+  };
+
+  // ---- Facebook: read the video addresses straight out of the page's own Relay store -----------------------
+  // Mechanism of ESUIT Video Downloader for Facebook: facebook.com defines its modules with window.__d(name, deps,
+  // factory). The factory of relay-runtime/store/RelayPublishQueue is rewritten so the RecordSourceProxy is kept in
+  // window.___rs; every video the page has loaded (feed, reel, watch) is then a record in that store, with
+  // playable_url (SD), playable_url(quality:"HD"), the DASH manifest and progressive_urls.
+  const IS_FB = /(^|\.)facebook\.com$/.test(location.hostname);
+  // (Facebook's module loader is NOT touched here: ESUIT's proxy is injected after the page has loaded, see fbesuit.js / quick.js.)
+
+  // Every record map the store keeps (the same walk ESUIT does with getRoot().__sources).
+  function relayMaps() {
+    const maps = [];
+    try {
+      const root = window.___rs?.getRoot?.();
+      if (!root) return maps;
+      for (const k of Object.keys(root)) {
+        const o = root[k];
+        if (o && Array.isArray(o.__sources)) {
+          for (const src of o.__sources) for (const kk in src) if (src[kk] instanceof Map) maps.push(src[kk]);
+        }
+      }
+    } catch {}
+    return maps;
+  }
+  function relayRec(id) {
+    for (const m of relayMaps()) {
+      const r = m.get(id);
+      if (r) return r;
+    }
+    return null;
+  }
+  const refOf = (v) => (v && typeof v === 'object' && v.__ref ? relayRec(v.__ref) : null);
+
+  // { sd, hd, mpd, prog: [{ q, url }] } for one video id, or null when the store has no such video.
+  function relayVideo(id) {
+    const r = relayRec(id);
+    if (!r) return null;
+    const out = { sd: '', hd: '', mpd: '', prog: [] };
+    const str = (v) => (typeof v === 'string' && /^https?:/.test(v) ? v : '');
+    for (const k of Object.keys(r)) {
+      const v = r[k];
+      if (k === 'playable_url') out.sd = out.sd || str(v);
+      else if (/^playable_url\(.*HD/i.test(k)) out.hd = out.hd || str(v);
+      else if (k === 'browser_native_hd_url' || k === 'hd_src' || k === 'hd_src_no_ratelimit') out.hd = out.hd || str(v);
+      else if (k === 'browser_native_sd_url' || k === 'sd_src' || k === 'sd_src_no_ratelimit') out.sd = out.sd || str(v);
+      else if (/^playlist\(.*MPEG_DASH/i.test(k) && typeof v === 'string' && v.includes('<MPD')) out.mpd = out.mpd || v;
+      else if (k === 'dash_manifest' && typeof v === 'string' && v.includes('<MPD')) out.mpd = out.mpd || v;
+      else if (/^video_delivery_response/.test(k)) {
+        const d = refOf(v);
+        if (!d) continue;
+        for (const kk of Object.keys(d)) {
+          if (kk === 'dash_manifests' && Array.isArray(d[kk])) {
+            for (const ref of d[kk]) {
+              const m = refOf(ref);
+              if (m && typeof m.manifest_xml === 'string' && !out.mpd) out.mpd = m.manifest_xml;
+            }
+          } else if (kk === 'progressive_urls' && Array.isArray(d[kk])) {
+            for (const ref of d[kk]) {
+              const p = refOf(ref);
+              const url = str(p?.progressive_url);
+              if (!url) continue;
+              const meta = refOf(p.metadata) || p.metadata || {};
+              out.prog.push({ q: String(meta.quality || ''), url });
+            }
+          }
+        }
+      }
+    }
+    for (const p of out.prog) {
+      if (/^HD$/i.test(p.q)) out.hd = out.hd || p.url;
+      else if (/^SD$/i.test(p.q)) out.sd = out.sd || p.url;
+    }
+    return out.sd || out.hd || out.mpd ? out : null;
+  }
+
+  // The ids Facebook's own player component holds for a <video> (what ESUIT reads as payload.video.__id):
+  // the React fiber of the element and its ancestors carries the Video node in its props.
+  function fiberIds(el) {
+    const ids = [];
+    const add = (x) => x && typeof x === 'string' && !ids.includes(x) && ids.push(x);
+    try {
+      for (let n = el, d = 0; n && d < 25; n = n.parentElement, d++) {
+        const key = Object.keys(n).find((k) => k.startsWith('__reactFiber$'));
+        if (!key) continue;
+        let f = n[key];
+        for (let i = 0; f && i < 40; i++, f = f.return) {
+          const p = f.memoizedProps;
+          if (!p || typeof p !== 'object') continue;
+          for (const v of [p.video, p.media, p.videoData, p.story?.attachments?.[0]?.media, p.storyData?.video]) {
+            if (v && typeof v === 'object') {
+              add(v.__id);
+              add(String(v.id || ''));
+            }
+          }
+          add(String(p.videoID || p.videoId || p.video_id || p.videoFBID || ''));
+          if (ids.length >= 6) return ids;
+        }
+      }
+    } catch {}
+    return ids;
+  }
+
+  // Last resort: a video record in the store whose duration matches the playing <video>.
+  function relayByDuration(sec) {
+    if (!(sec > 0)) return null;
+    let best = null;
+    let bestDiff = 0.6;
+    try {
+      for (const m of relayMaps()) {
+        for (const r of m.values()) {
+          if (!r || typeof r !== 'object' || !('playable_url' in r || Object.keys(r).some((k) => k.startsWith('playable_url')))) continue;
+          const d = Number(r.playable_duration_in_ms) / 1000 || Number(r.playable_duration) / 1000 || Number(r.length_in_second) || Number(r.duration) || 0;
+          const diff = Math.abs(d - sec);
+          if (d && diff < bestDiff && r.__id) {
+            bestDiff = diff;
+            best = r.__id;
+          }
+        }
+      }
+    } catch {}
+    return best && relayVideo(best);
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || e.data?.__vsq !== 1) return;
+    let data = null;
+    let how = '';
+    const tried = [];
+    try {
+      const el = document.querySelector('video[data-vs-pick]');
+      const cands = [e.data.id, ...(el ? fiberIds(el) : [])].filter(Boolean).map(String);
+      for (const id of cands) {
+        tried.push(id);
+        data = relayVideo(id);
+        if (data) {
+          how = id === String(e.data.id) ? 'link' : 'react';
+          break;
+        }
+      }
+      if (!data && e.data.duration) {
+        data = relayByDuration(Number(e.data.duration));
+        if (data) how = 'duration';
+      }
+    } catch {}
+    window.postMessage({ __vsr: 1, req: e.data.req, data, how, tried, store: !!window.___rs }, '*');
+  });
+
+  // The playing Facebook video: list its complete files (not the 0.5 MB pieces the player fetches).
+  function scanFacebook() {
+    if (!IS_FB) return;
+    const h = location.pathname + location.search;
+    const id = (h.match(/\/reel\/(\d+)/) || h.match(/\/videos\/(?:[^/]+\/)?(\d+)/) || h.match(/[?&]v=(\d+)/) || [])[1];
+    if (!id) return;
+    const d = relayVideo(id);
+    if (!d) return;
+    if (d.hd) report(d.hd, 'Facebook HD', true);
+    if (d.sd) report(d.sd, 'Facebook SD', true);
+  }
+
   // fetch: request URL + any URL found in text/JSON responses (weak: API replies list many unrelated videos).
   const origFetch = window.fetch;
   window.fetch = function (...args) {
     const p = origFetch.apply(this, args);
     try {
       const input = args[0];
-      report(typeof input === 'string' ? input : input?.url || String(input), 'fetch');
+      const reqUrl = typeof input === 'string' ? input : input?.url || String(input);
+      report(reqUrl, 'fetch');
       p.then((r) => {
+        if (CAP.test(reqUrl)) r.clone().text().then((t) => capture(reqUrl, t)).catch(() => {});
         const ct = r.headers.get('content-type') || '';
         const len = Number(r.headers.get('content-length')) || 0;
         if (len < MAX_SCAN && /json|text|javascript|xml/i.test(ct)) {
@@ -64,7 +233,10 @@
       report(String(url), 'xhr');
       this.addEventListener('load', () => {
         try {
-          if (this.responseType === '' || this.responseType === 'text') scanText(this.responseText, 'xhr response');
+          if (this.responseType === '' || this.responseType === 'text') {
+            scanText(this.responseText, 'xhr response');
+            capture(String(url), this.responseText);
+          }
         } catch {}
       });
     } catch {}
@@ -323,6 +495,7 @@
     scanMedia();
     scanAround();
     scanYouTube();
+    scanFacebook();
     document.querySelectorAll('script:not([src])').forEach((s) => scanText(s.textContent, 'page script'));
     document
       .querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]')

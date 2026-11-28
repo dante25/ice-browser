@@ -16,6 +16,20 @@ function classify(url, contentType = '') {
   return null;
 }
 
+// Facebook/Instagram DASH files are fetched piece by piece (?bytestart=..&byteend=..): one video, many URLs.
+function normalizeUrl(u) {
+  u = u.split('#')[0];
+  if (!/[?&]byte(?:start|end)=/.test(u) || !/fbcdn\.net|cdninstagram\.com/.test(u)) return u;
+  try {
+    const x = new URL(u);
+    x.searchParams.delete('bytestart');
+    x.searchParams.delete('byteend');
+    return x.href;
+  } catch {
+    return u;
+  }
+}
+
 let queue = Promise.resolve();
 
 function add(tabId, found) {
@@ -30,7 +44,7 @@ function add(tabId, found) {
         page = tab.url || '';
         title = tab.title || '';
       } catch {}
-      const url = found.url.split('#')[0];
+      const url = normalizeUrl(found.url);
       const existing = list.find((i) => i.url === url);
       if (existing) {
         if ((found.size || 0) > (existing.size || 0)) existing.size = found.size;
@@ -54,7 +68,9 @@ chrome.webRequest.onResponseStarted.addListener(
     const kind = classify(d.url, type);
     if (!kind) return;
     const range = h('content-range').match(/\/(\d+)$/);
-    const size = range ? Number(range[1]) : Number(h('content-length')) || 0;
+    // A Facebook piece (?bytestart=..): its content-length is the piece, not the video, so only the total counts.
+    const piece = normalizeUrl(d.url) !== d.url.split('#')[0];
+    const size = range ? Number(range[1]) : piece ? 0 : Number(h('content-length')) || 0;
     if (kind === 'file' && size && size < MIN_FILE_SIZE) return;
     add(d.tabId, { url: d.url, kind, type, size, source: 'network' });
   },
@@ -121,3 +137,234 @@ chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove([`tab:${tabId}`, `url:${tabId}`, `main:${tabId}`, `yt:${tabId}`]));
+
+
+// ---- One-click download from the button on the video (quick.js) -------------------------------------
+const NOISE = /preview|thumb|sprite|poster|teaser|hover|sound|beep|notification|no_input|failure|success|click/i;
+const safeName = (s) => (s || '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').replace(/\s+/g, ' ').trim().replace(/^\.+/, '').slice(0, 120);
+const MIME_EXT = { mp4: 'mp4', webm: 'webm', quicktime: 'mov', 'x-matroska': 'mkv', ogg: 'ogg', 'x-flv': 'flv' };
+
+function say(sender, text, title) {
+  if (sender.popup) {
+    // Started from the popup: progress goes on the toolbar icon of that tab.
+    const tabId = sender.tab.id;
+    chrome.action.setBadgeText({ tabId, text: text.length > 4 ? '…' : text });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: text === '✕' ? '#d93025' : '#1e9e5a' });
+    chrome.action.setTitle({ tabId, title: `Video Sniffer: ${title || text}` });
+    if (text === '✓' || text === '✕') {
+      setTimeout(async () => {
+        const n = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || []).length;
+        chrome.action.setBadgeText({ tabId, text: n ? String(n) : '' });
+        chrome.action.setBadgeBackgroundColor({ tabId, color: '#d93025' });
+        chrome.action.setTitle({ tabId, title: 'Video Sniffer' });
+      }, 6000);
+    }
+    return;
+  }
+  chrome.tabs.sendMessage(sender.tab.id, { type: 'qstatus', text, title }, { frameId: sender.frameId }).catch(() => {});
+}
+
+async function ensureOffscreen() {
+  const has = (await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length;
+  if (!has) {
+    await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['BLOBS'], justification: 'Fetch stream parts and join them into one video file.' });
+  }
+}
+
+async function setReferer(page) {
+  if (!page?.startsWith('http')) return;
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [4],
+    addRules: [
+      {
+        id: 4,
+        priority: 4,
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [
+            { header: 'Referer', operation: 'set', value: page },
+            { header: 'Origin', operation: 'set', value: new URL(page).origin },
+          ],
+        },
+        condition: { resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+      },
+    ],
+  });
+}
+
+let jobSeq = 0;
+const jobSenders = new Map();
+
+// Offscreen page does the heavy part (stream pieces / merge) and returns a blob URL to save.
+async function runOffscreen(job, sender) {
+  await ensureOffscreen();
+  const id = ++jobSeq;
+  jobSenders.set(id, sender);
+  try {
+    const r = await chrome.runtime.sendMessage({ type: 'off:run', id, job });
+    if (!r || r.error) throw new Error(r?.error || 'Download helper did not answer');
+    await chrome.downloads.download({ url: r.blobUrl, filename: r.filename, conflictAction: 'uniquify' });
+    setTimeout(() => chrome.runtime.sendMessage({ type: 'off:revoke', blobUrl: r.blobUrl }).catch(() => {}), 120000);
+  } finally {
+    jobSenders.delete(id);
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== 'off:progress') return;
+  const s = jobSenders.get(msg.id);
+  if (s) say(s, msg.text, msg.text);
+});
+
+function directDownload(url, filename, sender, job) {
+  return new Promise((resolve, reject) => {
+    chrome.downloads.download({ url, filename, conflictAction: 'uniquify' }, (id) => {
+      if (chrome.runtime.lastError || id == null) return reject(new Error(chrome.runtime.lastError?.message || 'Download refused'));
+      const on = (d) => {
+        if (d.id !== id || !d.state) return;
+        if (d.state.current === 'interrupted') {
+          chrome.downloads.onChanged.removeListener(on);
+          // The CDN refused the bare browser request: fetch it ourselves with the page's Referer.
+          say(sender, '…', 'Retrying with page headers');
+          runOffscreen({ ...job, mode: 'file', url }, sender).then(resolve, reject);
+        } else if (d.state.current === 'complete') {
+          chrome.downloads.onChanged.removeListener(on);
+        }
+      };
+      chrome.downloads.onChanged.addListener(on);
+      resolve();
+    });
+  });
+}
+
+async function pickFromList(tabId, duration) {
+  const items = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || []).filter((i) => !NOISE.test(i.url));
+  const hls = items.filter((i) => i.kind === 'hls').pop();
+  if (hls) return hls;
+  const files = items.filter((i) => i.kind === 'file' && !i.type.startsWith('audio/') && i.size > 0).sort((a, b) => b.size - a.size);
+  return files[0] || items.filter((i) => i.kind === 'file').pop() || null;
+}
+
+// What the Facebook player fetched, from the sniffed list: the efg parameter names the track kind.
+function fbTrack(url) {
+  try {
+    const e = new URL(url).searchParams.get('efg');
+    if (!e) return '';
+    const t = String(JSON.parse(atob(e.replace(/-/g, '+').replace(/_/g, '/'))).vencode_tag || '');
+    return /audio/i.test(t) ? 'audio' : /progressive/i.test(t) ? 'muxed' : t ? 'video' : '';
+  } catch {
+    return '';
+  }
+}
+
+async function fbFromList(tabId) {
+  const items = ((await chrome.storage.session.get(`tab:${tabId}`))[`tab:${tabId}`] || [])
+    .filter((i) => i.kind === 'file' && /fbcdn\.net|facebook\.com/.test(i.url))
+    .map((i) => ({ ...i, track: fbTrack(i.url) }))
+    .filter((i) => i.track);
+  const newest = (list) => list.reduce((m, i) => Math.max(m, i.ts), 0);
+  const best = (list) => {
+    const t = newest(list);
+    return list.filter((i) => i.ts >= t - 30000).sort((a, b) => (b.size || 0) - (a.size || 0))[0];
+  };
+  const muxed = items.filter((i) => i.track === 'muxed');
+  const video = items.filter((i) => i.track === 'video');
+  const audio = items.filter((i) => i.track === 'audio');
+  if (video.length && audio.length) {
+    const v = best(video);
+    return { url: muxed.length ? best(muxed).url : '', dash: { video: v.url, audio: best(audio).url, height: 1 } };
+  }
+  if (muxed.length) return { url: best(muxed).url, dash: null };
+  return null;
+}
+
+async function quick(msg, sender) {
+  const page = msg.page || sender.tab.url;
+  const name = safeName(msg.title || sender.tab.title) || 'video';
+  await setReferer(page);
+  const job = { page, name };
+
+  // Facebook: the page's own data was read by quick.js; DASH (video + audio, up to 1080p) if it beats the HD file.
+  // If that found nothing, use what the player itself downloaded (sniffed fbcdn files).
+  const fb = msg.fb || (msg.isFb ? await fbFromList(sender.tab.id) : null);
+  if (msg.isFb && !fb) throw new Error(msg.fbReason || 'No video address found on this page');
+  if (fb) {
+    const { url, dash } = fb;
+    if (dash?.audio && (!url || dash.height > 720)) {
+      try {
+        say(sender, '…', `Downloading ${dash.height}p`);
+        return await runOffscreen({ ...job, mode: 'dash', video: dash.video, audio: dash.audio, name: `${name} [${dash.height}p]` }, sender);
+      } catch (e) {
+        if (!url) throw e;
+      }
+    }
+    if (url) return directDownload(url, `${name}.mp4`, sender, job);
+    throw new Error('No video address found on this page');
+  }
+
+  let src = msg.src && /^https?:/.test(msg.src) ? msg.src : '';
+  let kind = src ? (/\.m3u8(?:$|[?#])/i.test(src) ? 'hls' : /\.mpd(?:$|[?#])/i.test(src) ? 'dash' : 'file') : '';
+  let type = '';
+  if (!src || kind === 'dash') {
+    const it = await pickFromList(sender.tab.id, msg.duration);
+    if (!it) throw new Error('No video found yet - play it for a second, then click again');
+    src = it.url;
+    kind = it.kind;
+    type = it.type || '';
+  }
+  if (kind === 'dash') throw new Error('DASH stream: use the extension popup (yt-dlp)');
+  if (kind === 'hls') return runOffscreen({ ...job, mode: 'hls', url: src }, sender);
+  let ext = 'mp4';
+  try {
+    ext = new URL(src).pathname.match(/\.([a-z0-9]{2,4})$/i)?.[1]?.toLowerCase() || MIME_EXT[type.split('/')[1]] || 'mp4';
+  } catch {}
+  return directDownload(src, `${name}.${ext}`, sender, { ...job, ext });
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type !== 'quick' || !sender.tab) return;
+  say(sender, '…', 'Starting');
+  quick(msg, sender).then(
+    () => say(sender, '✓', 'Download started'),
+    (e) => say(sender, '✕', e.message || String(e))
+  );
+  sendResponse({ ok: true });
+});
+
+
+// ---- Downloads started from the popup (no tab is opened) ------------------------------------------------
+const YT_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
+
+async function popdl(msg) {
+  const s = { popup: true, tab: { id: msg.tabId } };
+  const job = { page: msg.page, name: safeName(msg.name) || 'video' };
+  say(s, '…', 'Starting');
+  await setReferer(msg.page);
+  if (msg.mode === 'file') return directDownload(msg.url, `${job.name}.${msg.ext || 'mp4'}`, s, { ...job, ext: msg.ext });
+  if (msg.mode === 'hls') return runOffscreen({ ...job, mode: 'hls', url: msg.url }, s);
+  if (msg.mode === 'ytmerge') {
+    // googlevideo expects the client its URLs were issued for (visionOS, as in inject.js)
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [3],
+      addRules: [
+        {
+          id: 3,
+          priority: 3,
+          action: { type: 'modifyHeaders', requestHeaders: [{ header: 'User-Agent', operation: 'set', value: YT_UA }] },
+          condition: { requestDomains: ['googlevideo.com'], resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+        },
+      ],
+    });
+    return runOffscreen({ ...job, mode: 'ytmerge', video: msg.video, vs: msg.vs, audio: msg.audio, as: msg.as }, s);
+  }
+  throw new Error('Unknown download');
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type !== 'popdl') return;
+  popdl(msg).then(
+    () => say({ popup: true, tab: { id: msg.tabId } }, '✓', 'Download started'),
+    (e) => say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e))
+  );
+  sendResponse({ ok: true });
+});

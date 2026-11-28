@@ -68,16 +68,24 @@ async function copy(b, text) {
   setTimeout(() => (b.textContent = old), 1000);
 }
 
-function openStream(it, url = it.url) {
-  const q = new URLSearchParams({ url, page: it.page || '', name: baseName(it) });
-  chrome.tabs.create({ url: chrome.runtime.getURL('downloader.html') + '?' + q });
+// Downloads run in the background (offscreen page + chrome.downloads): no tab is opened.
+function startDl(job, b) {
+  chrome.runtime.sendMessage({ type: 'popdl', tabId: tab.id, page: tab.url || '', ...job });
+  if (b) {
+    const old = b.textContent;
+    b.textContent = 'Started ✓';
+    setTimeout(() => (b.textContent = old), 2000);
+  }
+}
+
+function openStream(it, url = it.url, b) {
+  startDl({ mode: 'hls', url, name: baseName(it) }, b);
 }
 
 // Many CDNs refuse the bare request chrome.downloads sends (no Origin/Referer), so files are fetched
 // by an extension page that presents itself as the site; it then hands the data to the downloads API.
-function openFile(it) {
-  const q = new URLSearchParams({ url: it.url, page: it.page || '', name: baseName(it), ext: extOf(it), mode: 'file' });
-  chrome.tabs.create({ url: chrome.runtime.getURL('downloader.html') + '?' + q });
+function openFile(it, b) {
+  startDl({ mode: 'file', url: it.url, name: baseName(it), ext: extOf(it) }, b);
 }
 
 function parseDash(text) {
@@ -142,7 +150,7 @@ async function fillVariants(it, box) {
     if (it.kind === 'hls') {
       box.append(
         variantRow(variantLabel(v), [
-          btn('Download', () => openStream(it, v.url)),
+          btn('Download', (b) => openStream(it, v.url, b)),
           btn('Copy URL', (b) => copy(b, v.url)),
         ])
       );
@@ -319,18 +327,9 @@ function youtubeId(url) {
 }
 
 // Direct YouTube download: the downloader page fetches the video (and audio) mp4 and merges them.
-function openMerge(info, video, audio, quality) {
+function openMerge(info, video, audio, quality, b) {
   const title = safeName((tab.title || '').replace(/ - YouTube$/, '')) || info.id;
-  const q = new URLSearchParams({
-    v: video.url,
-    vs: video.size || '',
-    a: audio?.url || '',
-    as: audio?.size || '',
-    page: tab.url,
-    name: `${title} [${quality}]`,
-    mode: 'merge',
-  });
-  chrome.tabs.create({ url: chrome.runtime.getURL('downloader.html') + '?' + q });
+  startDl({ mode: 'ytmerge', video: video.url, vs: video.size || 0, audio: audio?.url || '', as: audio?.size || 0, name: `${title} [${quality}]` }, b);
 }
 
 // The card lists what the player offers (read from its own data), a Download button where a direct
@@ -377,8 +376,8 @@ function ytCard(info) {
     const s = info.streams;
     const stream = !premium && s && (s.video.find((x) => x.height === f.height && x.fps === f.fps) || s.video.find((x) => x.height === f.height));
     const muxed = !premium && s && s.muxed.find((x) => x.height === f.height);
-    if (stream && s.audio) buttons.push(btn('Download', () => openMerge(info, stream, s.audio, f.label)));
-    else if (muxed) buttons.push(btn('Download', () => openMerge(info, muxed, null, f.label)));
+    if (stream && s.audio) buttons.push(btn('Download', (b) => openMerge(info, stream, s.audio, f.label, b)));
+    else if (muxed) buttons.push(btn('Download', (b) => openMerge(info, muxed, null, f.label, b)));
     buttons.push(btn('yt-dlp', (b) => copy(b, `yt-dlp${cookies} -f ${sq(sel)} ${sq(tab.url)}`)));
     if (helper) buttons.push(runBtn(() => ({ url: tab.url, format: sel, cookies: premium })));
     box.append(variantRow(label, buttons));
@@ -413,9 +412,9 @@ function row(it, playing = false) {
   const actions = document.createElement('div');
   actions.className = 'actions';
   if (it.kind === 'file') {
-    actions.append(btn('Download', () => openFile(it)));
+    actions.append(btn('Download', (b) => openFile(it, b)));
   } else if (it.kind === 'hls') {
-    actions.append(btn('Download stream', () => openStream(it)));
+    actions.append(btn('Download stream', (b) => openStream(it, it.url, b)));
   }
   actions.append(btn('Copy URL', (b) => copy(b, it.url)));
   const ref = it.page ? ` --referer ${sq(it.page)}` : '';
@@ -478,6 +477,9 @@ async function render() {
     helperLine.textContent = 'Helper is running, but yt-dlp is not installed.';
   }
   render();
+  const esuitBox = document.getElementById('esuit');
+  chrome.storage.local.get({ esuit: true }).then((o) => (esuitBox.checked = o.esuit !== false));
+  esuitBox.addEventListener('change', () => chrome.storage.local.set({ esuit: esuitBox.checked }));
   const probeBox = document.getElementById('probe');
   chrome.storage.local.get({ probe: true }).then((o) => (probeBox.checked = o.probe));
   probeBox.addEventListener('change', () => chrome.storage.local.set({ probe: probeBox.checked }));
