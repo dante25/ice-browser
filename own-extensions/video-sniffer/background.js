@@ -403,7 +403,7 @@ async function popdl(msg) {
   const job = { page: msg.page, name: safeName(msg.name) || 'video' };
   say(s, '…', 'Starting');
   await setReferer(msg.page);
-  if (msg.mode === 'file') return directDownload(msg.url, `${job.name}.${msg.ext || 'mp4'}`, s, { ...job, ext: msg.ext });
+  if (msg.mode === 'file') return runOffscreen({ ...job, mode: 'file', url: msg.url, ext: msg.ext }, s);
   if (msg.mode === 'hls') return runOffscreen({ ...job, mode: 'hls', url: msg.url }, s);
   if (msg.mode === 'ytmerge') {
     // googlevideo expects the client its URLs were issued for (visionOS, as in inject.js)
