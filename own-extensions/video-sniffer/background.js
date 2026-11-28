@@ -292,14 +292,32 @@ function ytId(url) {
 // YouTube often gives the page no direct streams (it wants tokens the page cannot make). The local helper then
 // runs yt-dlp itself: one click, best quality, saved to the helper's folder (default ~/Downloads).
 const HELPER = 'http://127.0.0.1:47655';
+// The helper only answers requests that carry Origin: chrome-extension://<this extension>; a background fetch does
+// not always send it, so it is set explicitly for requests to the helper.
+async function helperOrigin() {
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [5],
+    addRules: [
+      {
+        id: 5,
+        priority: 5,
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'Origin', operation: 'set', value: `chrome-extension://${chrome.runtime.id}` }] },
+        condition: { requestDomains: ['127.0.0.1'], resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+      },
+    ],
+  });
+}
+
 async function viaHelper(url, why, format = 'bv*+ba/b', quality = 'the best quality') {
   let ping;
   try {
+    await helperOrigin();
     ping = await (await fetch(HELPER + '/ping')).json();
   } catch {
     throw new Error(`${why}. For YouTube install the helper once: run helper/install.sh from the video-sniffer folder, plus yt-dlp.`);
   }
-  if (!ping?.ytdlp) throw new Error('The helper is running but yt-dlp is not installed (download it to ~/.local/bin/yt-dlp and make it executable).');
+  if (!ping?.ok) throw new Error('The helper refused the request (it only accepts this extension). Restart the helper: pkill -f video-sniffer-helper.py; python3 ~/.local/share/video-sniffer-helper/video-sniffer-helper.py &');
+  if (!ping.ytdlp) throw new Error(`The helper cannot run yt-dlp (${ping.ytdlp === null ? 'not found at the path in ~/.config/video-sniffer-helper/config.json' : 'no version reported'}).`);
   const r = await (await fetch(HELPER + '/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, format }) })).json();
   if (!r?.ok) throw new Error(r?.error || 'The helper refused the download');
   return `yt-dlp is downloading ${quality} to ${ping.output_dir}`;
@@ -474,3 +492,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   );
   return true;
 });
+
+// Set at start so the popup's own helper check (the "yt-dlp ready" line) is accepted as well.
+helperOrigin().catch(() => {});
+chrome.runtime.onStartup.addListener(() => helperOrigin().catch(() => {}));
+chrome.runtime.onInstalled.addListener(() => helperOrigin().catch(() => {}));
