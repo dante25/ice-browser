@@ -75,7 +75,7 @@
 
   // A failure must be readable, not hidden in a tooltip.
   let toastEl = null;
-  function toast(text) {
+  function toast(text, ok) {
     if (!btn) return;
     if (!toastEl) {
       toastEl = document.createElement('div');
@@ -87,6 +87,7 @@
     toastEl.textContent = `Video Sniffer: ${text}`;
     toastEl.style.left = Math.max(4, Math.min(innerWidth - 350, r.left - 300)) + 'px';
     toastEl.style.top = r.bottom + 8 + 'px';
+    toastEl.style.background = ok ? '#1e7a46' : '#b3261e';
     toastEl.style.display = 'block';
     clearTimeout(toast.t);
     toast.t = setTimeout(() => (toastEl.style.display = 'none'), 12000);
@@ -95,6 +96,7 @@
   function show(sym, title, keep) {
     if (!btn) return;
     if (sym === '✕') toast(title);
+    if (sym === '✓' && title && title.length > 20) toast(title, true);
     btn.textContent = sym;
     btn.title = title || LABEL;
     if (!keep) {

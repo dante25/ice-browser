@@ -288,13 +288,37 @@ function ytId(url) {
   }
 }
 
+// YouTube often gives the page no direct streams (it wants tokens the page cannot make). The local helper then
+// runs yt-dlp itself: one click, best quality, saved to the helper's folder (default ~/Downloads).
+const HELPER = 'http://127.0.0.1:47655';
+async function viaHelper(url, why) {
+  let ping;
+  try {
+    ping = await (await fetch(HELPER + '/ping')).json();
+  } catch {
+    throw new Error(`${why}. For YouTube install the helper once: run helper/install.sh from the video-sniffer folder, plus yt-dlp.`);
+  }
+  if (!ping?.ytdlp) throw new Error('The helper is running but yt-dlp is not installed (download it to ~/.local/bin/yt-dlp and make it executable).');
+  const r = await (await fetch(HELPER + '/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, format: 'bv*+ba/b' }) })).json();
+  if (!r?.ok) throw new Error(r?.error || 'The helper refused the download');
+  return `yt-dlp is downloading the best quality to ${ping.output_dir}`;
+}
+
 // YouTube: the player's own list of streams (read by inject.js), highest video + best audio, merged in the background.
 async function ytBest(tab, sender) {
+  try {
+    await ytDirect(tab, sender);
+  } catch (e) {
+    return viaHelper(tab.url, e.message || 'No direct stream');
+  }
+}
+
+async function ytDirect(tab, sender) {
   const id = ytId(tab.url);
   const key = `yt:${tab.id}`;
   const yt = (await chrome.storage.session.get(key))[key];
   if (!yt || yt.id !== id || !yt.streams) {
-    throw new Error('YouTube has not given the streams of this video yet - wait a second (or reload the page with F5), then click again');
+    throw new Error('YouTube gave the page no direct streams for this video');
   }
   const s = yt.streams;
   const byQuality = (a, c) => c.height - a.height || c.fps - a.fps;
@@ -368,7 +392,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type !== 'quick' || !sender.tab) return;
   say(sender, '…', 'Starting');
   quick(msg, sender).then(
-    () => say(sender, '✓', 'Download started'),
+    (note) => say(sender, '✓', typeof note === 'string' ? note : 'Download started'),
     (e) => say(sender, '✕', e.message || String(e))
   );
   sendResponse({ ok: true });
@@ -423,7 +447,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       say(s, '…', 'Starting');
       const fb = /(^|\.)facebook\.com$/.test(new URL(tab.url).hostname);
       return quick({ page: tab.url, title: tab.title, src: '', duration: 0, isFb: fb, fbReason: 'No video found yet - play it for a second, then click again' }, s).then(
-        () => say(s, '✓', 'Download started'),
+        (note) => say(s, '✓', typeof note === 'string' ? note : 'Download started'),
         (e) => say(s, '✕', e.message || String(e))
       );
     },
