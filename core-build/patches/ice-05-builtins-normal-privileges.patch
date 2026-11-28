@@ -1,0 +1,98 @@
+--- a/extensions/common/BUILD.gn
++++ b/extensions/common/BUILD.gn
+@@ -360,6 +360,7 @@
+     "extension_api.cc",
+     "extension_api.h",
+     "extension_id.h",
++    "ice_builtin_ids.h",
+     "extension_l10n_util.cc",
+     "extension_l10n_util.h",
+     "extension_paths.cc",
+--- a/extensions/common/permissions/permissions_data.cc
++++ b/extensions/common/permissions/permissions_data.cc
+@@ -27,6 +27,7 @@
+ #include "url/gurl.h"
+ #include "url/origin.h"
+ #include "url/url_constants.h"
++#include "extensions/common/ice_builtin_ids.h"
+ 
+ using extensions::mojom::APIPermissionID;
+ 
+@@ -116,8 +117,11 @@
+ bool PermissionsData::CanExecuteScriptEverywhere(
+     const ExtensionId& extension_id,
+     mojom::ManifestLocation location) {
++  // Ice: built-ins are component extensions but get the same restrictions as
++  // a normal Web Store install (no chrome:// pages, no Web Store, no file://
++  // without permission).
+   if (location == mojom::ManifestLocation::kComponent)
+-    return true;
++    return !ice::IsIceBuiltinId(extension_id);
+ 
+   const ExtensionsClient::ScriptingAllowlist& allowlist =
+       ExtensionsClient::Get()->GetScriptingAllowlist();
+--- a/extensions/browser/extension_util.cc
++++ b/extensions/browser/extension_util.cc
+@@ -36,6 +36,7 @@
+ #include "extensions/common/extension_id.h"
+ #include "extensions/common/extension_set.h"
+ #include "extensions/common/feature_switch.h"
++#include "extensions/common/ice_builtin_ids.h"
+ #include "extensions/common/features/feature.h"
+ #include "extensions/common/manifest.h"
+ #include "extensions/common/manifest_handlers/incognito_info.h"
+@@ -119,8 +120,10 @@
+       return false;
+     }
+     // If this is an existing component extension we always allow it to
+-    // work in incognito mode.
+-    if (Manifest::IsComponentLocation(extension->location())) {
++    // work in incognito mode. Ice: built-ins follow the normal per-extension
++    // setting (off by default), like a Web Store install.
++    if (Manifest::IsComponentLocation(extension->location()) &&
++        !ice::IsIceBuiltinId(extension->id())) {
+       return true;
+     }
+     if (extension->is_login_screen_extension()) {
+--- /dev/null
++++ b/extensions/common/ice_builtin_ids.h
+@@ -0,0 +1,39 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef EXTENSIONS_COMMON_ICE_BUILTIN_IDS_H_
++#define EXTENSIONS_COMMON_ICE_BUILTIN_IDS_H_
++
++#include <string_view>
++
++namespace ice {
++
++// IDs of Ice's built-in features (component extensions). Keep in sync with
++// kIceBuiltins in chrome/browser/extensions/ice_builtins.cc.
++inline constexpr std::string_view kIceBuiltinIds[] = {
++    "cmedhionkhpnakcndndgjdbohmhepckk", "oncbjlgldmiagjophlhobkogeladjijl",
++    "fhnegjjodccfaliddboelcleikbmapik", "dddapfimfefnombikhnbckhjmfkggifl",
++    "ofgdcdohlhjfdhbnfkikfeakhpojhpgm", "eekailopagacbcdloonjhbiecobagjci",
++    "gkjljknnkogcgndejajchomapofgiinf", "jinenhpepbpkepablpjjchejlabbpken",
++    "gpgbiinpmelaihndlegbgfkmnpofgfei", "dammfdepmngjjoidfdbhkjboecgceamb",
++    "gjoijpfmdhbjkkgnmahganhoinjjpohk", "cnojnbdhbhnkbcieeekonklommdnndci",
++    "iaiomicjabeggjcfkbimgmglanimpnae", "cbhfdchmklhpcngcgjmpdbjakdggkkjp",
++    "nlkaejimjacpillmajjnopmpbkbnocid", "lbincgmkngjhncpmjjmghblelehjilfg",
++    "bblfilgjmibmjophkgpigfedganlieod",
++};
++
++// True for Ice built-ins. They are loaded as component extensions but must
++// keep the privileges of a normal Chrome Web Store install.
++inline bool IsIceBuiltinId(std::string_view id) {
++  for (std::string_view builtin_id : kIceBuiltinIds) {
++    if (id == builtin_id) {
++      return true;
++    }
++  }
++  return false;
++}
++
++}  // namespace ice
++
++#endif  // EXTENSIONS_COMMON_ICE_BUILTIN_IDS_H_

@@ -1,0 +1,300 @@
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -252,6 +252,8 @@
+     "component_loader_factory.h",
+     "component_loader_prefs.cc",
+     "component_loader_prefs.h",
++    "ice_builtins.cc",
++    "ice_builtins.h",
+     "context_menu_helpers.cc",
+     "context_menu_helpers.h",
+     "context_menu_matcher.cc",
+--- a/chrome/browser/extensions/component_loader.h
++++ b/chrome/browser/extensions/component_loader.h
+@@ -239,6 +239,13 @@
+ 
+   void AddContextualTasksExtension();
+ 
++  // Ice: loads Ice's built-in features (extension files shipped unchanged
++  // under <resources>/ice-builtins/) as component extensions.
++  void AddIceBuiltinExtensions();
++  void FinishAddIceBuiltin(const base::FilePath& root_directory,
++                           const ExtensionId& expected_id,
++                           std::optional<base::DictValue> manifest);
++
+   void AddWithNameAndDescription(int manifest_resource_id,
+                                  const base::FilePath& root_directory,
+                                  const std::string& name_string,
+--- a/chrome/browser/extensions/component_loader.cc
++++ b/chrome/browser/extensions/component_loader.cc
+@@ -31,6 +31,7 @@
+ #include "chrome/browser/extensions/component_loader_prefs.h"
+ #include "chrome/browser/extensions/data_deleter.h"
+ #include "chrome/browser/extensions/glic_util.h"
++#include "chrome/browser/extensions/ice_builtins.h"
+ #include "chrome/browser/extensions/profile_util.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/common/channel_info.h"
+@@ -127,6 +128,35 @@
+   return crx_file::id_util::GenerateId(id_input);
+ }
+ 
++// Ice: runs on the extension file task runner. Verifies the shipped files
++// against the SHA-256 list compiled into the browser, then loads and localizes
++// the manifest (ComponentLoader only localizes on ChromeOS).
++std::optional<base::DictValue> LoadIceBuiltinOnFileThread(
++    const ice::IceBuiltin builtin,
++    const base::FilePath& root_directory) {
++  std::string error;
++  if (!ice::VerifyIceBuiltinFiles(builtin, root_directory, &error)) {
++    LOG(ERROR) << "Ice built-in '" << builtin.dir
++               << "' not loaded, integrity check failed: " << error;
++    return std::nullopt;
++  }
++  std::optional<base::DictValue> manifest =
++      file_util::LoadManifest(root_directory, &error);
++  if (!manifest) {
++    LOG(ERROR) << "Ice built-in '" << builtin.dir
++               << "' not loaded, bad manifest: " << error;
++    return std::nullopt;
++  }
++  if (!extension_l10n_util::LocalizeExtension(
++          root_directory, &manifest.value(),
++          extension_l10n_util::GzippedMessagesPermission::kDisallow, &error)) {
++    LOG(ERROR) << "Ice built-in '" << builtin.dir
++               << "' not loaded, localization failed: " << error;
++    return std::nullopt;
++  }
++  return manifest;
++}
++
+ ExtensionId GenerateId(const base::DictValue& manifest) {
+   ExtensionId id = TryGenerateId(manifest);
+   CHECK(!id.empty());
+@@ -690,11 +720,54 @@
+     Add(pdf_extension_util::GetManifest(),
+         base::FilePath(FILE_PATH_LITERAL("pdf")));
+ #endif  // BUILDFLAG(ENABLE_PDF)
++    AddIceBuiltinExtensions();
+   }
+ 
+   AddDefaultComponentExtensionsWithBackgroundPages(skip_session_components);
+ }
+ 
++void ComponentLoader::AddIceBuiltinExtensions() {
++  base::FilePath resources_dir;
++  if (!base::PathService::Get(chrome::DIR_RESOURCES, &resources_dir)) {
++    return;
++  }
++  const base::FilePath root =
++      resources_dir.AppendASCII(ice::kIceBuiltinsDirName);
++  PrefService* prefs = profile_->GetPrefs();
++  for (const ice::IceBuiltin& builtin : ice::GetIceBuiltins()) {
++    if (builtin.enable_pref && prefs->FindPreference(builtin.enable_pref) &&
++        !prefs->GetBoolean(builtin.enable_pref)) {
++      continue;
++    }
++    const base::FilePath dir = root.AppendASCII(builtin.dir);
++    GetExtensionFileTaskRunner()->PostTaskAndReplyWithResult(
++        FROM_HERE, base::BindOnce(&LoadIceBuiltinOnFileThread, builtin, dir),
++        base::BindOnce(&ComponentLoader::FinishAddIceBuiltin,
++                       weak_factory_.GetWeakPtr(), dir,
++                       ExtensionId(builtin.id)));
++  }
++}
++
++void ComponentLoader::FinishAddIceBuiltin(
++    const base::FilePath& root_directory,
++    const ExtensionId& expected_id,
++    std::optional<base::DictValue> manifest) {
++  if (!manifest) {
++    return;
++  }
++  // The ID comes from the manifest "key" and must match the compiled-in list.
++  // This also avoids the CHECK in GenerateId() for a manifest without a key.
++  if (TryGenerateId(*manifest) != expected_id) {
++    LOG(ERROR) << "Ice built-in at " << root_directory
++               << " not loaded, unexpected extension ID.";
++    return;
++  }
++  if (Exists(expected_id)) {
++    return;
++  }
++  Add(std::move(*manifest), root_directory, /*skip_allowlist=*/true);
++}
++
+ void ComponentLoader::AddDefaultComponentExtensionsForKioskMode(
+     bool skip_session_components) {
+   // Do not add component extensions that have background pages here -- add them
+--- /dev/null
++++ b/chrome/browser/extensions/ice_builtins.h
+@@ -0,0 +1,45 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_EXTENSIONS_ICE_BUILTINS_H_
++#define CHROME_BROWSER_EXTENSIONS_ICE_BUILTINS_H_
++
++#include <string>
++
++#include "base/containers/span.h"
++#include "base/files/file_path.h"
++#include "extensions/common/extension_id.h"
++
++namespace ice {
++
++// Profile pref: whether the built-in "Multiselect for YouTube" is loaded.
++// Takes effect after a restart.
++inline constexpr char kMultiselectEnabledPref[] =
++    "ice.builtins.multiselect_youtube_enabled";
++
++// Directory under chrome::DIR_RESOURCES that holds the built-in features.
++inline constexpr char kIceBuiltinsDirName[] = "ice-builtins";
++
++struct IceBuiltin {
++  // Directory name under <resources>/ice-builtins/.
++  const char* dir;
++  // Expected extension ID, derived from the manifest "key".
++  const char* id;
++  // Profile pref that switches this built-in on/off, or nullptr if always on.
++  const char* enable_pref;
++};
++
++base::span<const IceBuiltin> GetIceBuiltins();
++
++bool IsIceBuiltinExtension(const extensions::ExtensionId& id);
++
++// Checks that `dir` contains exactly the files compiled into the browser for
++// `builtin`, each with the expected SHA-256. Blocking; call on a file thread.
++bool VerifyIceBuiltinFiles(const IceBuiltin& builtin,
++                           const base::FilePath& dir,
++                           std::string* error);
++
++}  // namespace ice
++
++#endif  // CHROME_BROWSER_EXTENSIONS_ICE_BUILTINS_H_
+--- /dev/null
++++ b/chrome/browser/extensions/ice_builtins.cc
+@@ -0,0 +1,121 @@
++// Copyright 2026 The Ice Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/extensions/ice_builtins.h"
++
++#include <map>
++#include <optional>
++#include <string_view>
++#include <vector>
++
++#include "base/files/file_enumerator.h"
++#include "base/files/file_util.h"
++#include "base/strings/string_number_conversions.h"
++#include "crypto/hash.h"
++
++namespace ice {
++
++namespace {
++
++struct IceBuiltinFile {
++  const char* dir;
++  const char* path;
++  const char* sha256;
++};
++
++// Generated at build time by core-build/gen-ice-builtins-files.py from the
++// unchanged extension sources.
++constexpr IceBuiltinFile kIceBuiltinFiles[] = {
++#include "chrome/browser/extensions/ice_builtins_files.inc"
++};
++
++constexpr IceBuiltin kIceBuiltins[] = {
++    {"adblock-for-youtube", "cmedhionkhpnakcndndgjdbohmhepckk", nullptr},
++    {"bookmarks-clean-up", "oncbjlgldmiagjophlhobkogeladjijl", nullptr},
++    {"chrome-tab-counter", "fhnegjjodccfaliddboelcleikbmapik", nullptr},
++    {"default-quality-adjuster-for-youtube",
++     "dddapfimfefnombikhnbckhjmfkggifl", nullptr},
++    {"enable-right-click-for-google-chrome",
++     "ofgdcdohlhjfdhbnfkikfeakhpojhpgm", nullptr},
++    {"go-back-with-backspace", "eekailopagacbcdloonjhbiecobagjci", nullptr},
++    {"hide-anything-element-hider-for-chrome",
++     "gkjljknnkogcgndejajchomapofgiinf", nullptr},
++    {"hide-labels-and-end-cards-on-youtube",
++     "jinenhpepbpkepablpjjchejlabbpken", nullptr},
++    {"multiselect-for-youtube", "gpgbiinpmelaihndlegbgfkmnpofgfei",
++     kMultiselectEnabledPref},
++    {"permanent-progress-bar-for-youtube", "dammfdepmngjjoidfdbhkjboecgceamb",
++     nullptr},
++    {"screenshot-youtube", "gjoijpfmdhbjkkgnmahganhoinjjpohk", nullptr},
++    {"search-by-image", "cnojnbdhbhnkbcieeekonklommdnndci", nullptr},
++    {"tab-session-manager", "iaiomicjabeggjcfkbimgmglanimpnae", nullptr},
++    {"webmail-ad-blocker", "cbhfdchmklhpcngcgjmpdbjakdggkkjp", nullptr},
++    {"youtube-nonstop", "nlkaejimjacpillmajjnopmpbkbnocid", nullptr},
++    {"ice-shield", "lbincgmkngjhncpmjjmghblelehjilfg", nullptr},
++    {"google-images-viewer", "bblfilgjmibmjophkgpigfedganlieod", nullptr},
++};
++
++}  // namespace
++
++base::span<const IceBuiltin> GetIceBuiltins() {
++  return kIceBuiltins;
++}
++
++bool IsIceBuiltinExtension(const extensions::ExtensionId& id) {
++  for (const IceBuiltin& builtin : kIceBuiltins) {
++    if (id == builtin.id) {
++      return true;
++    }
++  }
++  return false;
++}
++
++bool VerifyIceBuiltinFiles(const IceBuiltin& builtin,
++                           const base::FilePath& dir,
++                           std::string* error) {
++  std::map<base::FilePath, std::string_view> expected;
++  for (const IceBuiltinFile& file : kIceBuiltinFiles) {
++    if (std::string_view(file.dir) == builtin.dir) {
++      expected.emplace(base::FilePath(file.path), file.sha256);
++    }
++  }
++  if (expected.empty()) {
++    *error = "no compiled-in file list";
++    return false;
++  }
++
++  size_t verified = 0;
++  base::FileEnumerator enumerator(dir, /*recursive=*/true,
++                                  base::FileEnumerator::FILES);
++  for (base::FilePath path = enumerator.Next(); !path.empty();
++       path = enumerator.Next()) {
++    base::FilePath relative;
++    if (!dir.AppendRelativePath(path, &relative)) {
++      *error = "bad path " + path.value();
++      return false;
++    }
++    auto it = expected.find(relative);
++    if (it == expected.end()) {
++      *error = "unexpected file " + relative.value();
++      return false;
++    }
++    std::optional<std::vector<uint8_t>> data = base::ReadFileToBytes(path);
++    if (!data) {
++      *error = "cannot read " + relative.value();
++      return false;
++    }
++    if (base::HexEncodeLower(crypto::hash::Sha256(*data)) != it->second) {
++      *error = "modified file " + relative.value();
++      return false;
++    }
++    ++verified;
++  }
++  if (verified != expected.size()) {
++    *error = "missing files";
++    return false;
++  }
++  return true;
++}
++
++}  // namespace ice

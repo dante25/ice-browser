@@ -1,5 +1,8 @@
 // Ice Shield: blokira phishing i malware stranice (~600.000 domena), lokalno, bez slanja historije ikome.
 // Liste se skidaju svakih 6 sati; domeni se drže kao sortirani 53-bitni heševi (~5 MB).
+// Dodatno (ako korisnik unese API ključ u postavkama): Google Safe Browsing v5, vidi gsb/gsb.js.
+
+import * as gsb from './gsb/gsb.js';
 
 const SOURCES = [
   { id: 'phishing-database', url: 'https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master/phishing-domains-ACTIVE.txt', format: 'domains', match: 'exact' },
@@ -147,12 +150,15 @@ async function isExcepted(host) {
   return fresh(exceptions[norm(host)]);
 }
 
-const warningUrl = (kind, url) => `${chrome.runtime.getURL('warning.html')}#${kind}|${encodeURIComponent(url)}`;
+// #<vrsta>|<adresa>[|<izvor>|<prijetnja>]  (izvor: lists ili google)
+const warningUrl = (kind, url, source = '', threat = '') =>
+  `${chrome.runtime.getURL('warning.html')}#${kind}|${encodeURIComponent(url)}${source ? `|${source}|${threat}` : ''}`;
 
 // HTTPS-first: pravilo 2 (gpc-rules.json) mijenja http u https PRIJE slanja zahtjeva.
 // Ako https ne radi, nudimo http preko upozorenja. Dozvoljeni http hostovi = dinamička "allow" pravila.
 const HTTPS_BROKEN = /ERR_(CONNECTION_(REFUSED|RESET|CLOSED|TIMED_OUT)|TIMED_OUT|EMPTY_RESPONSE|SSL_|CERT_|BAD_SSL|INVALID_RESPONSE|TOO_MANY_REDIRECTS|ADDRESS_UNREACHABLE)/;
 const upgraded = new Map(); // tabId -> http adresa koju smo prebacili na https
+const lastNav = new Map(); // tabId -> zadnja adresa (da spora provjera ne preusmjeri kasniju navigaciju)
 
 async function syncHttpRules() {
   const { httpExceptions = {} } = await chrome.storage.local.get('httpExceptions');
@@ -172,9 +178,15 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (d) => {
   try { u = new URL(d.url); } catch { return; }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return;
   if (u.protocol === 'http:') upgraded.set(d.tabId, d.url);
+  lastNav.set(d.tabId, d.url);
   await ensure();
-  if (!isBlocked(u.hostname) || (await isExcepted(u.hostname))) return;
-  chrome.tabs.update(d.tabId, { url: warningUrl('danger', d.url) });
+  if (await isExcepted(u.hostname)) return;
+  let hit = isBlocked(u.hostname) ? { source: 'lists', threat: '' } : null;
+  if (!hit) {
+    try { hit = await gsb.check(d.url); } catch (e) { console.warn(`[Ice Shield] GSB provjera: ${e.message}`); }
+  }
+  if (!hit || lastNav.get(d.tabId) !== d.url) return;
+  chrome.tabs.update(d.tabId, { url: warningUrl('danger', d.url, hit.source, hit.threat) });
 });
 
 chrome.webNavigation.onErrorOccurred.addListener((d) => {
@@ -188,7 +200,7 @@ chrome.webNavigation.onErrorOccurred.addListener((d) => {
   chrome.tabs.update(d.tabId, { url: warningUrl('https', httpUrl) });
 });
 chrome.webNavigation.onCompleted.addListener((d) => { if (d.frameId === 0) upgraded.delete(d.tabId); });
-chrome.tabs.onRemoved.addListener((id) => upgraded.delete(id));
+chrome.tabs.onRemoved.addListener((id) => { upgraded.delete(id); lastNav.delete(id); });
 
 // "Ipak otvori" sa stranice upozorenja (samo Iceove stranice mogu slati poruke; web stranice ne mogu)
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
@@ -211,5 +223,8 @@ chrome.alarms.onAlarm.addListener((a) => a.name === 'refresh' && refresh());
 chrome.runtime.onStartup.addListener(() => { ensure(); syncHttpRules(); });
 chrome.runtime.onInstalled.addListener(() => { ensure(); syncHttpRules(); });
 
+gsb.init();
+gsb.start();
+
 // Za testove i dijagnostiku
-self.iceShield = { ensure, refresh, isBlocked, test, size: () => tables.exact.length + tables.wild.length };
+self.iceShield = { ensure, refresh, isBlocked, test, size: () => tables.exact.length + tables.wild.length, gsb };

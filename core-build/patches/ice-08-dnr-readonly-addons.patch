@@ -1,0 +1,28 @@
+--- a/extensions/browser/api/declarative_net_request/file_backed_ruleset_source.cc
++++ b/extensions/browser/api/declarative_net_request/file_backed_ruleset_source.cc
+@@ -29,6 +29,7 @@
+ #include "extensions/browser/api/declarative_net_request/constants.h"
+ #include "extensions/browser/extensions_browser_client.h"
+ #include "extensions/common/extension.h"
++#include "extensions/common/manifest.h"
+ #include "extensions/common/mojom/manifest.mojom-shared.h"
+ #include "extensions/browser/api/declarative_net_request/parse_info.h"
+ #include "extensions/browser/api/declarative_net_request/utils.h"
+@@ -260,10 +261,13 @@
+     const DNRManifestData::RulesetInfo& info) {
+   base::FilePath indexed_path = extension.path().Append(
+       file_util::GetIndexedRulesetRelativePath(info.id.value()));
+-  // Ice: component extensions are installed read-only and are never indexed
+-  // by an installer, so keep their indexed static rulesets in the user data
+-  // directory. The JSON source stays in the (unchanged) extension directory.
+-  if (extension.location() == ::extensions::mojom::ManifestLocation::kComponent &&
++  // Ice: built-ins (component) and add-ons (unpacked, <install>/dodaci) are
++  // installed read-only, so keep their indexed static rulesets in the user
++  // data directory. The JSON source stays in the (unchanged) extension
++  // directory.
++  if ((extension.location() ==
++           ::extensions::mojom::ManifestLocation::kComponent ||
++       Manifest::IsUnpackedLocation(extension.location())) &&
+       ExtensionsBrowserClient::Get()) {
+     base::FilePath user_data_dir =
+         ExtensionsBrowserClient::Get()->GetUserDataDir();

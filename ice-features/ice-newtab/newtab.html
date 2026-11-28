@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Nova kartica</title>
+<link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+<main>
+  <h1 class="title">ice</h1>
+  <form id="search" role="search" autocomplete="off">
+    <svg class="glass" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+    <input id="q" type="text" placeholder="Pretraži ili upiši adresu" aria-label="Pretraži ili upiši adresu" autofocus spellcheck="false">
+  </form>
+  <nav id="tiles" aria-label="Prečice"></nav>
+</main>
+
+<dialog id="add">
+  <form id="add-form" method="dialog">
+    <h2>Dodaj prečicu</h2>
+    <label>Naziv<input id="add-title" type="text" maxlength="60" placeholder="npr. YouTube"></label>
+    <label>Adresa<input id="add-url" type="text" required placeholder="npr. youtube.com"></label>
+    <p id="add-error" class="error" hidden>Neispravna adresa.</p>
+    <div class="buttons">
+      <button type="button" id="add-cancel">Odustani</button>
+      <button type="submit" class="primary">Dodaj</button>
+    </div>
+  </form>
+</dialog>
+<script src="newtab.js"></script>
+</body>
+</html>

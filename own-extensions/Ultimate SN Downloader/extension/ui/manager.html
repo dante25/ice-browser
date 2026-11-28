@@ -7,6 +7,15 @@
   <label>Extra sub-folder (optional) <input id="s_folder" placeholder="leave empty"></label>
   <label>Cooldown after a block (minutes) <input id="s_cool" type="number" min="5" max="240"></label>
   <label>Image host file <span><span id="ih_count" class="muted"></span> <button id="ih_import">Import hostf.xml…</button><input id="ih_file" type="file" accept=".xml,text/xml" hidden></span></label>
+  <details id="ihc"><summary>Custom host rules <span id="ihc_count" class="muted"></span></summary>
+    <div class="muted tiny">For image hosts the host file does not know. Checked before the host file; importing a new host file keeps them.</div>
+    <div id="ihc_list"></div>
+    <label>Site name <input id="ihc_id" placeholder="example.com"></label>
+    <label>Link pattern (regex) <input id="ihc_url" placeholder="^https?://(www\.)?example\.com/img/\d+"></label>
+    <label>Image rule <textarea id="ihc_sp" rows="4" placeholder="LINK2FILE  |  ID: imageId  |  REPLACE: 'from','to'  |  a regex for the &lt;img&gt; tag  |  function(pageData, pageUrl) { return {imgUrl: ..., status: 'OK'}; }"></textarea></label>
+    <label>Test link (optional) <input id="ihc_test" placeholder="a link from the page, to check the pattern"></label>
+    <div class="row"><button id="ihc_add">Add rule</button><span id="ihc_msg" class="muted"></span></div>
+  </details>
   <label>Image Host Grabber: skip files smaller than (KB) <input id="s_ihmin" type="number" min="0" max="2000"></label>
   <label>File name <input id="s_tpl"></label><div class="muted tiny">Tokens: {owner} {date} {code} {index} {id} {type} {kind}</div>
   <label>Sub-folders <input id="s_layout"></label><div class="muted tiny">Tokens: {site} {owner} {type} {kind}</div>

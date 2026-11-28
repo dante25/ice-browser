@@ -65,11 +65,29 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'fb_choose' || b.id === 'folderBtn') return chooseFolder();
   if (b.id === 'fb_allow') return allowFolder();
+  if (b.dataset.ihdel !== undefined) { const r = await sw({ t: 'ih:custom:del', id: b.dataset.ihdel }); ihcRender(r && r.rules || []); return refresh(); }
   if (b.dataset.clr) { await sw({ t: 'block:clear', site: b.dataset.clr }); return refresh(); }
   if (b.dataset.a) { const id = Number(b.closest('.job').dataset.id); await sw({ t: 'job:' + b.dataset.a, jobId: id }); return refresh(); }
 });
 $('clear').onclick = async () => { await sw({ t: 'jobs:clear' }); refresh(); };
-$('gear').onclick = () => { $('settings').hidden = !$('settings').hidden; fillSettings(true); };
+$('gear').onclick = () => { $('settings').hidden = !$('settings').hidden; fillSettings(true); ihcLoad(); };
+// ---- custom host rules (Image Host Grabber)
+function ihcRender(rules) {
+  $('ihc_count').textContent = rules.length ? '(' + rules.length + ')' : '';
+  const box = $('ihc_list'); box.textContent = '';
+  for (const x of rules) {
+    const d = document.createElement('div'), n = document.createElement('b'), c = document.createElement('code'), del = document.createElement('button');
+    d.className = 'ihr'; n.textContent = x.id; c.textContent = x.url; c.title = x.sp; del.textContent = 'Remove'; del.dataset.ihdel = x.id;
+    d.append(n, c, del); box.append(d);
+  }
+}
+async function ihcLoad() { const r = await sw({ t: 'ih:custom:list' }); ihcRender(r && r.rules || []); }
+$('ihc_add').onclick = async () => {
+  const r = await sw({ t: 'ih:custom:add', rule: { id: $('ihc_id').value, url: $('ihc_url').value, sp: $('ihc_sp').value, test: $('ihc_test').value } });
+  if (!r || r.error) { $('ihc_msg').textContent = (r && r.error) || 'Could not add the rule.'; return; }
+  $('ihc_msg').textContent = 'Rule added.'; ['ihc_id', 'ihc_url', 'ihc_sp', 'ihc_test'].forEach(id => { $(id).value = ''; });
+  ihcRender(r.rules); refresh();
+};
 let filled = false;
 function fillSettings(force) {
   if (filled && !force) return;

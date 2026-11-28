@@ -1,0 +1,63 @@
+--- a/extensions/browser/api/declarative_net_request/file_backed_ruleset_source.cc
++++ b/extensions/browser/api/declarative_net_request/file_backed_ruleset_source.cc
+@@ -27,6 +27,9 @@
+ #include "base/values.h"
+ #include "content/public/browser/browser_context.h"
+ #include "extensions/browser/api/declarative_net_request/constants.h"
++#include "extensions/browser/extensions_browser_client.h"
++#include "extensions/common/extension.h"
++#include "extensions/common/mojom/manifest.mojom-shared.h"
+ #include "extensions/browser/api/declarative_net_request/parse_info.h"
+ #include "extensions/browser/api/declarative_net_request/utils.h"
+ #include "extensions/common/api/declarative_net_request.h"
+@@ -255,11 +258,27 @@
+ FileBackedRulesetSource FileBackedRulesetSource::CreateStatic(
+     const Extension& extension,
+     const DNRManifestData::RulesetInfo& info) {
+-  return FileBackedRulesetSource(
+-      extension.path().Append(info.relative_path),
+-      extension.path().Append(
+-          file_util::GetIndexedRulesetRelativePath(info.id.value())),
+-      info.id, GetMaximumRulesPerRuleset(), extension.id(), info.enabled);
++  base::FilePath indexed_path = extension.path().Append(
++      file_util::GetIndexedRulesetRelativePath(info.id.value()));
++  // Ice: component extensions are installed read-only and are never indexed
++  // by an installer, so keep their indexed static rulesets in the user data
++  // directory. The JSON source stays in the (unchanged) extension directory.
++  if (extension.location() == ::extensions::mojom::ManifestLocation::kComponent &&
++      ExtensionsBrowserClient::Get()) {
++    base::FilePath user_data_dir =
++        ExtensionsBrowserClient::Get()->GetUserDataDir();
++    if (!user_data_dir.empty()) {
++      indexed_path =
++          user_data_dir.AppendASCII("Ice Component Rulesets")
++              .AppendASCII(extension.id())
++              .AppendASCII(extension.version().GetString())
++              .Append(file_util::GetIndexedRulesetRelativePath(info.id.value()));
++    }
++  }
++  return FileBackedRulesetSource(extension.path().Append(info.relative_path),
++                                 indexed_path, info.id,
++                                 GetMaximumRulesPerRuleset(), extension.id(),
++                                 info.enabled);
+ }
+ 
+ // static
+--- a/extensions/browser/api/declarative_net_request/rules_monitor_service.cc
++++ b/extensions/browser/api/declarative_net_request/rules_monitor_service.cc
+@@ -601,6 +601,15 @@
+ 
+       if (!helper.GetStaticRulesetChecksum(extension->id(), source.id(),
+                                            expected_ruleset_checksum)) {
++        // Ice: component extensions are added without ruleset install prefs
++        // (see ExtensionRegistrar::AddComponentExtension). Load the ruleset
++        // without an expected checksum so it gets indexed now; the new
++        // checksum is then stored in prefs.
++        if (extension->location() ==
++            ::extensions::mojom::ManifestLocation::kComponent) {
++          load_data.rulesets.emplace_back(std::move(source));
++          continue;
++        }
+         // This might happen on prefs corruption.
+         LogLoadRulesetResult(LoadRulesetResult::kErrorChecksumNotFound);
+         ruleset_failed_to_load = true;

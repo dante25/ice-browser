@@ -1,0 +1,245 @@
+# Ice core build: ungoogled-chromium 156.0.8078.79-1 + core-build/patches, Linux x86_64 .deb
+#
+# Mirrors ungoogled-chromium-portablelinux 156.0.8078.79-1 (.github/workflows/build-steps.yml):
+# prep (Docker image + prepared tree) -> up to 10 sequential build parts of 5h each, passing
+# the whole build tree as the zstd artifact build-cache-x86_64 -> package (.deb).
+# The build logic itself is core-build/build.sh (+ core-build/ice-hook.sh) and
+# core-build/package-deb.sh; see .github/actions/ice-core-build for one part.
+name: Ice core build
+
+on:
+  # workflow_dispatch only works once the file is on the default branch; until
+  # then a push to core-build that touches the build starts it.
+  # Full build (~10h) only when core-build/RELEASE is changed (bumped on purpose).
+  push:
+    branches: [core-build]
+    paths:
+      - "core-build/RELEASE"
+  workflow_dispatch:
+    inputs:
+      compile_check:
+        description: "Early compile check of the C++ files touched by Ice patches (in prep)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ice-core-build
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ARCH: x86_64
+  ICE_PL_DIR: core-build/.work/portablelinux
+  ICE_DEB_VERSION: 156.0.8078.79-4
+  ICE_COMPILE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.compile_check == false) && '0' || '1' }}
+
+jobs:
+  prep:
+    name: Prepare resources
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Clone portablelinux 156.0.8078.79-1 and hook Ice patches
+        run: bash core-build/build.sh setup
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.ICE_PL_DIR }}/docker
+          file: ${{ env.ICE_PL_DIR }}/docker/build.Dockerfile
+          tags: chromium-builder:trixie-slim
+          outputs: type=docker,dest=/tmp/chromium-builder.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ env.ARCH }}
+          path: /tmp/chromium-builder.tar
+          retention-days: 1
+
+      - name: Remove local image tarball
+        run: rm -f /tmp/chromium-builder.tar
+
+      - name: Prepare build tree (download, patch, gn gen, compile check)
+        uses: ./.github/actions/ice-core-build
+        with:
+          prepare-only: true
+
+  build_part_01:
+    name: Build part 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    needs: prep
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_02:
+    name: Build part 2
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_01.outputs.status == 'running'
+    needs: build_part_01
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_03:
+    name: Build part 3
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_02.outputs.status == 'running'
+    needs: build_part_02
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_04:
+    name: Build part 4
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_03.outputs.status == 'running'
+    needs: build_part_03
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_05:
+    name: Build part 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_04.outputs.status == 'running'
+    needs: build_part_04
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_06:
+    name: Build part 6
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_05.outputs.status == 'running'
+    needs: build_part_05
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_07:
+    name: Build part 7
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_06.outputs.status == 'running'
+    needs: build_part_06
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_08:
+    name: Build part 8
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_07.outputs.status == 'running'
+    needs: build_part_07
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_09:
+    name: Build part 9
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_08.outputs.status == 'running'
+    needs: build_part_08
+    outputs:
+      status: ${{ steps.build.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+
+  build_part_10:
+    name: Build part 10
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    if: needs.build_part_09.outputs.status == 'running'
+    needs: build_part_09
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ice-core-build
+        id: build
+        with: { final: true }
+
+  package:
+    name: Package .deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: ${{ !cancelled() && !failure()
+            && contains(fromJSON('["success", "skipped"]'),
+                        needs.build_part_10.result) }}
+    needs: build_part_10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone portablelinux (cache scripts, version files)
+        run: bash core-build/build.sh setup
+
+      - name: Download build cache
+        uses: actions/download-artifact@v4
+        with:
+          name: build-cache-${{ env.ARCH }}
+          path: ${{ env.ICE_PL_DIR }}/.github/cache/
+
+      - name: Import build cache
+        run: bash "$ICE_PL_DIR/.github/scripts/import-cache.sh"
+
+      - name: List build output
+        run: ls -la "$ICE_PL_DIR/build/src/out/Default"
+
+      - name: Build .deb
+        run: bash core-build/package-deb.sh --dest dist
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ice-browser-deb
+          path: dist/ice-browser_*_amd64.deb
+          if-no-files-found: error
+          compression-level: 0

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Ice</title>
+<link rel="stylesheet" href="panel.css">
+<script src="panel.js" defer></script>
+</head>
+<body>
+<header id="head">
+  <h1 id="title">Funkcije</h1>
+</header>
+<main id="view-features" hidden>
+  <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 1 0 3.7 10.7l4.8 4.8 1.4-1.4-4.8-4.8A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg><input id="search" type="search" placeholder="Traži funkciju" aria-label="Traži funkciju" autocomplete="off"></div>
+  <div id="list"></div>
+  <p id="empty" hidden>Nema funkcija za „<span id="empty-q"></span>“.</p>
+</main>
+<main id="view-menu" hidden></main>
+</body>
+</html>

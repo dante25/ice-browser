@@ -1,0 +1,22 @@
+--- a/chrome/browser/extensions/ice_builtins.cc
++++ b/chrome/browser/extensions/ice_builtins.cc
+@@ -52,7 +52,6 @@
+     {"tab-session-manager", "iaiomicjabeggjcfkbimgmglanimpnae", nullptr},
+     {"webmail-ad-blocker", "cbhfdchmklhpcngcgjmpdbjakdggkkjp", nullptr},
+     {"youtube-nonstop", "nlkaejimjacpillmajjnopmpbkbnocid", nullptr},
+-    {"ice-shield", "lbincgmkngjhncpmjjmghblelehjilfg", nullptr},
+     {"google-images-viewer", "bblfilgjmibmjophkgpigfedganlieod", nullptr},
+ };
+ 
+--- a/extensions/common/ice_builtin_ids.h
++++ b/extensions/common/ice_builtin_ids.h
+@@ -19,8 +19,7 @@
+     "gpgbiinpmelaihndlegbgfkmnpofgfei", "dammfdepmngjjoidfdbhkjboecgceamb",
+     "gjoijpfmdhbjkkgnmahganhoinjjpohk", "cnojnbdhbhnkbcieeekonklommdnndci",
+     "iaiomicjabeggjcfkbimgmglanimpnae", "cbhfdchmklhpcngcgjmpdbjakdggkkjp",
+-    "nlkaejimjacpillmajjnopmpbkbnocid", "lbincgmkngjhncpmjjmghblelehjilfg",
+-    "bblfilgjmibmjophkgpigfedganlieod",
++    "nlkaejimjacpillmajjnopmpbkbnocid", "bblfilgjmibmjophkgpigfedganlieod",
+ };
+ 
+ // True for Ice built-ins. They are loaded as component extensions but must

@@ -1,0 +1,147 @@
+--- a/chrome/browser/extensions/ice_builtins.h
++++ b/chrome/browser/extensions/ice_builtins.h
+@@ -45,6 +45,12 @@
+ 
+ bool IsIceBuiltinExtension(const extensions::ExtensionId& id);
+ 
++// On first install or a version change a built-in's own code may open welcome
++// or options tabs. Ice marks the built-in when it is (re)installed and
++// suppresses tabs/options pages it opens during the next two minutes.
++void MarkIceBuiltinInstalling(const extensions::ExtensionId& id);
++bool ShouldSuppressIceBuiltinTab(const extensions::ExtensionId& id);
++
+ // Checks that `dir` contains exactly the files compiled into the browser for
+ // `builtin`, each with the expected SHA-256. Blocking; call on a file thread.
+ bool VerifyIceBuiltinFiles(const IceBuiltin& builtin,
+--- a/chrome/browser/extensions/ice_builtins.cc
++++ b/chrome/browser/extensions/ice_builtins.cc
+@@ -9,7 +9,10 @@
+ #include <string_view>
+ #include <vector>
+ 
++#include "base/containers/flat_map.h"
+ #include "base/files/file_enumerator.h"
++#include "base/no_destructor.h"
++#include "base/time/time.h"
+ #include "base/files/file_util.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "crypto/hash.h"
+@@ -70,6 +73,25 @@
+   return false;
+ }
+ 
++namespace {
++base::flat_map<extensions::ExtensionId, base::TimeTicks>& InstallTimes() {
++  static base::NoDestructor<
++      base::flat_map<extensions::ExtensionId, base::TimeTicks>>
++      times;
++  return *times;
++}
++}  // namespace
++
++void MarkIceBuiltinInstalling(const extensions::ExtensionId& id) {
++  InstallTimes()[id] = base::TimeTicks::Now();
++}
++
++bool ShouldSuppressIceBuiltinTab(const extensions::ExtensionId& id) {
++  auto it = InstallTimes().find(id);
++  return it != InstallTimes().end() &&
++         base::TimeTicks::Now() - it->second < base::Minutes(2);
++}
++
+ bool VerifyIceBuiltinFiles(const IceBuiltin& builtin,
+                            const base::FilePath& dir,
+                            std::string* error) {
+--- a/chrome/browser/extensions/component_loader.cc
++++ b/chrome/browser/extensions/component_loader.cc
+@@ -765,6 +765,14 @@
+   if (Exists(expected_id)) {
+     return;
+   }
++  // First install or version change: onInstalled will run, suppress the
++  // welcome/options tabs it may open.
++  const std::string* version = manifest->FindString(manifest_keys::kVersion);
++  if (!version ||
++      ExtensionPrefs::Get(profile_)->GetVersionString(expected_id) !=
++          *version) {
++    ice::MarkIceBuiltinInstalling(expected_id);
++  }
+   Add(std::move(*manifest), root_directory, /*skip_allowlist=*/true);
+ }
+ 
+--- a/chrome/browser/extensions/extension_tab_util.cc
++++ b/chrome/browser/extensions/extension_tab_util.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/extensions/browser_window_util.h"
+ #include "chrome/browser/extensions/chrome_extension_function_details.h"
+ #include "chrome/browser/extensions/extension_management.h"
++#include "chrome/browser/extensions/ice_builtins.h"
+ #include "chrome/browser/extensions/window_controller_list.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
+@@ -1213,6 +1214,9 @@
+ bool ExtensionTabUtil::OpenOptionsPageFromWebContents(
+     const Extension* extension,
+     content::WebContents* web_contents) {
++  if (ice::ShouldSuppressIceBuiltinTab(extension->id())) {
++    return false;
++  }
+   const std::optional<GURL> url = GetOptionsPageUrlToNavigate(extension);
+   if (!url) {
+     return false;
+@@ -1239,6 +1243,9 @@
+ // static
+ bool ExtensionTabUtil::OpenOptionsPage(const Extension* extension,
+                                        BrowserWindowInterface* browser) {
++  if (ice::ShouldSuppressIceBuiltinTab(extension->id())) {
++    return false;
++  }
+   const std::optional<GURL> url = GetOptionsPageUrlToNavigate(extension);
+   if (!url) {
+     return false;
+--- a/chrome/browser/extensions/api/tabs/tabs_api.cc
++++ b/chrome/browser/extensions/api/tabs/tabs_api.cc
+@@ -19,6 +19,7 @@
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/extensions/api/tabs/tabs_constants.h"
+ #include "chrome/browser/extensions/api/tabs/windows_util.h"
++#include "chrome/browser/extensions/ice_builtins.h"
+ #include "chrome/browser/extensions/browser_extension_window_controller.h"
+ #include "chrome/browser/extensions/browser_window_util.h"
+ #include "chrome/browser/extensions/chrome_extension_function_details.h"
+@@ -2134,6 +2135,11 @@
+       tabs::Create::Params::Create(args());
+   EXTENSION_FUNCTION_VALIDATE(params);
+ 
++  // Ice: no welcome/options tabs from a built-in that is being installed.
++  if (extension() && ice::ShouldSuppressIceBuiltinTab(extension()->id())) {
++    return RespondNow(Error("Tab suppressed by Ice during installation."));
++  }
++
+   const tabs::Create::Params::CreateProperties& create_properties =
+       params->create_properties;
+ 
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model.cc
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model.cc
+@@ -44,6 +44,7 @@
+ #include "extensions/browser/uninstall_reason.h"
+ #include "extensions/browser/unloaded_extension_reason.h"
+ #include "extensions/common/extension_set.h"
++#include "extensions/common/ice_builtin_ids.h"
+ #include "extensions/common/manifest.h"
+ #include "extensions/common/manifest_constants.h"
+ #include "extensions/common/permissions/permissions_data.h"
+@@ -349,6 +350,13 @@
+     return false;
+   }
+ 
++  // Ice: built-in features are not extensions for the user: they are reached
++  // from the Ice panel, never from the toolbar or the extensions menu.
++  if (extensions::Manifest::IsComponentLocation(extension->location()) &&
++      ice::IsIceBuiltinId(extension->id())) {
++    return false;
++  }
++
+   // In this case, we don't care about the browser action visibility, because
+   // we want to show each extension regardless.
+   return extension_action_manager_->GetExtensionAction(*extension) != nullptr;

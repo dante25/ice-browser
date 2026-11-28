@@ -13,6 +13,9 @@ main { padding:12px; display:flex; flex-direction:column; gap:10px; }
 #banners .ban { background:#fff3e0; color:#8a5200; padding:8px 14px; font-size:12px; display:flex; gap:10px; align-items:center; border-bottom:1px solid #f0d9b5; } #banners .ban span { flex:1; } #banners button { padding:2px 10px; font-size:11px; }
 #settings { background:#fff; border-bottom:1px solid var(--line); padding:10px 14px; display:flex; flex-direction:column; gap:8px; } #settings[hidden] { display:none; }
 #settings label { display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:13px; } #settings input, #settings select { width:55%; padding:5px 8px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+#settings textarea { width:55%; padding:5px 8px; border:1px solid var(--line); border-radius:8px; font:12px ui-monospace,monospace; resize:vertical; }
+#ihc { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; } #ihc summary { cursor:pointer; } #ihc[open] { display:flex; flex-direction:column; gap:8px; }
+#ihc_list .ihr { display:flex; gap:8px; align-items:center; font-size:12px; } #ihc_list .ihr code { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#555; } #ihc_list button { padding:1px 8px; font-size:11px; }
 .row { display:flex; gap:8px; } .tiny { font-size:11px; margin-top:-4px; } #empty { text-align:center; padding:40px 20px; }
 
 #folderBan { background:#e8f0fe; color:#1c3d7a; padding:8px 14px; font-size:12px; display:flex; gap:10px; align-items:center; border-bottom:1px solid #cfe0fb; } #folderBan[hidden] { display:none; } #folderBan span { flex:1; } #folderBan button { padding:3px 12px; font-size:12px; } #folderBtn { padding:4px 12px; }

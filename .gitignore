@@ -15,3 +15,6 @@ guardian.json
 extensions/
 ice-features/ice-sidebar/features.json
 dist/
+
+# Ice core build (core-build/build.sh)
+core-build/.work/
