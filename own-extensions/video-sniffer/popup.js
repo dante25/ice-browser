@@ -92,6 +92,10 @@ async function ask(message, b) {
     if (!r) {
       const mine = chrome.runtime.getManifest().version;
       const bg = await chrome.runtime.sendMessage({ type: 'ver' }).catch(() => null);
+      if (bg?.error) {
+        say(`✕ The background part crashed while loading: ${bg.error.slice(0, 600)}`, false);
+        return;
+      }
       say(
         !bg
           ? `✕ The extension's background part is not running (popup v${mine}). Open chrome://extensions, find Video Sniffer, click "service worker" or "Errors" and read the error there.`

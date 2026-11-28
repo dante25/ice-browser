@@ -207,13 +207,16 @@ if (!alreadyRunning) {
 }
 
 
-const loadDirs = builtins.dirs((m) => console.warn('[ice]', m), resolveTheme());
+// Ako Ice već radi, ništa se ne preuređuje: builtins.dirs() briše i ponovo pravi kopije ekstenzija i Ice panela
+// koje pokrenuti preglednik upravo koristi (stranica ekstenzija i popupovi tad javljaju ERR_FILE_NOT_FOUND).
+// Pokrenuti Ice samo dobije novi prozor/adresu.
+const loadDirs = alreadyRunning ? [] : builtins.dirs((m) => console.warn('[ice]', m), resolveTheme());
 const flags = [
   `--user-data-dir=${PROFILE}`,
   '--no-first-run',
   '--no-default-browser-check',
   '--disable-features=DisableLoadExtensionCommandLineSwitch',
-  `--load-extension=${loadDirs.join(',')}`,
+  ...(loadDirs.length ? [`--load-extension=${loadDirs.join(',')}`] : []),
   '--class=Ice',
   '--show-avatar-button=never', // profil je u Ice panelu, ne na traci
   ...args,
