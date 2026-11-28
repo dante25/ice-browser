@@ -379,6 +379,8 @@ function ytCard(info) {
     const muxed = !premium && s && s.muxed.find((x) => x.height === f.height);
     if (stream && s.audio) buttons.push(btn('Download', (b) => openMerge(info, stream, s.audio, f.label, b)));
     else if (muxed) buttons.push(btn('Download', (b) => openMerge(info, muxed, null, f.label, b)));
+    // No direct stream for this quality (YouTube hides them): the helper's yt-dlp downloads it.
+    if (!buttons.length) buttons.push(btn('Download', (b) => startDl({ mode: 'ythelper', url: tab.url, height: f.height || 0, cookies: premium }, b)));
     buttons.push(btn('yt-dlp', (b) => copy(b, `yt-dlp${cookies} -f ${sq(sel)} ${sq(tab.url)}`)));
     if (helper) buttons.push(runBtn(() => ({ url: tab.url, format: sel, cookies: premium })));
     box.append(variantRow(label, buttons));

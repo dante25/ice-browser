@@ -287,7 +287,7 @@ function ytId(url) {
 // YouTube often gives the page no direct streams (it wants tokens the page cannot make). The local helper then
 // runs yt-dlp itself: one click, best quality, saved to the helper's folder (default ~/Downloads).
 const HELPER = 'http://127.0.0.1:47655';
-async function viaHelper(url, why) {
+async function viaHelper(url, why, format = 'bv*+ba/b', quality = 'the best quality') {
   let ping;
   try {
     ping = await (await fetch(HELPER + '/ping')).json();
@@ -295,9 +295,9 @@ async function viaHelper(url, why) {
     throw new Error(`${why}. For YouTube install the helper once: run helper/install.sh from the video-sniffer folder, plus yt-dlp.`);
   }
   if (!ping?.ytdlp) throw new Error('The helper is running but yt-dlp is not installed (download it to ~/.local/bin/yt-dlp and make it executable).');
-  const r = await (await fetch(HELPER + '/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, format: 'bv*+ba/b' }) })).json();
+  const r = await (await fetch(HELPER + '/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, format }) })).json();
   if (!r?.ok) throw new Error(r?.error || 'The helper refused the download');
-  return `yt-dlp is downloading the best quality to ${ping.output_dir}`;
+  return `yt-dlp is downloading ${quality} to ${ping.output_dir}`;
 }
 
 // YouTube: the player's own list of streams (read by inject.js), highest video + best audio, merged in the background.
@@ -405,6 +405,11 @@ async function popdl(msg) {
   await setReferer(msg.page);
   if (msg.mode === 'file') return runOffscreen({ ...job, mode: 'file', url: msg.url, ext: msg.ext }, s);
   if (msg.mode === 'hls') return runOffscreen({ ...job, mode: 'hls', url: msg.url }, s);
+  if (msg.mode === 'ythelper') {
+    // A quality picked in the popup: direct streams are not available, so yt-dlp (through the helper) does it.
+    const h = Number(msg.height) || 0;
+    return viaHelper(msg.url, 'YouTube gave the page no direct stream', h ? `bv*[height<=${h}]+ba/b[height<=${h}]` : 'bv*+ba/b', h ? `${h}p` : 'the best quality');
+  }
   if (msg.mode === 'ytmerge') {
     // googlevideo expects the client its URLs were issued for (visionOS, as in inject.js)
     await chrome.declarativeNetRequest.updateSessionRules({
@@ -426,7 +431,7 @@ async function popdl(msg) {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== 'popdl') return;
   popdl(msg).then(
-    () => say({ popup: true, tab: { id: msg.tabId } }, '✓', 'Download started'),
+    (note) => say({ popup: true, tab: { id: msg.tabId } }, '✓', typeof note === 'string' ? note : 'Download started'),
     (e) => say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e))
   );
   sendResponse({ ok: true });
