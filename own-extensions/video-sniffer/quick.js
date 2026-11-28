@@ -7,8 +7,8 @@
   // and can be switched off in the popup. While it is on, its button sits inside the player.
   let esuitOn = false;
   if (IS_FB) {
-    chrome.storage.local.get({ esuit: true }).then((o) => {
-      esuitOn = o.esuit !== false;
+    chrome.storage.local.get({ esuit: false }).then((o) => {
+      esuitOn = o.esuit === true;
       if (!esuitOn) return;
       const go = () => {
         try {

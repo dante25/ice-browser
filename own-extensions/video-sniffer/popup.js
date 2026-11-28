@@ -478,7 +478,7 @@ async function render() {
   }
   render();
   const esuitBox = document.getElementById('esuit');
-  chrome.storage.local.get({ esuit: true }).then((o) => (esuitBox.checked = o.esuit !== false));
+  chrome.storage.local.get({ esuit: false }).then((o) => (esuitBox.checked = o.esuit === true));
   esuitBox.addEventListener('change', () => chrome.storage.local.set({ esuit: esuitBox.checked }));
   const probeBox = document.getElementById('probe');
   chrome.storage.local.get({ probe: true }).then((o) => (probeBox.checked = o.probe));
