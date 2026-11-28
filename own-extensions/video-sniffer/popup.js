@@ -486,6 +486,12 @@ async function render() {
     helperLine.textContent = 'Helper is running, but yt-dlp is not installed.';
   }
   render();
+  document.getElementById('best').addEventListener('click', (e) => {
+    chrome.runtime.sendMessage({ type: 'quickTab', tabId: tab.id });
+    const b = e.target;
+    b.textContent = 'Started ✓ (progress on the toolbar icon)';
+    setTimeout(() => (b.textContent = '⬇ Download best quality'), 2500);
+  });
   const esuitBox = document.getElementById('esuit');
   chrome.storage.local.get({ esuit: false }).then((o) => (esuitBox.checked = o.esuit === true));
   esuitBox.addEventListener('change', () => chrome.storage.local.set({ esuit: esuitBox.checked }));

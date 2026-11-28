@@ -278,7 +278,50 @@ async function fbFromList(tabId) {
   return null;
 }
 
+function ytId(url) {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)youtube\.com$/.test(u.hostname)) return null;
+    return u.searchParams.get('v') || u.pathname.match(/^\/shorts\/([\w-]+)/)?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+// YouTube: the player's own list of streams (read by inject.js), highest video + best audio, merged in the background.
+async function ytBest(tab, sender) {
+  const id = ytId(tab.url);
+  const key = `yt:${tab.id}`;
+  const yt = (await chrome.storage.session.get(key))[key];
+  if (!yt || yt.id !== id || !yt.streams) {
+    throw new Error('YouTube has not given the streams of this video yet - wait a second (or reload the page with F5), then click again');
+  }
+  const s = yt.streams;
+  const byQuality = (a, c) => c.height - a.height || c.fps - a.fps;
+  const video = [...(s.video || [])].sort(byQuality)[0];
+  const muxed = [...(s.muxed || [])].sort(byQuality)[0];
+  const name = safeName((tab.title || '').replace(/ - YouTube$/, '')) || id;
+  await setReferer(tab.url);
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [3],
+    addRules: [
+      {
+        id: 3,
+        priority: 3,
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'User-Agent', operation: 'set', value: YT_UA }] },
+        condition: { requestDomains: ['googlevideo.com'], resourceTypes: ['xmlhttprequest'], initiatorDomains: [chrome.runtime.id] },
+      },
+    ],
+  });
+  if (video && s.audio && (!muxed || video.height > muxed.height)) {
+    return runOffscreen({ mode: 'ytmerge', page: tab.url, video: video.url, vs: video.size, audio: s.audio.url, as: s.audio.size, name: `${name} [${video.height}p]` }, sender);
+  }
+  if (muxed) return runOffscreen({ mode: 'ytmerge', page: tab.url, video: muxed.url, vs: muxed.size, audio: '', as: 0, name: `${name} [${muxed.height}p]` }, sender);
+  throw new Error('YouTube gave no direct mp4 stream for this video');
+}
+
 async function quick(msg, sender) {
+  if (ytId(sender.tab.url)) return ytBest(sender.tab, sender);
   const page = msg.page || sender.tab.url;
   const name = safeName(msg.title || sender.tab.title) || 'video';
   await setReferer(page);
@@ -365,6 +408,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   popdl(msg).then(
     () => say({ popup: true, tab: { id: msg.tabId } }, '✓', 'Download started'),
     (e) => say({ popup: true, tab: { id: msg.tabId } }, '✕', e.message || String(e))
+  );
+  sendResponse({ ok: true });
+});
+
+
+// The popup's Download button: best quality of whatever this tab plays (same as the button on the video).
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type !== 'quickTab') return;
+  const s = { popup: true, tab: null };
+  chrome.tabs.get(msg.tabId).then(
+    (tab) => {
+      s.tab = tab;
+      say(s, '…', 'Starting');
+      const fb = /(^|\.)facebook\.com$/.test(new URL(tab.url).hostname);
+      return quick({ page: tab.url, title: tab.title, src: '', duration: 0, isFb: fb, fbReason: 'No video found yet - play it for a second, then click again' }, s).then(
+        () => say(s, '✓', 'Download started'),
+        (e) => say(s, '✕', e.message || String(e))
+      );
+    },
+    () => {}
   );
   sendResponse({ ok: true });
 });

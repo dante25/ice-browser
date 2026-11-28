@@ -132,12 +132,20 @@
   let lastYoutube = '';
   function scanYouTube() {
     if (!/(^|\.)youtube\.com$/.test(location.hostname)) return;
-    let pr;
-    try {
-      pr = document.getElementById('movie_player')?.getPlayerResponse?.();
-    } catch {}
     const here = new URL(location.href);
     const wanted = here.searchParams.get('v') || here.pathname.match(/^\/shorts\/([\w-]+)/)?.[1];
+    // Watch pages use #movie_player, Shorts use #shorts-player (and several players exist while scrolling):
+    // take the one that is playing the video named in the address.
+    let pr;
+    for (const el of [document.getElementById('movie_player'), document.getElementById('shorts-player'), ...document.querySelectorAll('.html5-video-player')]) {
+      try {
+        const r = el?.getPlayerResponse?.();
+        if (r?.videoDetails?.videoId === wanted) {
+          pr = r;
+          break;
+        }
+      } catch {}
+    }
     const id = pr?.videoDetails?.videoId;
     if (!id || id !== wanted) return;
     const sd = pr.streamingData || {};
