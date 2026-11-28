@@ -1,3 +1,8 @@
+// Answers the popup's "are you alive, and which version?" question first, before anything else can fail.
+chrome.runtime.onMessage.addListener((m, _s, reply) => {
+  if (m?.type === 'ver') reply({ v: chrome.runtime.getManifest().version });
+});
+
 // Collects media found per tab (network sniffing + reports from the page) in chrome.storage.session.
 
 const EXT = /\.(m3u8|mpd|mp4|m4v|webm|mkv|mov|flv|avi|3gp|mp3|m4a|ogg|opus|wav|f4m)(?:$|[?#\/])/i;

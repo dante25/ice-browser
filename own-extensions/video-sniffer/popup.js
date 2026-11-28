@@ -83,9 +83,24 @@ async function ask(message, b) {
   say('Working… (keep this popup open)');
   if (b) b.disabled = true;
   try {
-    const r = await chrome.runtime.sendMessage(message);
-    if (!r) say('No answer from the extension - reload the extension and try again', false);
-    else say(r.ok ? `✓ ${r.note}` : `✕ ${r.error}`, !!r.ok);
+    let r = await chrome.runtime.sendMessage(message);
+    if (!r) {
+      // The background worker may just be waking up: ask once more, then find out what is wrong.
+      await new Promise((ok) => setTimeout(ok, 1500));
+      r = await chrome.runtime.sendMessage(message);
+    }
+    if (!r) {
+      const mine = chrome.runtime.getManifest().version;
+      const bg = await chrome.runtime.sendMessage({ type: 'ver' }).catch(() => null);
+      say(
+        !bg
+          ? `✕ The extension's background part is not running (popup v${mine}). Open chrome://extensions, find Video Sniffer, click "service worker" or "Errors" and read the error there.`
+          : bg.v !== mine
+            ? `✕ The background part is v${bg.v} but this popup is v${mine}: the browser is still running an old copy. Close Ice completely (also in the tray) and start it again.`
+            : `✕ The background part (v${bg.v}) did not answer this request. Open chrome://extensions → Video Sniffer → "service worker" → Console and tell me the red error.`,
+        false
+      );
+    } else say(r.ok ? `✓ ${r.note}` : `✕ ${r.error}`, !!r.ok);
   } catch (e) {
     say(`✕ ${e.message || e}`, false);
   }
