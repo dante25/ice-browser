@@ -327,9 +327,18 @@ function youtubeId(url) {
 }
 
 // Direct YouTube download: the downloader page fetches the video (and audio) mp4 and merges them.
-function openMerge(info, video, audio, quality, b) {
+function openMerge(info, video, audio, quality) {
   const title = safeName((tab.title || '').replace(/ - YouTube$/, '')) || info.id;
-  startDl({ mode: 'ytmerge', video: video.url, vs: video.size || 0, audio: audio?.url || '', as: audio?.size || 0, name: `${title} [${quality}]` }, b);
+  const q = new URLSearchParams({
+    v: video.url,
+    vs: video.size || '',
+    a: audio?.url || '',
+    as: audio?.size || '',
+    page: tab.url,
+    name: `${title} [${quality}]`,
+    mode: 'merge',
+  });
+  chrome.tabs.create({ url: chrome.runtime.getURL('downloader.html') + '?' + q });
 }
 
 // The card lists what the player offers (read from its own data), a Download button where a direct

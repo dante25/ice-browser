@@ -407,8 +407,6 @@
     const run = async () => {
       step = 'Relay store';
       show('…', 'Reading the video data (1/4: page store)…', true);
-      const live = fromStore(await askStore(id, video));
-      if (live) return live;
       if (!id) return null;
       step = 'received replies';
       show('…', 'Reading the video data (2/4: page replies)…', true);
